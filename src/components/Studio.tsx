@@ -1045,10 +1045,6 @@ export function Studio({
     onGuides: setGuides,
     loupe,
     onLoupeChange: setLoupe,
-    onLoupeToggle: () => {
-      setLoupe((prev) => ({ ...prev, enabled: !prev.enabled }))
-      setLoupeVisible(false)
-    },
     sessionMins,
     sessionRemainingLabel,
     onStartSession: startSession,
@@ -1269,7 +1265,10 @@ export function Studio({
           className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
           onClick={() => {
             if (settingsOpen) setSettingsOpen(false)
-            else setActiveTool(null)
+            else {
+              deactivateOneTool(activeTool)
+              setActiveTool(null)
+            }
           }}
         >
           {settingsOpen ? 'К студии' : 'Закрыть'}

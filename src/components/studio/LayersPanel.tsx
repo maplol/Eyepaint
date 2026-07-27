@@ -5,7 +5,6 @@ import {
   type LayerStackAction,
   type RefLayer,
 } from '../../lib/layers'
-import { StableLabel } from './StableLabel'
 import {
   chipAccentClass,
   chipFileClass,
@@ -242,7 +241,7 @@ export function LayersPanel(props: LayersPanelProps) {
     const nextGhost: DragGhost = {
       id: layer.id,
       width: Math.max(rect.width, 200),
-      height: 44,
+      height: 40,
       grabX,
       grabY: Math.min(grabY, 22),
       pointerX: event.clientX,
@@ -356,7 +355,7 @@ export function LayersPanel(props: LayersPanelProps) {
       <ul
         ref={listRef}
         className={cn(
-          'grid min-h-0 flex-1 gap-1.5 overflow-auto overscroll-contain px-2.5 py-1.5 [-webkit-overflow-scrolling:touch]',
+          'flex min-h-0 flex-1 flex-col justify-start gap-1 overflow-auto overscroll-contain px-2.5 py-1.5 [-webkit-overflow-scrolling:touch]',
           scrollAreaClass,
         )}
         aria-label="Слои референса"
@@ -375,7 +374,7 @@ export function LayersPanel(props: LayersPanelProps) {
                   if (node) itemRefs.current.set(layer.id, node)
                   else itemRefs.current.delete(layer.id)
                 }}
-                className="h-11 rounded-xl border border-dashed border-accent/45 bg-accent/10"
+                className="h-10 rounded-lg border border-dashed border-accent/45 bg-accent/10"
                 aria-hidden="true"
               />
             )
@@ -451,17 +450,41 @@ export function LayersPanel(props: LayersPanelProps) {
                 aria-label={`Прозрачность ${layer.name}`}
               />
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 items-center gap-0.5">
                 <button
                   type="button"
                   className={cn(
-                    chipAccentClass(layer.visible),
-                    'min-h-8 w-10 rounded-lg px-0 py-0 text-[0.72rem]',
+                    'grid h-8 w-8 place-items-center rounded-lg border text-[var(--fg-muted)] transition-colors',
+                    layer.visible
+                      ? 'border-accent/40 bg-accent/15 text-[var(--chip-accent-fg)]'
+                      : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)] opacity-55',
                   )}
+                  aria-label={layer.visible ? `Скрыть ${layer.name}` : `Показать ${layer.name}`}
                   aria-pressed={layer.visible}
+                  title={layer.visible ? 'Скрыть' : 'Показать'}
                   onClick={() => props.onLayerVisible(layer.id)}
                 >
-                  <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
+                  {layer.visible ? (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinejoin="round"
+                      />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+                    </svg>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2M9.9 5.2A11 11 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-4.2 4.8M6.1 6.1A18 18 0 0 0 2 12s3.5 7 10 7c1.3 0 2.5-.2 3.6-.6"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </button>
 
                 <button
