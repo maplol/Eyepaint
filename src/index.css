@@ -1,18 +1,24 @@
 :root {
-  --ink: #0b0f0e;
-  --ink-soft: #151b19;
-  --mist: #d8e0dc;
-  --paper: #f3efe6;
-  --ember: #f0a05a;
-  --ember-deep: #d4782e;
-  --line: rgba(216, 224, 220, 0.14);
-  --glass: rgba(11, 15, 14, 0.72);
-  --danger: #ff6b6b;
-  --ok: #7dcea0;
-  --font-display: 'Syne', sans-serif;
+  --ink: #1c2428;
+  --ink-deep: #141a1d;
+  --mist: #e7eef0;
+  --paper: #f5f7f8;
+  --accent: #e09a6a;
+  --accent-soft: rgba(224, 154, 106, 0.22);
+  --line: rgba(255, 255, 255, 0.22);
+  --line-soft: rgba(255, 255, 255, 0.12);
+  --glass: rgba(255, 255, 255, 0.1);
+  --glass-strong: rgba(255, 255, 255, 0.16);
+  --glass-dark: rgba(20, 26, 29, 0.38);
+  --text-muted: rgba(231, 238, 240, 0.68);
+  --danger: #ef8b8b;
+  --font-display: 'Outfit', sans-serif;
   --font-body: 'Manrope', sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
   color: var(--mist);
   background: var(--ink);
   font-family: var(--font-body);
@@ -36,7 +42,7 @@ body,
   min-height: 100%;
   min-height: 100dvh;
   overflow: hidden;
-  background: var(--ink);
+  background: var(--ink-deep);
 }
 
 button,
@@ -60,7 +66,7 @@ img {
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -68,21 +74,20 @@ img {
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(240, 160, 90, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 0 14px rgba(240, 160, 90, 0);
-  }
-}
-
-@keyframes drift {
+@keyframes soft-float {
   from {
     transform: translate3d(0, 0, 0) scale(1);
   }
   to {
-    transform: translate3d(-3%, 2%, 0) scale(1.05);
+    transform: translate3d(-2%, 3%, 0) scale(1.04);
+  }
+}
+
+@keyframes shutter-flash {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0;
   }
 }
