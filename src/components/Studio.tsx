@@ -273,7 +273,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   onWheelRef.current = onWheel
 
   const displayUrl = filteredUrl ?? colorSourceUrl
-  const framed = colorMode === 'mask' && activeLayerId === (activeLayer?.id ?? 'primary')
+  const framed = colorMode === 'mask'
   const showToast = (message: string) => setToast(message)
 
   const layerDisplayUrl = (layerId: string, fallbackUrl: string) =>
