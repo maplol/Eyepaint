@@ -28,6 +28,7 @@ export function useRoomPeer({
   const roomRef = useRef<Room | null>(null)
   const localStreamRef = useRef(localStream)
   const qualityRef = useRef(quality)
+  const pushedStreamIdRef = useRef<string | null>(null)
   localStreamRef.current = localStream
   qualityRef.current = quality
 
@@ -37,13 +38,24 @@ export function useRoomPeer({
       setStatus('idle')
       setError(null)
       setRemoteStream(null)
+      pushedStreamIdRef.current = null
+      return
+    }
+
+    // Camera must have a live stream before joining, otherwise peers never get video.
+    if (role === 'camera' && !localStream) {
+      setStatus('waiting')
+      setError(null)
       return
     }
 
     let active = true
+    let retryTimer: number | null = null
+    let bitrateTimers: number[] = []
     setStatus('connecting')
     setError(null)
     setRemoteStream(null)
+    pushedStreamIdRef.current = null
 
     let room: Room
     try {
@@ -66,13 +78,30 @@ export function useRoomPeer({
       void applySenderBitrate(room.getPeers(), bitrate)
     }
 
+    const scheduleBitratePasses = () => {
+      bitrateTimers.forEach((id) => window.clearTimeout(id))
+      bitrateTimers = [400, 1200, 2800].map((ms) =>
+        window.setTimeout(() => {
+          if (active) tuneBitrate()
+        }, ms),
+      )
+    }
+
     const pushStream = (peerId?: string) => {
       const stream = localStreamRef.current
       if (!stream || role !== 'camera') return
+      const streamId = stream.id
       const tasks = room.addStream(stream, peerId ? { target: peerId } : undefined)
-      void Promise.all(tasks).then(() => {
-        if (active) tuneBitrate()
-      })
+      pushedStreamIdRef.current = streamId
+      void Promise.all(tasks)
+        .then(() => {
+          if (!active) return
+          scheduleBitratePasses()
+        })
+        .catch(() => {
+          if (!active) return
+          setStatus('waiting')
+        })
     }
 
     room.onPeerJoin = (peerId) => {
@@ -108,15 +137,30 @@ export function useRoomPeer({
     } else {
       pushStream()
       const peers = Object.keys(room.getPeers())
-      if (peers.length > 0) {
+      setStatus(peers.length > 0 ? 'connected' : 'waiting')
+    }
+
+    // Keep trying to publish while waiting — MQTT discovery can be slow.
+    if (role === 'camera') {
+      retryTimer = window.setInterval(() => {
+        if (!active) return
+        const peers = Object.keys(room.getPeers())
+        if (peers.length === 0) {
+          setStatus('waiting')
+          pushStream()
+          return
+        }
+        pushStream()
         setStatus('connected')
-      } else {
-        setStatus('waiting')
-      }
+        setError(null)
+        scheduleBitratePasses()
+      }, 2000)
     }
 
     return () => {
       active = false
+      if (retryTimer) window.clearInterval(retryTimer)
+      bitrateTimers.forEach((id) => window.clearTimeout(id))
       room.onPeerJoin = null
       room.onPeerLeave = null
       room.onPeerStream = null
@@ -124,23 +168,24 @@ export function useRoomPeer({
       roomRef.current = null
       setRemoteStream(null)
       setStatus('idle')
+      pushedStreamIdRef.current = null
     }
-  }, [enabled, role, code])
+  }, [enabled, role, code, localStream])
 
+  // Quality changes: retune encodings without leaving the room
   useEffect(() => {
-    if (!enabled || role !== 'camera' || !localStream) return
+    if (!enabled || role !== 'camera') return
     const room = roomRef.current
     if (!room) return
-    const tasks = room.addStream(localStream)
-    void Promise.all(tasks).then(() => {
-      void applySenderBitrate(room.getPeers(), QUALITY_PRESETS[quality].maxBitrate)
-    })
-    const peers = Object.keys(room.getPeers())
-    if (peers.length > 0) {
-      setStatus('connected')
-      setError(null)
-    }
-  }, [enabled, role, localStream, quality])
+    const bitrate = QUALITY_PRESETS[quality].maxBitrate
+    void applySenderBitrate(room.getPeers(), bitrate)
+    const timers = [300, 1000, 2500].map((ms) =>
+      window.setTimeout(() => {
+        void applySenderBitrate(room.getPeers(), bitrate)
+      }, ms),
+    )
+    return () => timers.forEach((id) => window.clearTimeout(id))
+  }, [enabled, role, quality])
 
   return { status, error, remoteStream }
 }

@@ -32,6 +32,7 @@
   height: 100%;
   object-fit: cover;
   background: #141a1d;
+  image-rendering: auto;
 }
 
 .studio__overlay {
@@ -220,14 +221,39 @@
   cursor: move;
 }
 
+.studio__top-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.studio__icon-btn {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: var(--mist);
+  backdrop-filter: blur(14px);
+}
+
+.studio__icon-btn.is-active {
+  border-color: rgba(224, 154, 106, 0.55);
+  background: rgba(224, 154, 106, 0.2);
+  color: #ffd9bd;
+}
+
 .studio__tabs {
   position: sticky;
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.2rem;
-  padding: 0.55rem 0.45rem 0.45rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.55rem 0.55rem 0.45rem;
   background: linear-gradient(
     180deg,
     rgba(28, 36, 40, 0.92) 0%,
@@ -236,7 +262,66 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  overflow-x: auto;
+}
+
+.studio__settings {
+  position: absolute;
+  top: calc(var(--safe-top) + 4.2rem);
+  right: 0.75rem;
+  left: 0.75rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70dvh, 560px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  animation: rise-in 0.3s ease both;
+}
+
+.studio__settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem 0.55rem;
+}
+
+.studio__settings-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0 0.75rem 0.55rem;
+}
+
+.studio__settings-nav-btn {
+  min-height: 2.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(231, 238, 240, 0.75);
+}
+
+.studio__settings-nav-btn.is-active {
+  border-color: rgba(224, 154, 106, 0.45);
+  background: rgba(224, 154, 106, 0.18);
+  color: #ffd9bd;
+}
+
+.studio__settings-body {
+  overflow: auto;
+  padding: 0 0.85rem 0.9rem;
+  overscroll-behavior: contain;
 }
 
 .studio__tab {
@@ -655,8 +740,16 @@
     width: min(380px, 34vw);
     max-height: none;
     transform: none;
-    /* Floating overlay on top of the full-bleed camera, not a layout shelf */
     pointer-events: auto;
+  }
+
+  .studio__settings {
+    top: calc(var(--safe-top) + 4.4rem);
+    right: calc(1rem + min(380px, 34vw) + 0.75rem);
+    left: auto;
+    width: min(380px, 34vw);
+    max-height: none;
+    bottom: calc(var(--safe-bottom) + 1rem);
   }
 
   .studio__overlay {
@@ -670,7 +763,7 @@
   }
 
   .studio__tab {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
   }
 
   .studio__hotkey-hint {
