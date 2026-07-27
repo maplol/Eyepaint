@@ -1,0 +1,19 @@
+{
+  "name": "EYEPAINT",
+  "short_name": "EYEPAINT",
+  "description": "Рисуй с референса через кальку — телефон как камера, ПК как студия.",
+  "start_url": "/Eyepaint/",
+  "scope": "/Eyepaint/",
+  "display": "standalone",
+  "background_color": "#141a1d",
+  "theme_color": "#1C2428",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/Eyepaint/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

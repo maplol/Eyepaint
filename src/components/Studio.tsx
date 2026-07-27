@@ -18,6 +18,7 @@ import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposit
 import {
   PRECISION_PROFILES,
   createPickedColor,
+  estimateSelectionCoverage,
   extractPalette,
   loadColorPrecision,
   loadMatchTolerance,
@@ -254,6 +255,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   )
   const [pickMode, setPickMode] = useState(false)
   const [paletteSort, setPaletteSort] = useState<'dominance' | 'hue'>('dominance')
+  const [selectionCoverage, setSelectionCoverage] = useState<number | null>(null)
   const paletteRef = useRef(palette)
   const imageUrlRef = useRef(imageUrl)
   const precisionRef = useRef(colorPrecision)
@@ -414,6 +416,21 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       cancelled = true
     }
   }, [imageUrl, palette, selectedColorIds, colorMode, matchTolerance])
+
+  useEffect(() => {
+    const selectedColors = palette.filter((color) => selectedColorIds.includes(color.id))
+    if (selectedColors.length === 0) {
+      setSelectionCoverage(null)
+      return
+    }
+    let cancelled = false
+    void estimateSelectionCoverage(imageUrl, selectedColors, matchTolerance).then((value) => {
+      if (!cancelled) setSelectionCoverage(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [imageUrl, palette, selectedColorIds, matchTolerance])
 
   const selectedSet = useMemo(() => new Set(selectedColorIds), [selectedColorIds])
   const visiblePalette = useMemo(
@@ -1322,6 +1339,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[0.78rem] text-mist/70">
                         {palette.length} цветов · выбрано {selectedColorIds.length}
+                        {selectionCoverage != null ? ` · ~${selectionCoverage}% кадра` : ''}
                       </p>
                       <button
                         type="button"

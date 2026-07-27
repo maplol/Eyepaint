@@ -315,6 +315,27 @@ export async function sampleColorAtImagePoint(
   return { r, g, b }
 }
 
+export async function estimateSelectionCoverage(
+  src: string,
+  selectedColors: PaletteColor[],
+  tolerance: number,
+): Promise<number> {
+  if (selectedColors.length === 0) return 0
+  const img = await loadImage(src)
+  const { ctx, width, height } = drawToCanvas(img, 240)
+  const { data } = ctx.getImageData(0, 0, width, height)
+  let total = 0
+  let matched = 0
+  for (let i = 0; i < data.length; i += 32) {
+    if (data[i + 3]! < 10) continue
+    total += 1
+    const pixel = { r: data[i]!, g: data[i + 1]!, b: data[i + 2]! }
+    if (pixelMatchesSelection(pixel, selectedColors, tolerance)) matched += 1
+  }
+  if (total === 0) return 0
+  return Math.round((matched / total) * 100)
+}
+
 export async function renderFilteredReference(
   src: string,
   selectedColors: PaletteColor[],

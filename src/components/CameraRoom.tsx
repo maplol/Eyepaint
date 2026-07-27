@@ -136,7 +136,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
 
   const controlCaps = useMemo(
     () => readCameraControlCaps((liveStreamRef.current ?? stream)?.getVideoTracks()[0] ?? null),
-    [stream, frozen, torchOn, exposure],
+    [stream],
   )
 
   useEffect(() => {
