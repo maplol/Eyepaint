@@ -22,26 +22,24 @@ test.describe('Colors & layers', () => {
   })
 
   test('слои: фото-блок, выбор, порядок, меню', async ({ page }) => {
-    const viewport = page.viewportSize()
-    const isDesktop = (viewport?.width ?? 0) >= 960
-
-    if (isDesktop) {
-      await expect(page.getByRole('region', { name: 'Блок слоёв' })).toBeVisible()
-    } else {
+    const layersSheet = page.getByRole('region', { name: 'Блок слоёв' })
+    if (!(await layersSheet.isVisible().catch(() => false))) {
       await openStudioTool(page, 'Слои')
       const chip = page.getByRole('button', { name: /Слои ·/ })
       if (await chip.isVisible().catch(() => false)) {
         await chip.click()
       }
-      await expect(page.getByRole('region', { name: 'Блок слоёв' })).toBeVisible()
     }
+    await expect(layersSheet).toBeVisible()
 
-    const layersSheet = page.getByRole('region', { name: 'Блок слоёв' })
     await expect(layersSheet.getByRole('button', { name: 'Сфотографировать композит' })).toBeVisible()
     await expect(layersSheet.getByText('Галерея')).toBeVisible()
     await expect(layersSheet.getByRole('button', { name: 'Фиксация' })).toBeVisible()
 
-    const galleryInLayers = layersSheet.locator('label').filter({ hasText: 'Галерея' }).locator('input[type="file"]')
+    const galleryInLayers = layersSheet
+      .locator('label')
+      .filter({ hasText: 'Галерея' })
+      .locator('input[type="file"]')
     await galleryInLayers.setInputFiles('e2e/fixtures/reference.png')
 
     const layersList = page.getByRole('list', { name: 'Слои референса' })
@@ -58,12 +56,12 @@ test.describe('Colors & layers', () => {
     await page.getByRole('menuitem', { name: 'На передний план' }).click()
     await expect(layersList.getByText(/передний/)).toBeVisible()
 
-    // Инструмент не должен ломать слой на ПК; на телефоне sheet сворачивается
+    // Смена инструмента не прячет слои (ПК и мобилка)
     await openStudioTool(page, 'Пипетка')
-    if (isDesktop) {
-      await expect(layersList).toBeVisible()
-    } else {
-      await expect(page.getByRole('button', { name: /Слои ·/ })).toBeVisible()
-    }
+    await expect(layersList).toBeVisible()
+
+    // Кнопка «Слои» сворачивает блок и на ПК, и на телефоне
+    await openStudioTool(page, 'Слои')
+    await expect(layersList).toHaveCount(0)
   })
 })

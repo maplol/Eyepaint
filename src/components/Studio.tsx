@@ -26,6 +26,7 @@ import {
   dockClass,
   dockShellClass,
   glassButtonClass,
+  glassIconButtonClass,
   layersColumnClass,
   scrollAreaClass,
   sectionTitleClass,
@@ -149,9 +150,11 @@ const LAYERS_OPEN_KEY = 'eyepaint-layers-sheet-open-v1'
 
 function loadLayersSheetOpen(): boolean {
   try {
-    return localStorage.getItem(LAYERS_OPEN_KEY) === '1'
+    const raw = localStorage.getItem(LAYERS_OPEN_KEY)
+    if (raw === null) return true
+    return raw === '1'
   } catch {
-    return false
+    return true
   }
 }
 
@@ -936,14 +939,12 @@ export function Studio({
   const handleSelectTool = (tool: StudioToolId) => {
     setSettingsOpen(false)
     if (tool === 'layers') {
-      if (desktopLayout) {
-        if (activeTool && activeTool !== 'layers') deactivateOneTool(activeTool)
-        setActiveTool((prev) => (prev === 'layers' ? null : 'layers'))
-        return
-      }
-      if (activeTool) deactivateOneTool(activeTool)
-      setActiveTool(null)
-      setLayersSheetOpen((prev) => !prev)
+      if (activeTool && activeTool !== 'layers') deactivateOneTool(activeTool)
+      setLayersSheetOpen((prev) => {
+        const next = !prev
+        setActiveTool(next ? 'layers' : null)
+        return next
+      })
       return
     }
     if (activeTool === tool) {
@@ -954,7 +955,7 @@ export function Studio({
     // Другой айтем: гасим прошлый, включаем новый
     if (activeTool) deactivateOneTool(activeTool)
     setActiveTool(tool)
-    if (!desktopLayout) setLayersSheetOpen(false)
+    // Слои на мобилке не авто-сворачиваем — как колонка на ПК
 
     if (tool === 'eyedropper') {
       setPickMode(true)
@@ -1444,8 +1445,22 @@ export function Studio({
           className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
           style={{ background: 'var(--header-fade)' }}
         >
-          <button type="button" className={glassButtonClass} onClick={onExit}>
-            Назад
+          <button
+            type="button"
+            className={glassIconButtonClass}
+            onClick={onExit}
+            aria-label="Назад"
+            title="Назад"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M15 6 9 12l6 6"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           <div className="min-w-0 justify-self-center text-center">
             <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[var(--fg-strong)]">
@@ -1469,10 +1484,8 @@ export function Studio({
             <button
               type="button"
               className={cn(
-                'grid h-10 w-10 place-items-center rounded-full border backdrop-blur-md',
-                settingsOpen
-                  ? 'border-accent/55 bg-accent/20 text-[var(--chip-accent-fg)]'
-                  : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
+                glassIconButtonClass,
+                settingsOpen && 'border-accent/55 bg-accent/20 text-[var(--chip-accent-fg)]',
               )}
               aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
               title={settingsOpen ? 'К студии' : 'Настройки'}
@@ -1496,8 +1509,22 @@ export function Studio({
                 />
               </svg>
             </button>
-            <button type="button" className={glassButtonClass} onClick={() => setUiHidden(true)}>
-              Скрыть
+            <button
+              type="button"
+              className={glassIconButtonClass}
+              onClick={() => setUiHidden(true)}
+              aria-label="Скрыть интерфейс"
+              title="Скрыть"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2M9.9 5.2A11 11 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-4.2 4.8M6.1 6.1A18 18 0 0 0 2 12s3.5 7 10 7c1.3 0 2.5-.2 3.6-.6"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
         </header>
@@ -1513,9 +1540,10 @@ export function Studio({
             />
           )}
 
-          {desktopLayout && flags.multiLayers && layers.length > 0 && (
-            <div className={layersColumnClass}>{layersPanel}</div>
-          )}
+          {desktopLayout &&
+            flags.multiLayers &&
+            layers.length > 0 &&
+            layersSheetOpen && <div className={layersColumnClass}>{layersPanel}</div>}
 
           {desktopLayout && showToolInspector && (
             <aside

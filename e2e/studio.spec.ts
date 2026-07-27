@@ -48,7 +48,7 @@ test.describe('Studio smoke', () => {
   })
 
   test('скрытие UI и возврат', async ({ page }) => {
-    await page.getByRole('button', { name: 'Скрыть', exact: true }).click()
+    await page.getByRole('button', { name: 'Скрыть интерфейс' }).click()
     await expect(page.getByLabel('Инструменты')).toHaveCount(0)
     await page.getByRole('button', { name: 'Показать интерфейс' }).click()
     await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible()
