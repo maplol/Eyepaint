@@ -78,6 +78,18 @@
   overflow: hidden;
 }
 
+.camroom__steps {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(231, 238, 240, 0.78);
+}
+
+.camroom__steps strong {
+  color: #ffd9bd;
+}
+
 .camroom__field {
   display: grid;
   gap: 0.45rem;

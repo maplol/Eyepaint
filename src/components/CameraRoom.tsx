@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import {
-  createRoomCode,
-  loadSavedRoomCode,
+  loadJoinRoomCode,
   normalizeRoomCode,
-  saveRoomCode,
+  saveJoinRoomCode,
 } from '../lib/rooms'
 import './CameraRoom.css'
 
@@ -14,18 +13,18 @@ type CameraRoomProps = {
 }
 
 export function CameraRoom({ onExit }: CameraRoomProps) {
-  const [code, setCode] = useState(() => loadSavedRoomCode())
+  const [code, setCode] = useState(() => loadJoinRoomCode())
   const [started, setStarted] = useState(false)
   const { videoRef, ready, error, stream } = useCamera(true)
   const room = useRoomPeer({
-    enabled: started && ready,
+    enabled: started && ready && code.length >= 4,
     role: 'camera',
     code,
     localStream: stream,
   })
 
   useEffect(() => {
-    saveRoomCode(code)
+    if (code.length >= 4) saveJoinRoomCode(code)
   }, [code])
 
   useEffect(() => {
@@ -40,22 +39,15 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
     void wake()
   }, [started])
 
-  const updateCode = (next: string) => {
-    setStarted(false)
-    setCode(normalizeRoomCode(next))
-  }
-
   const statusText = !ready
     ? 'Открываю камеру…'
     : !started
-      ? 'Нажми «Начать трансляцию»'
+      ? 'Введи код с ПК и нажми «Подключиться»'
       : room.status === 'connected'
         ? 'Стрим идёт на ПК'
         : room.status === 'error'
           ? room.error || 'Ошибка связи'
-          : room.status === 'waiting' || room.status === 'connecting'
-            ? 'Подключаюсь к ПК… оставь экран включённым'
-            : room.error || 'Готовлю связь…'
+          : 'Ищу комнату на ПК… оставь экран включённым'
 
   return (
     <section className="camroom">
@@ -73,8 +65,17 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
       </header>
 
       <div className="camroom__panel" translate="no">
+        <div className="camroom__steps">
+          <p>
+            <strong>1.</strong> На ПК: студия → «Связь» → «Создать комнату»
+          </p>
+          <p>
+            <strong>2.</strong> Введи этот код здесь и подключись
+          </p>
+        </div>
+
         <label className="camroom__field">
-          <span className="camroom__label">Код комнаты</span>
+          <span className="camroom__label">Код с компьютера</span>
           <input
             className="camroom__code"
             value={code}
@@ -82,18 +83,15 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
-            onChange={(event) => updateCode(event.target.value)}
-            aria-label="Код комнаты"
+            inputMode="text"
+            readOnly={started}
+            onChange={(event) => {
+              if (started) return
+              setCode(normalizeRoomCode(event.target.value))
+            }}
+            aria-label="Код с компьютера"
           />
         </label>
-
-        <button
-          type="button"
-          className="camroom__btn camroom__btn--block"
-          onClick={() => updateCode(createRoomCode())}
-        >
-          Новый код
-        </button>
 
         <p className={`camroom__status ${room.status === 'error' || error ? 'is-error' : ''}`}>
           {error || statusText}
@@ -106,7 +104,7 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             disabled={!ready || code.length < 4}
             onClick={() => setStarted(true)}
           >
-            Начать трансляцию
+            Подключиться
           </button>
         ) : (
           <button
@@ -114,13 +112,9 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             className="camroom__cta camroom__cta--ghost"
             onClick={() => setStarted(false)}
           >
-            Остановить
+            Отключиться
           </button>
         )}
-
-        <p className="camroom__hint">
-          На ПК: студия → «Связь» → тот же код → «Ждать телефон». Код запоминается на устройстве.
-        </p>
       </div>
     </section>
   )

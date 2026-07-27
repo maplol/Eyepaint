@@ -13,7 +13,12 @@ import {
   type PaletteColor,
 } from '../lib/colors'
 import { createPose, formatPoseStats, loadPoses, savePoses, type SavedPose } from '../lib/poses'
-import { createRoomCode, loadSavedRoomCode, normalizeRoomCode, saveRoomCode } from '../lib/rooms'
+import {
+  copyText,
+  createRoomCode,
+  loadHostRoomCode,
+  saveHostRoomCode,
+} from '../lib/rooms'
 import './Studio.css'
 
 type StudioProps = {
@@ -45,7 +50,7 @@ const STAT_LABELS: Record<string, string> = {
 
 export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const [roomEnabled, setRoomEnabled] = useState(false)
-  const [roomCode, setRoomCode] = useState(() => loadSavedRoomCode())
+  const [roomCode, setRoomCode] = useState(() => loadHostRoomCode() ?? createRoomCode())
   const room = useRoomPeer({
     enabled: roomEnabled,
     role: 'host',
@@ -53,7 +58,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   })
 
   useEffect(() => {
-    saveRoomCode(roomCode)
+    saveHostRoomCode(roomCode)
   }, [roomCode])
 
   const { videoRef, ready, error } = useCamera(!roomEnabled, roomEnabled ? room.remoteStream : null)
@@ -650,60 +655,84 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
             {tab === 'link' && (
               <div className="studio__panel">
-                <p className="studio__section-title">Комната для телефона-камеры</p>
-                <div className="studio__code-row">
-                  <input
-                    className="studio__code"
-                    value={roomCode}
-                    maxLength={8}
-                    spellCheck={false}
-                    onChange={(event) => {
-                      setRoomEnabled(false)
-                      setRoomCode(normalizeRoomCode(event.target.value))
-                    }}
-                    aria-label="Код комнаты"
-                  />
+                <p className="studio__section-title">Телефон как камера</p>
+                <div className="studio__steps">
+                  <p>
+                    <strong>1.</strong> Создай комнату здесь — появится код
+                  </p>
+                  <p>
+                    <strong>2.</strong> На телефоне: «Телефон как камера» → введи код
+                  </p>
+                  <p>
+                    <strong>3.</strong> Референс двигаешь на ПК, телефон только стримит
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="studio__chip"
-                  onClick={() => {
-                    setRoomEnabled(false)
-                    setRoomCode(createRoomCode())
-                  }}
-                >
-                  Новый код
-                </button>
 
-                {!roomEnabled ? (
-                  <button
-                    type="button"
-                    className="studio__pose-save"
-                    disabled={roomCode.length < 4}
-                    onClick={() => setRoomEnabled(true)}
-                  >
-                    Ждать телефон
-                  </button>
+                {roomEnabled ? (
+                  <>
+                    <div className="studio__code-box" translate="no">
+                      <span className="studio__code-label">Код комнаты</span>
+                      <strong className="studio__code-value">{roomCode}</strong>
+                    </div>
+                    <div className="studio__row">
+                      <button
+                        type="button"
+                        className="studio__chip"
+                        onClick={() => {
+                          void copyText(roomCode).then((ok) =>
+                            showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
+                          )
+                        }}
+                      >
+                        Копировать
+                      </button>
+                      <button
+                        type="button"
+                        className="studio__chip"
+                        onClick={() => {
+                          const next = createRoomCode()
+                          setRoomCode(next)
+                          saveHostRoomCode(next)
+                          showToast('Новая комната')
+                        }}
+                      >
+                        Новый код
+                      </button>
+                      <button
+                        type="button"
+                        className="studio__chip"
+                        onClick={() => setRoomEnabled(false)}
+                      >
+                        Закрыть
+                      </button>
+                    </div>
+                    <p className="studio__tip">
+                      {room.status === 'connected'
+                        ? 'Телефон подключён. Можно рисовать.'
+                        : room.error || `Жду телефон… код ${roomCode}`}
+                    </p>
+                  </>
                 ) : (
-                  <button
-                    type="button"
-                    className="studio__chip"
-                    onClick={() => setRoomEnabled(false)}
-                  >
-                    Отключить комнату
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="studio__pose-save"
+                      onClick={() => {
+                        if (!roomCode) {
+                          const next = createRoomCode()
+                          setRoomCode(next)
+                          saveHostRoomCode(next)
+                        }
+                        setRoomEnabled(true)
+                      }}
+                    >
+                      Создать комнату
+                    </button>
+                    <p className="studio__tip">
+                      Код создаётся на ПК и только читается. На телефоне его вводят.
+                    </p>
+                  </>
                 )}
-
-                <p className="studio__tip">
-                  {!roomEnabled
-                    ? 'Создай код → на телефоне: «Телефон как камера» → тот же код → старт'
-                    : room.status === 'connected'
-                      ? 'Телефон подключён. Референс двигай здесь, телефон только стримит.'
-                      : room.error ||
-                        (room.status === 'waiting' || room.status === 'connecting'
-                          ? `Жду камеру… код ${roomCode}`
-                          : 'Готовлю комнату…')}
-                </p>
               </div>
             )}
           </div>
