@@ -55,7 +55,7 @@ export const glassButtonClass =
 
 /** Outer shell: dock + optional layers sheet stacked above it */
 export const dockShellClass =
-  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(72dvh,640px)] flex-col gap-2 animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
+  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(72dvh,640px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
 
 export const dockClass =
   'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
