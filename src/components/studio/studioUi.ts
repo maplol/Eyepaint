@@ -76,13 +76,10 @@ export const STUDIO_TOOL_LABELS: Record<StudioToolId, string> = {
 
 /** Outer shell — mobile bottom stack (one panel at a time) */
 export const dockShellClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.25rem] right-3 z-[3] flex max-h-[min(46dvh,420px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[3.6rem]'
+  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.25rem] right-3 z-[3] flex max-h-[min(54dvh,480px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[3.6rem]'
 
 export const dockClass =
-  'flex min-h-0 max-h-[min(46dvh,420px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
-
-export const layersSheetClass =
-  'flex max-h-[min(42dvh,380px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
+  'flex min-h-0 max-h-[min(50dvh,460px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
 
 /** Compact vertical tool rail — centered, not full-height */
 export const toolRailClass =
@@ -98,12 +95,15 @@ export const toolRailBtnActiveClass =
 export const toolInspectorClass =
   'absolute left-[3.55rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.1rem] min-[960px]:flex sm:left-[3.9rem]'
 
-/** Right layers — bottom-anchored card, not full height */
+/** Right layers — fixed taller card, bottom-right */
 export const layersColumnClass =
-  'absolute bottom-[calc(var(--safe-bottom)+1rem)] right-4 z-[3] hidden w-[min(300px,26vw)] max-h-[min(42vh,400px)] flex-col overflow-hidden min-[960px]:flex'
+  'absolute bottom-[calc(var(--safe-bottom)+1rem)] right-4 z-[3] hidden h-[min(58vh,540px)] w-[min(300px,26vw)] flex-col overflow-hidden min-[960px]:flex'
 
 export const layersColumnPanelClass =
-  'flex max-h-[min(42vh,400px)] min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
+  'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
+
+export const layersSheetClass =
+  'flex h-[min(50dvh,440px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
 
 export const scrollAreaClass = 'eyepaint-scroll'
 

@@ -358,8 +358,7 @@ export function LayersPanel(props: LayersPanelProps) {
       <ul
         ref={listRef}
         className={cn(
-          'grid min-h-0 gap-1.5 overflow-auto overscroll-contain px-2.5 py-1.5 [-webkit-overflow-scrolling:touch]',
-          variant === 'column' ? 'max-h-[9.5rem]' : 'max-h-[11rem] flex-1',
+          'grid min-h-0 flex-1 gap-1.5 overflow-auto overscroll-contain px-2.5 py-1.5 [-webkit-overflow-scrolling:touch]',
           scrollAreaClass,
         )}
         aria-label="Слои референса"
