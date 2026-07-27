@@ -915,37 +915,50 @@ export function Studio({
   const showToolInspector =
     settingsOpen || (activeTool !== null && activeTool !== 'layers')
 
+  const deactivateOneTool = (tool: StudioToolId | null) => {
+    if (!tool) return
+    if (tool === 'eyedropper') {
+      setPickMode(false)
+      setBrush((prev) => (prev.editing ? { ...prev, editing: false } : prev))
+    }
+    if (tool === 'loupe') {
+      setLoupe((prev) => (prev.enabled ? { ...prev, enabled: false } : prev))
+      setLoupeVisible(false)
+    }
+    if (tool === 'calc') {
+      setCalcMode((prev) => (prev.enabled ? { ...prev, enabled: false } : prev))
+    }
+    if (tool === 'guides') {
+      setGuides((prev) => (prev.kind === 'none' ? prev : { ...prev, kind: 'none' }))
+    }
+  }
+
   const handleSelectTool = (tool: StudioToolId) => {
     setSettingsOpen(false)
     if (tool === 'layers') {
       if (desktopLayout) {
+        if (activeTool && activeTool !== 'layers') deactivateOneTool(activeTool)
         setActiveTool((prev) => (prev === 'layers' ? null : 'layers'))
         return
       }
-      // Mobile: only layers sheet OR tool panel
+      if (activeTool) deactivateOneTool(activeTool)
       setActiveTool(null)
-      setPickMode(false)
       setLayersSheetOpen((prev) => !prev)
       return
     }
     if (activeTool === tool) {
+      deactivateOneTool(tool)
       setActiveTool(null)
-      if (tool === 'eyedropper') {
-        setPickMode(false)
-        setBrush((prev) => ({ ...prev, editing: false }))
-      }
       return
     }
+    // Другой айтем: гасим прошлый, включаем новый
+    if (activeTool) deactivateOneTool(activeTool)
     setActiveTool(tool)
     if (!desktopLayout) setLayersSheetOpen(false)
 
-    // Сразу активируем режим инструмента — без второго клика «Вкл»
     if (tool === 'eyedropper') {
       setPickMode(true)
       setBrush((prev) => ({ ...prev, editing: false }))
-    } else {
-      setPickMode(false)
-      setBrush((prev) => (prev.editing ? { ...prev, editing: false } : prev))
     }
     if (tool === 'loupe') {
       setLoupe((prev) => ({ ...prev, enabled: true }))
@@ -954,7 +967,7 @@ export function Studio({
       setCalcMode((prev) => ({ ...prev, enabled: true }))
     }
     if (tool === 'guides') {
-      setGuides((prev) => (prev.kind === 'none' ? { ...prev, kind: 'thirds' } : prev))
+      setGuides((prev) => ({ ...prev, kind: prev.kind === 'none' ? 'thirds' : prev.kind }))
     }
   }
 

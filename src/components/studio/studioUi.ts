@@ -95,15 +95,19 @@ export const toolRailBtnActiveClass =
 export const toolInspectorClass =
   'absolute left-[3.55rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.1rem] min-[960px]:flex sm:left-[3.9rem]'
 
-/** Right layers — fixed taller card, bottom-right */
+/** Right layers — raised (top-anchored), fixed panel height */
 export const layersColumnClass =
-  'absolute bottom-[calc(var(--safe-bottom)+1rem)] right-4 z-[3] hidden h-[min(58vh,540px)] w-[min(300px,26vw)] flex-col overflow-hidden min-[960px]:flex'
+  'absolute right-4 top-[calc(var(--safe-top)+4.35rem)] z-[3] hidden h-[min(52vh,480px)] w-[min(300px,26vw)] flex-col overflow-hidden min-[960px]:flex'
 
 export const layersColumnPanelClass =
   'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
 
 export const layersSheetClass =
   'flex h-[min(50dvh,440px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
+
+/** Compact fixed-height layer row */
+export const layerRowClass =
+  'grid h-11 shrink-0 grid-cols-[auto_minmax(0,1fr)_minmax(4.5rem,5.5rem)_auto] items-center gap-1.5 rounded-xl border px-1.5'
 
 export const scrollAreaClass = 'eyepaint-scroll'
 
@@ -112,8 +116,9 @@ export const tabBaseClass =
 
 export const tabActiveClass = 'bg-[var(--glass-fill-strong)] text-[var(--fg-strong)]'
 
+/** Camera/status toast — bottom, above chrome */
 export const statusBaseClass =
-  'absolute inset-x-4 bottom-[36%] rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill-strong)] px-4 py-4 text-center text-[var(--fg)] shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] animate-[rise-in_0.4s_ease_both] min-[960px]:left-5 min-[960px]:right-auto min-[960px]:max-w-md'
+  'absolute bottom-[calc(var(--safe-bottom)+0.85rem)] left-1/2 z-[20] w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill-strong)] px-4 py-3 text-center text-[0.92rem] text-[var(--fg)] shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] animate-[rise-in_0.4s_ease_both] min-[960px]:bottom-[calc(var(--safe-bottom)+1.1rem)]'
 
 export const statusNoteClass = 'mt-2 text-[0.86rem] text-[var(--fg-muted)]'
 
