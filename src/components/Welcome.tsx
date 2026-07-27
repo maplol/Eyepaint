@@ -1,3 +1,4 @@
+import { HelpToggleButton } from './HelpSystem'
 import { LESSONS, type LessonCard } from '../lib/lessons'
 import { loadFlags } from '../lib/flags'
 import { PROJECT_ACCEPT, formatAutosaveTime, type AutosaveMeta } from '../lib/projectSession'
@@ -40,9 +41,16 @@ export function Welcome({
         <span className="animate-soft-float absolute top-[36%] left-[42%] size-[30vw] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),transparent_70%)] blur-lg [animation-delay:-8s]" />
       </div>
 
+      <div className="absolute right-4 top-[calc(var(--safe-top)+1rem)] z-[2]">
+        <HelpToggleButton />
+      </div>
+
       <div className="relative z-[1] grid min-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-3rem)] content-end md:content-center md:justify-items-start min-[1100px]:max-w-[1200px]">
         <div className="glass-panel animate-rise-in w-full max-w-[420px] rounded-[28px] px-5 pt-6 pb-5 md:max-w-[460px]">
-          <p className="font-[family-name:var(--font-display)] text-[clamp(2.6rem,11vw,3.6rem)] font-extrabold leading-[0.92] tracking-[-0.04em] text-paper">
+          <p
+            data-help="welcome-brand"
+            className="font-[family-name:var(--font-display)] text-[clamp(2.6rem,11vw,3.6rem)] font-extrabold leading-[0.92] tracking-[-0.04em] text-paper"
+          >
             EYEPAINT
           </p>
           <h1 className="mt-4 max-w-[16ch] font-[family-name:var(--font-display)] text-[clamp(1.2rem,4.4vw,1.55rem)] font-semibold leading-snug tracking-[-0.02em] text-paper/95">
@@ -50,13 +58,15 @@ export function Welcome({
           </h1>
           <p className="mt-3 max-w-[34ch] text-[0.96rem] leading-relaxed text-[var(--text-muted)]">
             Сфотографируй или загрузи фото, наведи камеру на лист и подгони прозрачность — как через
-            кальку. На ПК можно принять стрим с телефона.
+            кальку. На ПК можно принять стрим с телефона. Жми «?» и кликай по кнопкам — расскажем, что
+            делает каждая.
           </p>
 
           <div className="mt-6 grid gap-2.5">
             {autosaveMeta && onContinueSession && (
               <button
                 type="button"
+                data-help="welcome-continue"
                 className={`${ctaBase} bg-accent text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.22)]`}
                 disabled={projectBusy}
                 onClick={onContinueSession}
@@ -69,6 +79,7 @@ export function Welcome({
             )}
 
             <label
+              data-help="welcome-capture"
               className={`${ctaBase} ${autosaveMeta ? 'border border-white/25 bg-white/10 text-paper backdrop-blur-md' : 'bg-accent text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.22)]'}`}
             >
               <input
@@ -85,6 +96,7 @@ export function Welcome({
             </label>
 
             <label
+              data-help="welcome-gallery"
               className={`${ctaBase} border border-white/25 bg-white/10 text-paper backdrop-blur-md`}
             >
               <input
@@ -101,6 +113,7 @@ export function Welcome({
 
             {onOpenProjectFile && (
               <label
+                data-help="welcome-project"
                 className={`${ctaBase} border border-white/25 bg-white/10 text-paper backdrop-blur-md`}
               >
                 <input
@@ -119,6 +132,7 @@ export function Welcome({
 
             <button
               type="button"
+              data-help="welcome-phone"
               className={`${ctaBase} border border-white/25 bg-white/10 text-paper backdrop-blur-md`}
               onClick={onStartCameraRoom}
             >
@@ -135,6 +149,7 @@ export function Welcome({
                 <button
                   key={lesson.id}
                   type="button"
+                  data-help={`welcome-lesson-${lesson.id}`}
                   className="rounded-2xl border border-white/15 bg-white/8 px-3.5 py-3 text-left transition-colors hover:bg-white/12"
                   onClick={() => onStartLesson(lesson)}
                 >

@@ -61,6 +61,7 @@ export function ToolRail({
             aria-label={tool.label}
             aria-pressed={active}
             data-tool={tool.id}
+            data-help={tool.id}
             onClick={() => onSelect(tool.id)}
             className={cn(toolRailBtnClass, active && toolRailBtnActiveClass)}
           >

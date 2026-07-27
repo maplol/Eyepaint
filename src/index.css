@@ -307,3 +307,10 @@
   backdrop-filter: blur(22px) saturate(1.25);
   -webkit-backdrop-filter: blur(22px) saturate(1.25);
 }
+
+/* Режим «?»: подсвечиваем элементы со справкой */
+html[data-help-mode='1'] [data-help] {
+  outline: 2px dashed color-mix(in srgb, var(--accent) 75%, white);
+  outline-offset: 3px;
+  cursor: help !important;
+}

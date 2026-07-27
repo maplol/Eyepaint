@@ -23,6 +23,7 @@ import {
   saveVideoQuality,
   type VideoQuality,
 } from '../lib/videoQuality'
+import { HelpToggleButton, useHelp } from './HelpSystem'
 
 type CameraRoomProps = {
   onExit: () => void
@@ -51,6 +52,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
   const [focusMark, setFocusMark] = useState<{ x: number; y: number } | null>(null)
   const [batteryLow, setBatteryLow] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const { helpMode, openTip } = useHelp()
   const freezeHandleRef = useRef<{ stream: MediaStream; stop: () => void } | null>(null)
   const liveStreamRef = useRef<MediaStream | null>(null)
 
@@ -249,6 +251,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
       <header className="absolute inset-x-0 top-0 z-[2] grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3.5 pt-[calc(var(--safe-top)+0.75rem)] pb-3">
         <button
           type="button"
+          data-help="camera-exit"
           className="min-h-10 justify-self-start rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-sm font-semibold text-paper backdrop-blur-md"
           onClick={onExit}
         >
@@ -257,13 +260,20 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         <p className="min-w-0 overflow-hidden text-center font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.04em] text-ellipsis whitespace-nowrap">
           EYEPAINT · Камера
         </p>
-        <button
-          type="button"
-          className="min-h-10 rounded-full border border-white/20 bg-white/10 px-3 text-[0.78rem] font-semibold"
-          onClick={() => setHelpOpen((v) => !v)}
-        >
-          ?
-        </button>
+        <div className="flex items-center gap-1.5 justify-self-end">
+          <HelpToggleButton className="border-white/25 bg-white/10 text-paper" />
+          <button
+            type="button"
+            data-help="camera-help"
+            className="min-h-10 rounded-full border border-white/20 bg-white/10 px-3 text-[0.78rem] font-semibold"
+            onClick={() => {
+              if (helpMode) openTip('camera-help')
+              else setHelpOpen((v) => !v)
+            }}
+          >
+            Памятка
+          </button>
+        </div>
       </header>
 
       {batteryLow && (
@@ -291,7 +301,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         )}
 
         {!started && (
-          <label className="grid min-w-0 gap-2">
+          <label data-help="camera-code" className="grid min-w-0 gap-2">
             <span className="block text-[0.78rem] leading-tight text-[var(--text-muted)]">
               Код с компьютера
             </span>
@@ -313,6 +323,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
+              data-help="camera-freeze"
               className={`${qualityBtn} ${frozen ? qualityActive : qualityIdle}`}
               onClick={() => applyFreeze(!frozen)}
             >
@@ -320,6 +331,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
             </button>
             <button
               type="button"
+              data-help="camera-torch"
               className={`${qualityBtn} ${torchOn ? qualityActive : qualityIdle} disabled:opacity-45`}
               disabled={!controlCaps.torch}
               onClick={() => {
@@ -337,7 +349,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         )}
 
         {started && controlCaps.exposureCompensation && (
-          <div className="grid gap-1">
+          <div data-help="camera-exposure" className="grid gap-1">
             <div className="flex justify-between text-[0.78rem] text-mist/75">
               <span>Экспозиция</span>
               <span>{exposure.toFixed(1)}</span>
@@ -359,7 +371,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
           </div>
         )}
 
-        <div className="grid gap-2">
+        <div data-help="camera-quality" className="grid gap-2">
           <span className="block text-[0.78rem] leading-tight text-[var(--text-muted)]">
             Качество стрима
           </span>
@@ -396,6 +408,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         {!started ? (
           <button
             type="button"
+            data-help="camera-start"
             className="min-h-14 w-full rounded-full bg-accent text-base font-bold text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.28)] disabled:opacity-45"
             disabled={!ready || code.length < 4}
             onClick={() => setStarted(true)}
@@ -405,6 +418,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         ) : (
           <button
             type="button"
+            data-help="camera-exit"
             className="min-h-14 w-full rounded-full border border-white/30 bg-white/15 text-base font-bold text-paper backdrop-blur-md active:bg-white/20"
             onClick={() => {
               applyFreeze(false)

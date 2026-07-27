@@ -77,6 +77,15 @@ export function SettingsPanel(props: SettingsPanelProps) {
                 : 'border-[var(--glass-border)] bg-[var(--glass-fill)] text-[var(--fg)]',
             )}
             onClick={() => props.onSection(id)}
+            data-help={
+              id === 'link'
+                ? 'settings-link'
+                : id === 'keys'
+                  ? 'settings-keys'
+                  : id === 'flags'
+                    ? 'settings-flags'
+                    : 'settings-project'
+            }
           >
             {label}
           </button>
