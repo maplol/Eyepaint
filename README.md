@@ -25,3 +25,11 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## Телефон / GitHub Pages
+
+После мержа в `main` GitHub Action деплоит сайт сюда:
+
+**https://maplol.github.io/Eyepaint/**
+
+Один раз в репозитории: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
