@@ -740,7 +740,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     <strong>2.</strong> На телефоне: «Телефон как камера» → введи код
                   </p>
                   <p>
-                    <strong>3.</strong> Качество выбирай на телефоне до/во время стрима
+                    <strong>3.</strong> На телефоне качество: список подстроится под потолок камеры, «Максимум» берёт всё что отдаёт браузер
                   </p>
                 </div>
 

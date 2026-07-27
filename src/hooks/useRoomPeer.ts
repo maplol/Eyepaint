@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { joinRoom, type Room } from '@trystero-p2p/mqtt'
 import { normalizeRoomCode, roomTopicId } from '../lib/rooms'
-import { applySenderBitrate, QUALITY_PRESETS, type VideoQuality } from '../lib/videoQuality'
+import { applySenderBitrate } from '../lib/videoQuality'
 
 type RoomRole = 'host' | 'camera'
 
@@ -10,7 +10,8 @@ type UseRoomPeerArgs = {
   role: RoomRole
   code: string
   localStream?: MediaStream | null
-  quality?: VideoQuality
+  /** Target WebRTC video bitrate for the phone sender. */
+  maxBitrate?: number
 }
 
 type RoomStatus = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
@@ -20,17 +21,17 @@ export function useRoomPeer({
   role,
   code,
   localStream = null,
-  quality = 'high',
+  maxBitrate = 2_500_000,
 }: UseRoomPeerArgs) {
   const [status, setStatus] = useState<RoomStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const roomRef = useRef<Room | null>(null)
   const localStreamRef = useRef(localStream)
-  const qualityRef = useRef(quality)
+  const bitrateRef = useRef(maxBitrate)
   const pushedStreamIdRef = useRef<string | null>(null)
   localStreamRef.current = localStream
-  qualityRef.current = quality
+  bitrateRef.current = maxBitrate
 
   useEffect(() => {
     const normalized = normalizeRoomCode(code)
@@ -74,8 +75,7 @@ export function useRoomPeer({
     roomRef.current = room
 
     const tuneBitrate = () => {
-      const bitrate = QUALITY_PRESETS[qualityRef.current].maxBitrate
-      void applySenderBitrate(room.getPeers(), bitrate)
+      void applySenderBitrate(room.getPeers(), bitrateRef.current)
     }
 
     const scheduleBitratePasses = () => {
@@ -172,12 +172,12 @@ export function useRoomPeer({
     }
   }, [enabled, role, code, localStream])
 
-  // Quality changes: retune encodings without leaving the room
+  // Quality / bitrate changes: retune encodings without leaving the room
   useEffect(() => {
     if (!enabled || role !== 'camera') return
     const room = roomRef.current
     if (!room) return
-    const bitrate = QUALITY_PRESETS[quality].maxBitrate
+    const bitrate = maxBitrate
     void applySenderBitrate(room.getPeers(), bitrate)
     const timers = [300, 1000, 2500].map((ms) =>
       window.setTimeout(() => {
@@ -185,7 +185,7 @@ export function useRoomPeer({
       }, ms),
     )
     return () => timers.forEach((id) => window.clearTimeout(id))
-  }, [enabled, role, quality])
+  }, [enabled, role, maxBitrate])
 
   return { status, error, remoteStream }
 }

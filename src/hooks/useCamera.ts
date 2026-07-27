@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  buildQualityOptions,
   describeTrackSettings,
+  probeBestCameraCapabilities,
   qualityConstraints,
-  QUALITY_PRESETS,
+  readTrackCapabilities,
+  resolveQualityPreset,
+  type CameraCapabilitiesInfo,
   type VideoQuality,
 } from '../lib/videoQuality'
 
@@ -11,12 +15,14 @@ type CameraState = {
   error: string | null
   stream: MediaStream | null
   trackInfo: string | null
+  probing: boolean
+  capabilities: CameraCapabilitiesInfo | null
 }
 
 export function useCamera(
   enabled: boolean,
   externalStream: MediaStream | null = null,
-  quality: VideoQuality = 'high',
+  quality: VideoQuality = 'max',
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -25,9 +31,19 @@ export function useCamera(
     error: null,
     stream: null,
     trackInfo: null,
+    probing: false,
+    capabilities: null,
   })
 
-  // Local camera open/close (stream identity stays stable across quality changes)
+  const qualityOptions = useMemo(
+    () => buildQualityOptions(state.capabilities),
+    [state.capabilities],
+  )
+  const qualityPreset = useMemo(
+    () => resolveQualityPreset(quality, state.capabilities),
+    [quality, state.capabilities],
+  )
+
   useEffect(() => {
     if (externalStream) {
       streamRef.current = null
@@ -36,11 +52,20 @@ export function useCamera(
         error: null,
         stream: externalStream,
         trackInfo: describeTrackSettings(externalStream),
+        probing: false,
+        capabilities: null,
       })
       return () => {
         setState((prev) =>
           prev.stream === externalStream
-            ? { ready: false, error: null, stream: null, trackInfo: null }
+            ? {
+                ready: false,
+                error: null,
+                stream: null,
+                trackInfo: null,
+                probing: false,
+                capabilities: null,
+              }
             : prev,
         )
       }
@@ -49,7 +74,14 @@ export function useCamera(
     if (!enabled) {
       streamRef.current?.getTracks().forEach((track) => track.stop())
       streamRef.current = null
-      setState({ ready: false, error: null, stream: null, trackInfo: null })
+      setState({
+        ready: false,
+        error: null,
+        stream: null,
+        trackInfo: null,
+        probing: false,
+        capabilities: null,
+      })
       return
     }
 
@@ -63,15 +95,21 @@ export function useCamera(
             error: 'Камера недоступна в этом браузере. Нужен HTTPS или localhost.',
             stream: null,
             trackInfo: null,
+            probing: false,
+            capabilities: null,
           })
         }
         return
       }
 
+      setState((prev) => ({ ...prev, probing: true, error: null }))
+      const caps = await probeBestCameraCapabilities()
+      if (!active) return
+
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: qualityConstraints(quality),
+          video: qualityConstraints(quality, caps, caps?.deviceId),
         })
 
         if (!active) {
@@ -87,12 +125,37 @@ export function useCamera(
           }
         }
 
+        const liveTrack = mediaStream.getVideoTracks()[0]
+        let liveCaps = caps
+        if (liveTrack) {
+          const fromTrack = readTrackCapabilities(liveTrack)
+          const settings = liveTrack.getSettings()
+          liveCaps = {
+            deviceId:
+              caps?.deviceId ?? settings.deviceId ?? liveTrack.getSettings().deviceId ?? 'default',
+            label: caps?.label || liveTrack.label || 'Камера',
+            maxWidth: Math.max(fromTrack.maxWidth, settings.width ?? 0, caps?.maxWidth ?? 0),
+            maxHeight: Math.max(fromTrack.maxHeight, settings.height ?? 0, caps?.maxHeight ?? 0),
+            maxFrameRate: Math.min(
+              60,
+              Math.max(
+                fromTrack.maxFrameRate,
+                settings.frameRate ? Math.round(settings.frameRate) : 0,
+                caps?.maxFrameRate ?? 0,
+                30,
+              ),
+            ),
+          }
+        }
+
         streamRef.current = mediaStream
         setState({
           ready: true,
           error: null,
           stream: mediaStream,
           trackInfo: describeTrackSettings(mediaStream),
+          probing: false,
+          capabilities: liveCaps,
         })
       } catch {
         try {
@@ -110,6 +173,8 @@ export function useCamera(
             error: null,
             stream: mediaStream,
             trackInfo: describeTrackSettings(mediaStream),
+            probing: false,
+            capabilities: caps,
           })
         } catch {
           if (active) {
@@ -118,6 +183,8 @@ export function useCamera(
               error: 'Не удалось открыть камеру. Разреши доступ и обнови страницу.',
               stream: null,
               trackInfo: null,
+              probing: false,
+              capabilities: caps,
             })
           }
         }
@@ -131,11 +198,10 @@ export function useCamera(
       streamRef.current?.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    // quality applied separately via applyConstraints to avoid reconnect storms
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Quality changes use applyConstraints in a separate effect (avoid tearing the stream).
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, externalStream])
 
-  // Apply quality without tearing down the MediaStream (keeps room connection stable)
   useEffect(() => {
     if (externalStream || !enabled) return
     const stream = streamRef.current
@@ -143,8 +209,9 @@ export function useCamera(
     if (!track) return
 
     let cancelled = false
+    const caps = state.capabilities
     void track
-      .applyConstraints(qualityConstraints(quality))
+      .applyConstraints(qualityConstraints(quality, caps, caps?.deviceId))
       .then(() => {
         if (cancelled) return
         setState((prev) => ({
@@ -153,13 +220,13 @@ export function useCamera(
         }))
       })
       .catch(() => {
-        /* device may reject some presets; keep current */
+        /* keep current */
       })
 
     return () => {
       cancelled = true
     }
-  }, [quality, enabled, externalStream])
+  }, [quality, enabled, externalStream, state.capabilities])
 
   useEffect(() => {
     if (!externalStream) return
@@ -185,5 +252,15 @@ export function useCamera(
     }
   }, [state.stream])
 
-  return { videoRef, ...state, qualityPreset: QUALITY_PRESETS[quality] }
+  return {
+    videoRef,
+    ready: state.ready,
+    error: state.error,
+    stream: state.stream,
+    trackInfo: state.trackInfo,
+    probing: state.probing,
+    capabilities: state.capabilities,
+    qualityOptions,
+    qualityPreset,
+  }
 }
