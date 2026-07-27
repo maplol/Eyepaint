@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useOverlayTransform } from '../hooks/useOverlayTransform'
+import { captureVideoFrame } from '../lib/captureFrame'
 import './Studio.css'
 
 type StudioProps = {
@@ -15,6 +16,9 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const [locked, setLocked] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
+  const [flash, setFlash] = useState(false)
+  const [capturing, setCapturing] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const { transform, reset, handlers, onWheel } = useOverlayTransform(locked)
   const onWheelRef = useRef(onWheel)
@@ -30,16 +34,46 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   }, [])
 
   useEffect(() => {
-    if (!locked) setUiHidden(false)
-  }, [locked])
+    if (!toast) return
+    const id = window.setTimeout(() => setToast(null), 2200)
+    return () => window.clearTimeout(id)
+  }, [toast])
+
+  const showToast = (message: string) => setToast(message)
+
+  const handleCapture = async () => {
+    const video = videoRef.current
+    if (!video || !ready || capturing) return
+
+    setCapturing(true)
+    setFlash(true)
+    window.setTimeout(() => setFlash(false), 220)
+
+    try {
+      const file = await captureVideoFrame(video)
+      onChangeImage(file)
+      reset()
+      setLocked(false)
+      showToast('Кадр стал новым референсом')
+    } catch {
+      showToast('Не удалось снять кадр')
+    } finally {
+      setCapturing(false)
+    }
+  }
+
+  const applyPickedFile = (file: File | undefined) => {
+    if (!file) return
+    onChangeImage(file)
+    reset()
+    setLocked(false)
+  }
 
   return (
-    <div className={`studio ${locked ? 'studio--locked' : ''} ${uiHidden ? 'studio--ui-hidden' : ''}`}>
-      <div
-        ref={stageRef}
-        className="studio__stage"
-        {...handlers}
-      >
+    <div
+      className={`studio ${locked ? 'studio--locked' : ''} ${uiHidden ? 'studio--ui-hidden' : ''}`}
+    >
+      <div ref={stageRef} className="studio__stage" {...handlers}>
         <video
           ref={videoRef}
           className="studio__camera"
@@ -48,12 +82,14 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
           autoPlay
         />
 
-        {!ready && !error && <div className="studio__status">Открываю камеру…</div>}
+        {!ready && !error && (
+          <div className="studio__status">Открываю камеру…</div>
+        )}
         {error && (
           <div className="studio__status studio__status--error">
             <p>{error}</p>
             <p className="studio__status-note">
-              Можно всё равно настроить референс — подложи лист и рисуй, когда камера заработает.
+              Можно настроить референс заранее — камера понадобится, когда будешь рисовать.
             </p>
           </div>
         )}
@@ -70,29 +106,22 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
         </div>
 
         {!locked && <div className="studio__crosshair" aria-hidden="true" />}
+        {flash && <div className="studio__flash" aria-hidden="true" />}
       </div>
 
       {!uiHidden && (
         <header className="studio__top">
-          <button type="button" className="studio__ghost" onClick={onExit}>
-            ← Назад
+          <button type="button" className="studio__glass-btn" onClick={onExit}>
+            Назад
           </button>
           <p className="studio__brand">EYEPAINT</p>
-          <label className="studio__ghost studio__ghost--file">
-            Сменить
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) {
-                  onChangeImage(file)
-                  reset()
-                  setLocked(false)
-                }
-              }}
-            />
-          </label>
+          <button
+            type="button"
+            className="studio__glass-btn"
+            onClick={() => setUiHidden(true)}
+          >
+            Скрыть
+          </button>
         </header>
       )}
 
@@ -114,10 +143,52 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
             />
           </div>
 
+          <div className="studio__shutter-row">
+            <button
+              type="button"
+              className="studio__shutter"
+              onClick={() => void handleCapture()}
+              disabled={!ready || capturing}
+              aria-label="Сфотографировать"
+            >
+              <span className="studio__shutter-ring" />
+            </button>
+            <div className="studio__shutter-meta">
+              <p className="studio__shutter-title">Снять кадр</p>
+              <p className="studio__shutter-note">Станет новым референсом</p>
+            </div>
+          </div>
+
           <div className="studio__row">
+            <label className="studio__chip studio__chip--file">
+              Галерея
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  applyPickedFile(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </label>
+            <label className="studio__chip studio__chip--file">
+              Камера
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => {
+                  applyPickedFile(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </label>
             <button type="button" className="studio__chip" onClick={() => setFlipped((v) => !v)}>
               Отразить
             </button>
+          </div>
+
+          <div className="studio__row">
             <button type="button" className="studio__chip" onClick={reset}>
               Сброс
             </button>
@@ -126,35 +197,32 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
               className={`studio__chip studio__chip--accent ${locked ? 'is-active' : ''}`}
               onClick={() => setLocked((v) => !v)}
             >
-              {locked ? 'Разблокировать' : 'Зафиксировать'}
+              {locked ? 'Разблок.' : 'Фикс'}
+            </button>
+            <button
+              type="button"
+              className="studio__chip"
+              onClick={() => setUiHidden(true)}
+            >
+              Скрыть UI
             </button>
           </div>
 
-          {locked ? (
-            <button
-              type="button"
-              className="studio__hide-ui"
-              onClick={() => setUiHidden(true)}
-            >
-              Спрятать панели — рисуй
-            </button>
-          ) : (
-            <p className="studio__tip">
-              Тяни одним пальцем · щипок — масштаб и поворот · колёсико — зум
-            </p>
-          )}
+          <p className="studio__tip">
+            Тяни · щипок — масштаб и поворот · угол экрана вернёт панели
+          </p>
         </footer>
       )}
+
+      {toast && <div className="studio__toast">{toast}</div>}
 
       {uiHidden && (
         <button
           type="button"
           className="studio__reveal"
           onClick={() => setUiHidden(false)}
-          aria-label="Показать панели"
-        >
-          •
-        </button>
+          aria-label="Показать интерфейс"
+        />
       )}
     </div>
   )

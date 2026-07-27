@@ -5,33 +5,54 @@ type WelcomeProps = {
 }
 
 export function Welcome({ onPickImage }: WelcomeProps) {
+  const handleFile = (file: File | undefined) => {
+    if (file) onPickImage(file)
+  }
+
   return (
     <section className="welcome">
-      <div className="welcome__atmosphere" aria-hidden="true" />
-      <div className="welcome__grain" aria-hidden="true" />
+      <div className="welcome__atmosphere" aria-hidden="true">
+        <span className="welcome__orb welcome__orb--one" />
+        <span className="welcome__orb welcome__orb--two" />
+        <span className="welcome__orb welcome__orb--three" />
+      </div>
 
-      <header className="welcome__brand">
+      <div className="welcome__panel">
         <p className="welcome__mark">EYEPAINT</p>
         <h1 className="welcome__title">Смотри сквозь референс. Рисуй на бумаге.</h1>
         <p className="welcome__lead">
-          Загрузи фото, наведи камеру на лист, подгони прозрачность — и срисовывай как через
-          кальку.
+          Сфотографируй или загрузи фото, наведи камеру на лист и подгони прозрачность — как
+          через кальку.
         </p>
-      </header>
 
-      <div className="welcome__actions">
-        <label className="welcome__cta">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) onPickImage(file)
-            }}
-          />
-          Загрузить референс
-        </label>
-        <p className="welcome__hint">Лучше с телефона: задняя камера смотрит на лист</p>
+        <div className="welcome__actions">
+          <label className="welcome__cta welcome__cta--primary">
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                handleFile(event.target.files?.[0])
+                event.target.value = ''
+              }}
+            />
+            Сфотографировать
+          </label>
+
+          <label className="welcome__cta welcome__cta--ghost">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                handleFile(event.target.files?.[0])
+                event.target.value = ''
+              }}
+            />
+            Из галереи
+          </label>
+        </div>
+
+        <p className="welcome__hint">Удобнее с телефона: задняя камера смотрит на лист</p>
       </div>
     </section>
   )
