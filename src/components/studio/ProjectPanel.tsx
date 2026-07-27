@@ -30,6 +30,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           max={60}
           step={1}
           value={transform.rotateX}
+          aria-label="Наклон X"
           onChange={(event) =>
             setTransform((prev) => ({ ...prev, rotateX: Number(event.target.value) }))
           }
@@ -47,6 +48,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           max={60}
           step={1}
           value={transform.rotateY}
+          aria-label="Наклон Y"
           onChange={(event) =>
             setTransform((prev) => ({ ...prev, rotateY: Number(event.target.value) }))
           }
@@ -64,6 +66,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           max={180}
           step={1}
           value={transform.rotation}
+          aria-label="Поворот"
           onChange={(event) =>
             setTransform((prev) => ({ ...prev, rotation: Number(event.target.value) }))
           }
@@ -81,6 +84,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           max={4}
           step={0.01}
           value={transform.scale}
+          aria-label="Масштаб проекции"
           onChange={(event) =>
             setTransform((prev) => ({ ...prev, scale: Number(event.target.value) }))
           }
