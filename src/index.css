@@ -15,69 +15,56 @@
   --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
 }
 
-:root {
-  --ink: #1c2428;
-  --ink-deep: #141a1d;
-  --mist: #e7eef0;
-  --paper: #f5f7f8;
-  --accent: #e09a6a;
-  --accent-soft: rgba(224, 154, 106, 0.22);
-  --line: rgba(255, 255, 255, 0.22);
-  --line-soft: rgba(255, 255, 255, 0.12);
-  --glass: rgba(255, 255, 255, 0.1);
-  --glass-strong: rgba(255, 255, 255, 0.16);
-  --glass-dark: rgba(20, 26, 29, 0.38);
-  --text-muted: rgba(231, 238, 240, 0.68);
-  --danger: #ef8b8b;
-  --font-display: 'Outfit', sans-serif;
-  --font-body: 'Manrope', sans-serif;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --radius-lg: 24px;
-  --radius-md: 16px;
-  --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
-  color: var(--mist);
-  background: var(--ink);
-  font-family: var(--font-body);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-tap-highlight-color: transparent;
-}
+@layer base {
+  :root {
+    --ink: #1c2428;
+    --ink-deep: #141a1d;
+    --mist: #e7eef0;
+    --paper: #f5f7f8;
+    --accent: #e09a6a;
+    --accent-soft: rgba(224, 154, 106, 0.22);
+    --line: rgba(255, 255, 255, 0.22);
+    --line-soft: rgba(255, 255, 255, 0.12);
+    --glass: rgba(255, 255, 255, 0.1);
+    --glass-strong: rgba(255, 255, 255, 0.16);
+    --glass-dark: rgba(20, 26, 29, 0.38);
+    --text-muted: rgba(231, 238, 240, 0.68);
+    --danger: #ef8b8b;
+    --font-display: 'Outfit', sans-serif;
+    --font-body: 'Manrope', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
+    color: var(--mist);
+    background: var(--ink);
+    font-family: var(--font-body);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+    background: var(--ink-deep);
+  }
 
-html,
-body,
-#root {
-  width: 100%;
-  min-height: 100%;
-  min-height: 100dvh;
-  overflow: hidden;
-  background: var(--ink-deep);
-}
+  button {
+    cursor: pointer;
+  }
 
-button,
-input,
-label {
-  font: inherit;
-}
-
-button {
-  border: 0;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-img {
-  display: block;
-  max-width: 100%;
+  img {
+    display: block;
+    max-width: 100%;
+  }
 }
 
 @keyframes rise-in {
