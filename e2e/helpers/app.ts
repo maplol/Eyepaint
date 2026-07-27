@@ -80,13 +80,40 @@ export async function enterStudioFromGallery(page: Page, file = FIXTURE_IMAGE) {
   await dismissOnboardingIfAny(page)
   const input = page.locator('label', { hasText: 'Из галереи' }).locator('input[type="file"]')
   await input.setInputFiles(file)
-  await expect(page.getByRole('tab', { name: 'Основное' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('button', { name: 'Рука' })).toBeVisible()
 }
 
+export type StudioToolName =
+  | 'Рука'
+  | 'Пипетка'
+  | 'Лупа'
+  | 'Проекция'
+  | 'Калька'
+  | 'Гиды'
+  | 'Позы'
+  | 'Слои'
+
+export async function openStudioTool(page: Page, name: StudioToolName) {
+  const rail = page.getByRole('toolbar', { name: 'Инструменты' })
+  await rail.getByRole('button', { name }).click()
+  if (name !== 'Слои') {
+    await expect(rail.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
+  }
+}
+
+/** @deprecated use openStudioTool */
 export async function openStudioTab(
   page: Page,
   name: 'Основное' | 'Проекция' | 'Цвета' | 'Позы',
 ) {
-  await page.getByRole('tab', { name }).click()
-  await expect(page.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true')
+  const map = {
+    Основное: 'Рука',
+    Проекция: 'Проекция',
+    Цвета: 'Пипетка',
+    Позы: 'Позы',
+  } as const
+  await openStudioTool(page, map[name])
 }

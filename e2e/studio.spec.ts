@@ -2,7 +2,7 @@ import {
   expect,
   test,
   enterStudioFromGallery,
-  openStudioTab,
+  openStudioTool,
   prepareApp,
   FIXTURE_IMAGE,
 } from './helpers/app'
@@ -14,28 +14,27 @@ test.describe('Studio smoke', () => {
     await enterStudioFromGallery(page)
   })
 
-  test('вкладки дока переключаются', async ({ page }) => {
-    for (const tab of ['Основное', 'Проекция', 'Цвета', 'Позы'] as const) {
-      await openStudioTab(page, tab)
+  test('инструменты рельсы открывают панели', async ({ page }) => {
+    for (const tool of ['Рука', 'Проекция', 'Пипетка', 'Позы'] as const) {
+      await openStudioTool(page, tool)
     }
   })
 
   test('калька, гиды, лупа и атмосфера', async ({ page }) => {
-    await openStudioTab(page, 'Основное')
-
+    await openStudioTool(page, 'Калька')
     await page.getByRole('button', { name: 'Выкл' }).first().click()
     await expect(page.getByText('Сила')).toBeVisible()
 
+    await openStudioTool(page, 'Гиды')
     await page.getByRole('button', { name: '3×3' }).click()
     await expect(page.getByText('Прозрачность сетки')).toBeVisible()
 
-    // Лупа: кнопка Вкл рядом с блоком Лупа
-    const loupeCard = page.locator('div').filter({ hasText: /^Лупа/ }).first()
-    await loupeCard.getByRole('button', { name: 'Выкл' }).click()
+    await openStudioTool(page, 'Лупа')
     await expect(page.getByText('Размер')).toBeVisible()
     await expect(page.getByRole('button', { name: '2×', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '2.5×', exact: true }).click()
 
+    await openStudioTool(page, 'Рука')
     await page.getByRole('button', { name: 'Светлая' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-atmosphere', 'light')
     await page.getByRole('button', { name: 'Тёмная' }).click()
@@ -43,7 +42,7 @@ test.describe('Studio smoke', () => {
   })
 
   test('сессия и снимок прогресса не ломают UI', async ({ page }) => {
-    await openStudioTab(page, 'Основное')
+    await openStudioTool(page, 'Рука')
     await page.getByRole('button', { name: '25 мин' }).click()
     await expect(page.getByText(/\d+:\d+/)).toBeVisible()
     await page.getByRole('button', { name: 'Снимок прогресса' }).click()
@@ -51,9 +50,9 @@ test.describe('Studio smoke', () => {
 
   test('скрытие UI и возврат', async ({ page }) => {
     await page.getByRole('button', { name: 'Скрыть' }).click()
-    await expect(page.getByRole('tab', { name: 'Основное' })).toHaveCount(0)
+    await expect(page.getByLabel('Инструменты')).toHaveCount(0)
     await page.getByRole('button', { name: 'Показать интерфейс' }).click()
-    await expect(page.getByRole('tab', { name: 'Основное' })).toBeVisible()
+    await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible()
   })
 
   test('настройки: вкладка Проект и сохранение', async ({ page }) => {
@@ -77,13 +76,13 @@ test.describe('Studio projection & poses', () => {
   })
 
   test('проекция меняет подписи углов', async ({ page }) => {
-    await openStudioTab(page, 'Проекция')
+    await openStudioTool(page, 'Проекция')
     await page.getByLabel('Наклон X').fill('20')
     await expect(page.getByText('20°').first()).toBeVisible()
   })
 
   test('сохранение позы', async ({ page }) => {
-    await openStudioTab(page, 'Позы')
+    await openStudioTool(page, 'Позы')
     await page.getByRole('button', { name: '+ Сохранить в список' }).click()
     await expect(page.getByText(/Сохранённые ·/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Применить' }).first()).toBeVisible()
