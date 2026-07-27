@@ -20,7 +20,10 @@ test.describe('Welcome', () => {
     await dismissOnboardingIfAny(page)
 
     await page.getByRole('button', { name: 'Портрет 3/4' }).click()
-    await expect(page.getByRole('tab', { name: 'Основное' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible({
+      timeout: 15_000,
+    })
+    await page.getByRole('toolbar', { name: 'Инструменты' }).getByRole('button', { name: 'Гиды' }).click()
     await expect(page.getByText('Направляющие')).toBeVisible()
   })
 
