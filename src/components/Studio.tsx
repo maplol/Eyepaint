@@ -3,8 +3,10 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
 } from 'react'
 import { GuideOverlay } from './GuideOverlay'
 import { Toast } from './Toast'
@@ -28,8 +30,10 @@ import {
 } from './studio/studioUi'
 import { useCamera } from '../hooks/useCamera'
 import {
+  DEFAULT_TRANSFORM,
   buildOverlayCssTransform,
   useOverlayTransform,
+  type OverlayTransform,
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
@@ -57,6 +61,7 @@ import {
   createAuxLayer,
   createPrimaryLayer,
   nextAuxName,
+  patchLayerTransform,
   revokeAuxUrls,
   syncPrimaryUrl,
   type RefLayer,
@@ -220,7 +225,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [layers, setLayers] = useState<RefLayer[]>(() => [createPrimaryLayer(imageUrl)])
   const [activeLayerId, setActiveLayerId] = useState('primary')
   const [locked, setLocked] = useState(false)
-  const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
   const [flash, setFlash] = useState(false)
   const [capturing, setCapturing] = useState(false)
@@ -265,9 +269,18 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     setListeningFor,
     formatHotkey,
   } = useStudioHotkeys(true)
-  const { transform, setTransform, reset, handlers, onWheel } = useOverlayTransform(
+  const transform = activeLayer?.transform ?? DEFAULT_TRANSFORM
+  const flipped = activeLayer?.flipped ?? false
+
+  const setTransform: Dispatch<SetStateAction<OverlayTransform>> = (update) => {
+    setLayers((prev) => patchLayerTransform(prev, activeLayerId, update))
+  }
+
+  const { reset, handlers, onWheel } = useOverlayTransform(
     locked || brush.editing,
     dragMode,
+    transform,
+    setTransform,
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
@@ -579,13 +592,23 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       if (aux) {
         setLayers((prev) => [...prev, aux])
         setActiveLayerId(aux.id)
-        showToast(`${aux.name} · цвета по этому слою`)
+        showToast(`${aux.name} · двигай и крась этот слой`)
         return
       }
     }
     onChangeImage(file)
     setActiveLayerId('primary')
-    reset()
+    setLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === 'primary'
+          ? {
+              ...layer,
+              transform: { ...DEFAULT_TRANSFORM },
+              flipped: false,
+            }
+          : layer,
+      ),
+    )
     setLocked(false)
   }
 
@@ -593,7 +616,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     if (id === activeLayerId) return
     setActiveLayerId(id)
     const layer = layers.find((item) => item.id === id)
-    showToast(layer ? `Цвета: ${layer.name}` : 'Слой выбран')
+    showToast(layer ? `Активен: ${layer.name} · двигай его` : 'Слой выбран')
   }
 
   const handleSavePose = () => {
@@ -618,15 +641,24 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   }
 
   const handleApplyPose = (pose: SavedPose) => {
-    setTransform({ ...pose.transform })
-    setFlipped(pose.flipped)
-    setOpacity(pose.opacity)
+    setLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === activeLayerId
+          ? {
+              ...layer,
+              transform: { ...pose.transform },
+              flipped: pose.flipped,
+              opacity: pose.opacity,
+            }
+          : layer,
+      ),
+    )
     if (pose.selectedColorIds?.length) {
       setSelectedColorIds(
         pose.selectedColorIds.filter((id) => palette.some((color) => color.id === id)),
       )
     }
-    showToast(`Вернули: ${pose.name}`)
+    showToast(`Вернули на слой: ${pose.name}`)
   }
 
   const handleStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -674,8 +706,11 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
 
-  const primaryOpacity = layers.find((layer) => layer.kind === 'primary')?.opacity ?? 1
-  const primaryVisible = layers.find((layer) => layer.kind === 'primary')?.visible ?? true
+  const primaryLayer = layers.find((layer) => layer.kind === 'primary') ?? null
+  const primaryOpacity = primaryLayer?.opacity ?? 1
+  const primaryVisible = primaryLayer?.visible ?? true
+  const primaryTransform = primaryLayer?.transform ?? DEFAULT_TRANSFORM
+  const primaryFlipped = primaryLayer?.flipped ?? false
 
   return (
     <div className={rootClass} data-atmosphere={atmosphere}>
@@ -746,7 +781,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             )}
             style={{
               opacity: opacity * primaryOpacity,
-              transform: buildOverlayCssTransform(transform, flipped),
+              transform: buildOverlayCssTransform(primaryTransform, primaryFlipped),
               pointerEvents:
                 activeLayerId === 'primary' && (pickMode || brush.editing)
                   ? 'auto'
@@ -803,14 +838,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 )}
                 style={{
                   opacity: opacity * layer.opacity,
-                  transform: buildOverlayCssTransform(
-                    {
-                      ...transform,
-                      x: transform.x + (index + 1) * 8,
-                      y: transform.y + (index + 1) * 8,
-                    },
-                    flipped,
-                  ),
+                  transform: buildOverlayCssTransform(layer.transform, layer.flipped),
                   zIndex: 2 + index,
                   pointerEvents: isActive && (pickMode || brush.editing) ? 'auto' : 'none',
                 }}
@@ -853,13 +881,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             pos={loupePos}
             stageRef={stageRef}
             sourceVideoRef={videoRef}
-            displayUrl={layerDisplayUrl('primary', imageUrl)}
-            transform={transform}
-            flipped={flipped}
+            primaryLayer={primaryLayer}
+            primaryDisplayUrl={layerDisplayUrl('primary', imageUrl)}
             opacity={opacity}
-            primaryVisible={primaryVisible}
-            primaryOpacity={primaryOpacity}
-            framed={framed && activeLayerId === 'primary'}
+            framedPrimary={framed && activeLayerId === 'primary'}
             calcFilter={calcModeFilter(calcMode)}
             auxLayers={
               flags.multiLayers
@@ -1048,7 +1073,15 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     onCapture={() => void handleCapture()}
                     onPickFile={(file) => applyPickedFile(file)}
                     flipped={flipped}
-                    onFlip={() => setFlipped((value) => !value)}
+                    onFlip={() =>
+                      setLayers((prev) =>
+                        prev.map((layer) =>
+                          layer.id === activeLayerId
+                            ? { ...layer, flipped: !layer.flipped }
+                            : layer,
+                        ),
+                      )
+                    }
                     locked={locked}
                     onToggleLock={() => setLocked((value) => !value)}
                     onReset={reset}
