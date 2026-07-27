@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import {
   buildOverlayCssTransform,
@@ -8,9 +8,18 @@ import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
 import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposite'
 import {
+  PRECISION_PROFILES,
+  createPickedColor,
   extractPalette,
+  loadColorPrecision,
+  loadMatchTolerance,
   renderFilteredReference,
+  sampleColorAtImagePoint,
+  saveColorPrecision,
+  saveMatchTolerance,
+  sortPalette,
   type ColorFilterMode,
+  type ColorPrecision,
   type PaletteColor,
 } from '../lib/colors'
 import {
@@ -174,6 +183,16 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const [colorMode, setColorMode] = useState<ColorFilterMode>('off')
   const [filteredUrl, setFilteredUrl] = useState<string | null>(null)
   const [filterBusy, setFilterBusy] = useState(false)
+  const [colorPrecision, setColorPrecision] = useState<ColorPrecision>(() => loadColorPrecision())
+  const [matchTolerance, setMatchTolerance] = useState(() =>
+    loadMatchTolerance(PRECISION_PROFILES[loadColorPrecision()].defaultTolerance),
+  )
+  const [pickMode, setPickMode] = useState(false)
+  const [paletteSort, setPaletteSort] = useState<'dominance' | 'hue'>('dominance')
+  const paletteRef = useRef(palette)
+  const imageUrlRef = useRef(imageUrl)
+  const precisionRef = useRef(colorPrecision)
+  paletteRef.current = palette
 
   const [poses, setPoses] = useState<SavedPose[]>(() => loadPoses())
 
@@ -214,18 +233,40 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
   useEffect(() => {
     let cancelled = false
-    setPalette([])
-    setSelectedColorIds([])
-    setColorMode('off')
-    setFilteredUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
-    setPaletteLoading(true)
+    const imageChanged = imageUrlRef.current !== imageUrl
+    const precisionChanged = precisionRef.current !== colorPrecision
+    imageUrlRef.current = imageUrl
+    precisionRef.current = colorPrecision
+    saveColorPrecision(colorPrecision)
 
-    void extractPalette(imageUrl)
+    if (imageChanged) {
+      setSelectedColorIds([])
+      setColorMode('off')
+      setPickMode(false)
+      setFilteredUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+    }
+
+    if (imageChanged || precisionChanged) {
+      const nextTolerance = PRECISION_PROFILES[colorPrecision].defaultTolerance
+      setMatchTolerance(nextTolerance)
+      saveMatchTolerance(nextTolerance)
+    }
+
+    setPaletteLoading(true)
+    const picks = imageChanged
+      ? []
+      : paletteRef.current.filter((item) => item.source === 'pick')
+
+    void extractPalette(imageUrl, colorPrecision, picks)
       .then((colors) => {
-        if (!cancelled) setPalette(colors)
+        if (cancelled) return
+        setPalette(colors)
+        setSelectedColorIds((prev) =>
+          imageChanged ? [] : prev.filter((id) => colors.some((c) => c.id === id)),
+        )
       })
       .catch(() => {
         if (!cancelled) setPalette([])
@@ -237,12 +278,17 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     return () => {
       cancelled = true
     }
-  }, [imageUrl])
+  }, [imageUrl, colorPrecision])
+
+  useEffect(() => {
+    saveMatchTolerance(matchTolerance)
+  }, [matchTolerance])
 
   useEffect(() => {
     let cancelled = false
+    const selectedColors = palette.filter((color) => selectedColorIds.includes(color.id))
 
-    if (colorMode === 'off' || selectedColorIds.length === 0) {
+    if (colorMode === 'off' || selectedColors.length === 0) {
       setFilteredUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
         return null
@@ -254,9 +300,9 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     setFilterBusy(true)
     void renderFilteredReference(
       imageUrl,
-      palette,
-      selectedColorIds,
+      selectedColors,
       colorMode === 'mask' ? 'mask' : 'gray',
+      matchTolerance,
     )
       .then((url) => {
         if (cancelled) {
@@ -278,9 +324,14 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     return () => {
       cancelled = true
     }
-  }, [imageUrl, palette, selectedColorIds, colorMode])
+  }, [imageUrl, palette, selectedColorIds, colorMode, matchTolerance])
 
   const selectedSet = useMemo(() => new Set(selectedColorIds), [selectedColorIds])
+  const visiblePalette = useMemo(
+    () => sortPalette(palette, paletteSort),
+    [palette, paletteSort],
+  )
+  const precisionProfile = PRECISION_PROFILES[colorPrecision]
 
   useEffect(() => {
     if (selectedColorIds.length === 0) {
@@ -289,6 +340,39 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     }
     setColorMode((mode) => (mode === 'off' ? 'gray' : mode))
   }, [selectedColorIds])
+
+  const handleOverlayPick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!pickMode) return
+    event.stopPropagation()
+    const target = overlayImageRef.current
+    if (!target) return
+    const rect = target.getBoundingClientRect()
+    if (rect.width < 2 || rect.height < 2) return
+    const normX = (event.clientX - rect.left) / rect.width
+    const normY = (event.clientY - rect.top) / rect.height
+    if (normX < 0 || normX > 1 || normY < 0 || normY > 1) return
+
+    void (async () => {
+      try {
+        const rgb = await sampleColorAtImagePoint(imageUrl, normX, normY)
+        const picked = createPickedColor(rgb, paletteRef.current)
+        setPalette((prev) =>
+          prev.some((item) => item.id === picked.id) ? prev : [picked, ...prev],
+        )
+        setSelectedColorIds((prev) =>
+          prev.includes(picked.id) ? prev : [...prev, picked.id],
+        )
+        setColorMode((mode) => (mode === 'off' ? 'gray' : mode))
+        setToast(`Пипетка · ${picked.hex}`)
+      } catch {
+        setToast('Не удалось взять цвет')
+      }
+    })()
+  }
+
+  useEffect(() => {
+    if (tab !== 'colors' && pickMode) setPickMode(false)
+  }, [tab, pickMode])
 
   const handleCapture = async () => {
     const stage = stageRef.current
@@ -350,8 +434,8 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     <div className={rootClass}>
       <div
         ref={stageRef}
-        className={cn(stageBaseClass, getStageCursorClass(locked, dragMode))}
-        {...handlers}
+        className={cn(stageBaseClass, getStageCursorClass(locked || pickMode, dragMode))}
+        {...(pickMode ? {} : handlers)}
       >
         <video ref={videoRef} className={cameraClass} playsInline muted autoPlay />
 
@@ -383,11 +467,16 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
             'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
             framed &&
               'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
+            pickMode && 'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
           )}
           style={{
             opacity,
             transform: buildOverlayCssTransform(transform, flipped),
-            pointerEvents: locked ? 'none' : 'auto',
+            pointerEvents: pickMode ? 'auto' : locked ? 'none' : 'auto',
+          }}
+          onClick={handleOverlayPick}
+          onPointerDown={(event) => {
+            if (pickMode) event.stopPropagation()
           }}
         >
           <img
@@ -848,32 +937,89 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
             {tab === 'colors' && (
               <div className={panelClass}>
+                <div>
+                  <div className={sliderLabelsClass}>
+                    <span>Точность палитры</span>
+                    <span>
+                      {precisionProfile.label} · {precisionProfile.maxColors}
+                    </span>
+                  </div>
+                  <input
+                    className={rangeInputClass}
+                    type="range"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={colorPrecision}
+                    onChange={(event) =>
+                      setColorPrecision(Number(event.target.value) as ColorPrecision)
+                    }
+                    aria-label="Точность палитры"
+                  />
+                  <p className="mt-1 text-[0.72rem] text-mist/55">{precisionProfile.hint}</p>
+                </div>
+
+                <div>
+                  <div className={sliderLabelsClass}>
+                    <span>Допуск совпадения</span>
+                    <span>{matchTolerance}</span>
+                  </div>
+                  <input
+                    className={rangeInputClass}
+                    type="range"
+                    min={12}
+                    max={100}
+                    step={1}
+                    value={matchTolerance}
+                    onChange={(event) => setMatchTolerance(Number(event.target.value))}
+                    aria-label="Допуск совпадения цвета"
+                  />
+                  <p className="mt-1 text-[0.72rem] text-mist/55">
+                    Уже — меньше «расползания» на соседние цвета. Шире — захватывает ближние оттенки.
+                  </p>
+                </div>
+
                 {paletteLoading ? (
                   <p className={tipClass}>Разбираю цвета референса…</p>
                 ) : palette.length === 0 ? (
                   <p className={tipClass}>Не удалось вытащить палитру</p>
                 ) : (
                   <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[0.78rem] text-mist/70">
+                        {palette.length} цветов · выбрано {selectedColorIds.length}
+                      </p>
+                      <button
+                        type="button"
+                        className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.72rem] font-semibold text-mist/85"
+                        onClick={() =>
+                          setPaletteSort((value) => (value === 'hue' ? 'dominance' : 'hue'))
+                        }
+                      >
+                        {paletteSort === 'hue' ? 'По тону' : 'По частоте'}
+                      </button>
+                    </div>
+
                     <div
-                      className="flex gap-[0.55rem] overflow-x-auto px-[0.1rem] pb-[0.35rem] pt-[0.15rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="flex gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       role="group"
                       aria-label="Цвета референса"
                     >
-                      {palette.map((color) => {
+                      {visiblePalette.map((color) => {
                         const active = selectedSet.has(color.id)
                         return (
                           <button
                             key={color.id}
                             type="button"
                             className={cn(
-                              'h-[2.35rem] w-[2.35rem] flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]',
+                              'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]',
                               active
                                 ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
                                 : 'border-white/35',
                             )}
                             style={{ background: color.hex }}
                             aria-pressed={active}
-                            title={color.hex}
+                            title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
                             onClick={() =>
                               setSelectedColorIds((prev) =>
                                 prev.includes(color.id)
@@ -881,12 +1027,60 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                                   : [...prev, color.id],
                               )
                             }
-                          />
+                          >
+                            {color.source === 'pick' && (
+                              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
+                            )}
+                          </button>
                         )
                       })}
                     </div>
 
-                    <div className={rowClass}>
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        className={chipNeutralClass}
+                        onClick={() => setSelectedColorIds(palette.map((c) => c.id))}
+                      >
+                        Все
+                      </button>
+                      <button
+                        type="button"
+                        className={chipNeutralClass}
+                        disabled={selectedColorIds.length === 0}
+                        onClick={() => {
+                          const set = new Set(selectedColorIds)
+                          setSelectedColorIds(
+                            palette.filter((c) => !set.has(c.id)).map((c) => c.id),
+                          )
+                        }}
+                      >
+                        Инверт
+                      </button>
+                      <button
+                        type="button"
+                        className={chipNeutralClass}
+                        disabled={selectedColorIds.length === 0}
+                        onClick={() => {
+                          setSelectedColorIds([])
+                          setColorMode('off')
+                        }}
+                      >
+                        Сброс
+                      </button>
+                      <button
+                        type="button"
+                        className={chipAccentClass(pickMode)}
+                        onClick={() => {
+                          setPickMode((value) => !value)
+                          if (!pickMode) setTab('colors')
+                        }}
+                      >
+                        Пипетка
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         className={chipAccentClass(colorMode === 'mask')}
@@ -900,31 +1094,27 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                       <button
                         type="button"
                         className={chipNeutralClass}
-                        disabled={selectedColorIds.length === 0}
-                        onClick={() => {
-                          setSelectedColorIds([])
-                          setColorMode('off')
-                        }}
-                      >
-                        Сбросить
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
                         disabled={filterBusy || selectedColorIds.length === 0}
                         onClick={() => setColorMode('gray')}
                       >
                         Серый фон
                       </button>
                     </div>
+
+                    {pickMode && (
+                      <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-accent-soft">
+                        Кликни по референсу на сцене — цвет добавится в палитру
+                      </p>
+                    )}
+
                     <p className={tipClass}>
                       {filterBusy
                         ? 'Применяю фильтр…'
                         : colorMode === 'mask'
-                          ? 'Только выбранные цвета · рамка вокруг референса'
+                          ? 'Только выбранные · рамка вокруг референса'
                           : selectedColorIds.length > 0
-                            ? 'Выбранные цветные, остальное серое'
-                            : 'Кликай кружки — можно несколько'}
+                            ? 'Выбранные цветные, остальное серое. Крути допуск, если цепляет лишнее.'
+                            : 'Выбери цвета или возьми пипеткой с референса'}
                     </p>
                   </>
                 )}
