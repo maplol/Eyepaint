@@ -627,7 +627,7 @@ export function LayersPanel(props: LayersPanelProps) {
             ref={menuRef}
             id={`${menuRootId}-menu`}
             role="menu"
-            className="fixed z-[80] min-w-[11.5rem] overflow-hidden rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] py-1 shadow-[var(--shadow-glass)] backdrop-blur-md"
+            className="eyepaint-glass-chip fixed z-[80] min-w-[11.5rem] overflow-hidden rounded-xl py-1"
             style={{ top: menu.top, left: menu.left }}
           >
             {canReorder &&
