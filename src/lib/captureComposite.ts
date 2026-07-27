@@ -63,6 +63,10 @@ export async function captureCompositeFrame(args: CaptureCompositeArgs): Promise
   ctx.save()
   ctx.translate(width / 2 + transform.x, height / 2 + transform.y)
   ctx.rotate((transform.rotation * Math.PI) / 180)
+  // Approximate perspective tilt for the saved photo.
+  const shearX = Math.tan(((transform.rotateY || 0) * Math.PI) / 180) * 0.35
+  const shearY = Math.tan(((transform.rotateX || 0) * Math.PI) / 180) * 0.35
+  ctx.transform(1, shearY, shearX, 1, 0, 0)
   ctx.scale(transform.scale * (flipped ? -1 : 1), transform.scale)
   ctx.globalAlpha = opacity
   ctx.drawImage(overlayImage, -drawW / 2, -drawH / 2, drawW, drawH)

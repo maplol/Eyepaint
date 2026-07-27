@@ -2,7 +2,6 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  place-items: end stretch;
   min-height: 100dvh;
   padding:
     calc(var(--safe-top) + 1.5rem)
@@ -10,6 +9,14 @@
     calc(var(--safe-bottom) + 1.5rem);
   overflow: hidden;
   color: var(--paper);
+}
+
+.welcome__shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 3rem);
 }
 
 .welcome__atmosphere {
@@ -150,7 +157,21 @@
 
 @media (min-width: 768px) {
   .welcome {
-    place-items: center start;
     padding-left: clamp(2rem, 8vw, 7rem);
+  }
+
+  .welcome__shell {
+    align-content: center;
+    justify-items: start;
+  }
+
+  .welcome__panel {
+    width: min(100%, 460px);
+  }
+}
+
+@media (min-width: 1100px) {
+  .welcome__shell {
+    max-width: 1200px;
   }
 }

@@ -5,6 +5,8 @@ export type OverlayTransform = {
   y: number
   scale: number
   rotation: number
+  rotateX: number
+  rotateY: number
 }
 
 type PointerSample = {
@@ -25,15 +27,30 @@ function midpoint(a: PointerSample, b: PointerSample) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
-const DEFAULT: OverlayTransform = {
+export const DEFAULT_TRANSFORM: OverlayTransform = {
   x: 0,
   y: 0,
   scale: 1,
   rotation: 0,
+  rotateX: 0,
+  rotateY: 0,
+}
+
+export function buildOverlayCssTransform(transform: OverlayTransform, flipped: boolean) {
+  const scaleX = transform.scale * (flipped ? -1 : 1)
+  return [
+    'translate(-50%, -50%)',
+    `translate(${transform.x}px, ${transform.y}px)`,
+    'perspective(900px)',
+    `rotateX(${transform.rotateX}deg)`,
+    `rotateY(${transform.rotateY}deg)`,
+    `rotateZ(${transform.rotation}deg)`,
+    `scale(${scaleX}, ${transform.scale})`,
+  ].join(' ')
 }
 
 export function useOverlayTransform(locked: boolean) {
-  const [transform, setTransform] = useState<OverlayTransform>(DEFAULT)
+  const [transform, setTransform] = useState<OverlayTransform>(DEFAULT_TRANSFORM)
   const transformRef = useRef(transform)
   const pointersRef = useRef<Map<number, PointerSample>>(new Map())
   const gestureRef = useRef<{
@@ -49,7 +66,7 @@ export function useOverlayTransform(locked: boolean) {
     transformRef.current = transform
   }, [transform])
 
-  const reset = () => setTransform(DEFAULT)
+  const reset = () => setTransform(DEFAULT_TRANSFORM)
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (locked) return
@@ -116,6 +133,7 @@ export function useOverlayTransform(locked: boolean) {
           : 1
 
       setTransform({
+        ...gesture.startTransform,
         x:
           gesture.startTransform.x +
           (nextMid.x - (gesture.startMid?.x ?? nextMid.x)),
