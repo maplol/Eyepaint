@@ -266,8 +266,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
-  const loupeOnRef = useRef(loupe.enabled)
-  loupeOnRef.current = loupe.enabled
 
   const displayUrl = filteredUrl ?? imageUrl
   const framed = colorMode === 'mask'
