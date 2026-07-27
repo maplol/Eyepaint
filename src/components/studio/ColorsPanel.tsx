@@ -18,6 +18,7 @@ import {
   panelCardClass,
   panelClass,
   rangeInputClass,
+  scrollAreaClass,
   sliderLabelsClass,
   tipClass,
 } from './studioUi'
@@ -61,7 +62,7 @@ type ColorsPanelProps = {
 
 export function ColorsPanel(props: ColorsPanelProps) {
   return (
-    <div className={panelClass}>
+    <div className={cn(panelClass, 'min-w-0')}>
       {props.activeLayerName && (
         <p className="rounded-xl border border-accent/30 bg-accent/12 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
           Цвета для слоя: <strong>{props.activeLayerName}</strong>
@@ -148,7 +149,10 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           <div
-            className="relative flex min-h-11 gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              'relative flex min-h-12 min-w-0 w-full gap-2 overflow-x-auto overscroll-x-contain px-0.5 py-1.5',
+              scrollAreaClass,
+            )}
             role="group"
             aria-label="Цвета референса"
             aria-busy={props.paletteLoading}
