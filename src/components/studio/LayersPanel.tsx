@@ -459,9 +459,11 @@ export function LayersPanel(props: LayersPanelProps) {
                       ? 'border-accent/40 bg-accent/15 text-[var(--chip-accent-fg)]'
                       : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)] opacity-55',
                   )}
-                  aria-label={layer.visible ? `Скрыть ${layer.name}` : `Показать ${layer.name}`}
+                  aria-label={
+                    layer.visible ? `Видимость ${layer.name}: показан` : `Видимость ${layer.name}: скрыт`
+                  }
                   aria-pressed={layer.visible}
-                  title={layer.visible ? 'Скрыть' : 'Показать'}
+                  title={layer.visible ? 'Скрыть слой' : 'Показать слой'}
                   onClick={() => props.onLayerVisible(layer.id)}
                 >
                   {layer.visible ? (
