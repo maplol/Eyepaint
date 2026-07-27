@@ -97,6 +97,8 @@ export function LayersPanel(props: LayersPanelProps) {
   const listRef = useRef<HTMLUListElement | null>(null)
   const itemRefs = useRef(new Map<string, HTMLLIElement>())
   const dragIdRef = useRef<string | null>(null)
+  const ghostNodeRef = useRef<HTMLDivElement | null>(null)
+  const cleanupDragRef = useRef<(() => void) | null>(null)
   const prevCountRef = useRef(props.layers.length)
 
   const displayLayers = [...props.layers].reverse()
@@ -109,6 +111,14 @@ export function LayersPanel(props: LayersPanelProps) {
 
   const activeLayer =
     props.layers.find((layer) => layer.id === props.activeLayerId) ?? props.layers[0] ?? null
+
+  const endDrag = () => {
+    cleanupDragRef.current?.()
+    cleanupDragRef.current = null
+    setDragId(null)
+    dragIdRef.current = null
+    setGhost(null)
+  }
 
   useEffect(() => {
     saveLayersOpen(open)
@@ -127,13 +137,23 @@ export function LayersPanel(props: LayersPanelProps) {
     if (!dragId) return
     const prevUserSelect = document.body.style.userSelect
     const prevCursor = document.body.style.cursor
+    const prevTouchAction = document.body.style.touchAction
     document.body.style.userSelect = 'none'
     document.body.style.cursor = 'grabbing'
+    document.body.style.touchAction = 'none'
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') endDrag()
+    }
+    window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.userSelect = prevUserSelect
       document.body.style.cursor = prevCursor
+      document.body.style.touchAction = prevTouchAction
+      window.removeEventListener('keydown', onKey)
     }
   }, [dragId])
+
+  useEffect(() => () => cleanupDragRef.current?.(), [])
 
   useEffect(() => {
     if (!menu) return
@@ -143,10 +163,7 @@ export function LayersPanel(props: LayersPanelProps) {
       setMenu(null)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMenu(null)
-        if (!dragIdRef.current) setOpen(false)
-      }
+      if (event.key === 'Escape') setMenu(null)
     }
     const onScroll = () => setMenu(null)
     window.addEventListener('pointerdown', onPointerDown)
@@ -203,13 +220,16 @@ export function LayersPanel(props: LayersPanelProps) {
     const rect = row.getBoundingClientRect()
     const isActive = props.activeLayerId === layer.id
     const stackHint = layerStackLabel(props.layers, layer.id)
+    const pointerId = event.pointerId
+    const grabX = event.clientX - rect.left
+    const grabY = event.clientY - rect.top
 
     const nextGhost: DragGhost = {
       id: layer.id,
       width: rect.width,
       height: rect.height,
-      grabX: event.clientX - rect.left,
-      grabY: event.clientY - rect.top,
+      grabX,
+      grabY,
       pointerX: event.clientX,
       pointerY: event.clientY,
       name: layer.name,
@@ -219,23 +239,21 @@ export function LayersPanel(props: LayersPanelProps) {
       active: isActive,
     }
 
-    setDragId(layer.id)
-    dragIdRef.current = layer.id
-    setGhost(nextGhost)
-    event.currentTarget.setPointerCapture(event.pointerId)
+    // Не captur'им на кнопку: при live-reorder она размонтируется → pointerup теряется.
+    cleanupDragRef.current?.()
 
     const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return
       const current = dragIdRef.current
       if (!current) return
-      setGhost((prev) =>
-        prev
-          ? {
-              ...prev,
-              pointerX: moveEvent.clientX,
-              pointerY: moveEvent.clientY,
-            }
-          : prev,
-      )
+      moveEvent.preventDefault()
+
+      const node = ghostNodeRef.current
+      if (node) {
+        node.style.left = `${moveEvent.clientX - grabX}px`
+        node.style.top = `${moveEvent.clientY - grabY}px`
+      }
+
       const targetId = findDropTarget(moveEvent.clientY, current)
       if (targetId && targetId !== current) {
         onReorderRef.current(current, targetId)
@@ -243,22 +261,24 @@ export function LayersPanel(props: LayersPanelProps) {
     }
 
     const onUp = (upEvent: PointerEvent) => {
-      try {
-        event.currentTarget.releasePointerCapture(upEvent.pointerId)
-      } catch {
-        /* ignore */
-      }
-      event.currentTarget.removeEventListener('pointermove', onMove)
-      event.currentTarget.removeEventListener('pointerup', onUp)
-      event.currentTarget.removeEventListener('pointercancel', onUp)
-      setDragId(null)
-      dragIdRef.current = null
-      setGhost(null)
+      if (upEvent.pointerId !== pointerId) return
+      endDrag()
     }
 
-    event.currentTarget.addEventListener('pointermove', onMove)
-    event.currentTarget.addEventListener('pointerup', onUp)
-    event.currentTarget.addEventListener('pointercancel', onUp)
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+    cleanupDragRef.current = cleanup
+
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+
+    setDragId(layer.id)
+    dragIdRef.current = layer.id
+    setGhost(nextGhost)
   }
 
   if (props.layers.length === 0) return null
@@ -520,6 +540,7 @@ export function LayersPanel(props: LayersPanelProps) {
       {ghost &&
         createPortal(
           <div
+            ref={ghostNodeRef}
             className={cn(
               'pointer-events-none fixed z-[90] grid gap-1.5 rounded-xl border px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.35)]',
               ghost.active
@@ -532,7 +553,7 @@ export function LayersPanel(props: LayersPanelProps) {
               left: ghost.pointerX - ghost.grabX,
               top: ghost.pointerY - ghost.grabY,
               transform: 'scale(1.04) rotate(1.25deg)',
-              willChange: 'left, top, transform',
+              willChange: 'left, top',
             }}
             aria-hidden="true"
           >
