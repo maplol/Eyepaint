@@ -188,10 +188,10 @@ const rootClass =
   'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--fg)]'
 
 const stageBase =
-  'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
+  'absolute inset-0 z-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
 
 const stageLight =
-  'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#d8e0e4_0%,#b7c2c8_72%)]'
+  'absolute inset-0 z-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#d8e0e4_0%,#b7c2c8_72%)]'
 
 export function Studio({
   imageUrl,
@@ -1507,7 +1507,7 @@ export function Studio({
 
       {!uiHidden && (
         <header
-          className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
+          className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
           style={{ background: 'var(--header-fade)' }}
         >
           <button
@@ -1660,7 +1660,7 @@ export function Studio({
       {uiHidden && (
         <button
           type="button"
-          className="eyepaint-glass-chip absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] grid h-12 w-12 place-items-center rounded-full text-[var(--fg-strong)]"
+          className="eyepaint-glass-chip absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-40 grid h-12 w-12 place-items-center rounded-full text-[var(--fg-strong)]"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
         >

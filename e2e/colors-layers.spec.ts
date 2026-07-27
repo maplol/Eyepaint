@@ -72,4 +72,35 @@ test.describe('Colors & layers', () => {
     await openStudioTool(page, 'Слои')
     await expect(layersList).toHaveCount(0)
   })
+
+  test('три слоя не перекрывают UI — слои закрываются', async ({ page }) => {
+    const layersSheet = page.getByLabel('Блок слоёв')
+    if (!(await layersSheet.isVisible().catch(() => false))) {
+      await openStudioTool(page, 'Слои')
+      const chip = page.getByRole('button', { name: /Слои ·/ })
+      if (await chip.isVisible().catch(() => false)) await chip.click()
+    }
+    await expect(layersSheet).toBeVisible()
+
+    const galleryInLayers = layersSheet
+      .locator('label')
+      .filter({ hasText: 'Галерея' })
+      .locator('input[type="file"]')
+    await galleryInLayers.setInputFiles('e2e/fixtures/reference.png')
+    await galleryInLayers.setInputFiles('e2e/fixtures/reference.png')
+
+    const layersList = page.getByRole('list', { name: 'Слои референса' })
+    await expect(layersList.getByRole('listitem')).toHaveCount(3, { timeout: 10_000 })
+
+    // UI поверх stage: закрытие слоёв кликабельно даже с тремя оверлеями
+    const closeBtn = layersSheet.getByRole('button', { name: 'Закрыть' })
+    if (await closeBtn.isVisible().catch(() => false)) {
+      await closeBtn.click({ timeout: 5_000 })
+      await expect(layersList).toHaveCount(0)
+    } else {
+      await openStudioTool(page, 'Слои')
+      await expect(layersList).toHaveCount(0)
+    }
+    await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible()
+  })
 })
