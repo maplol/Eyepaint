@@ -66,27 +66,24 @@ const cameraClass =
   'absolute inset-0 h-full w-full bg-[#141a1d] object-cover'
 
 const statusBaseClass =
-  'absolute inset-x-[1.1rem] bottom-[38%] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--glass-strong)] px-[1.1rem] py-4 text-center text-[var(--mist)] shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] [-webkit-backdrop-filter:blur(18px)_saturate(1.2)] animate-[rise-in_0.4s_ease_both] min-[960px]:left-[1.2rem] min-[960px]:right-auto min-[960px]:max-w-[min(28rem,calc(100%_-_min(380px,34vw)_-_3rem))]'
+  'absolute inset-x-4 bottom-[36%] rounded-2xl border border-white/20 bg-white/14 px-4 py-4 text-center text-mist shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] animate-[rise-in_0.4s_ease_both] min-[960px]:left-5 min-[960px]:right-auto min-[960px]:max-w-md'
 
 const statusNoteClass = 'mt-2 text-[0.86rem] text-[var(--text-muted)]'
 
 const glassButtonClass =
-  'min-h-[2.35rem] justify-self-start rounded-full border border-[var(--line)] bg-[var(--glass)] px-[0.85rem] py-[0.4rem] text-[0.88rem] font-semibold text-[var(--mist)] shadow-[0_6px_18px_rgba(12,16,18,0.16)] backdrop-blur-[14px] backdrop-saturate-[1.2] [-webkit-backdrop-filter:blur(14px)_saturate(1.2)]'
+  'inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/12 px-3.5 text-sm font-semibold text-paper shadow-[0_6px_18px_rgba(12,16,18,0.16)] backdrop-blur-md'
 
-const controlsPanelClass =
-  'absolute inset-x-[0.7rem] bottom-[calc(var(--safe-bottom)_+_0.7rem)] z-[3] flex max-h-[min(62dvh,560px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[linear-gradient(170deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.08)_100%)] p-0 shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] [-webkit-backdrop-filter:blur(22px)_saturate(1.25)] animate-[rise-in_0.45s_ease_0.04s_both] md:left-auto md:right-4 md:bottom-[calc(var(--safe-bottom)_+_1rem)] md:w-[min(400px,calc(100%_-_2rem))] min-[960px]:top-[calc(var(--safe-top)_+_4.4rem)] min-[960px]:right-4 min-[960px]:bottom-[calc(var(--safe-bottom)_+_1rem)] min-[960px]:w-[min(380px,34vw)] min-[960px]:max-h-none min-[960px]:pointer-events-auto'
-
-const settingsPanelClass =
-  'absolute left-3 right-3 top-[calc(var(--safe-top)_+_4.2rem)] z-[5] flex max-h-[min(70dvh,560px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--line)] bg-[linear-gradient(170deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.08)_100%)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] [-webkit-backdrop-filter:blur(22px)_saturate(1.25)] animate-[rise-in_0.3s_ease_both] min-[960px]:left-auto min-[960px]:right-[calc(1rem_+_min(380px,34vw)_+_0.75rem)] min-[960px]:top-[calc(var(--safe-top)_+_4.4rem)] min-[960px]:bottom-[calc(var(--safe-bottom)_+_1rem)] min-[960px]:w-[min(380px,34vw)] min-[960px]:max-h-none'
+const dockClass =
+  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(58dvh,520px)] flex-col overflow-hidden rounded-3xl border border-white/20 bg-[linear-gradient(170deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.08)_100%)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
 
 const panelClass = 'grid gap-3'
 
-const sectionTitleClass = 'text-[0.86rem] font-bold text-[var(--paper)]'
+const sectionTitleClass = 'text-sm font-bold text-paper'
 
 const tabBaseClass =
-  'min-h-[2.2rem] rounded-[11px] px-[0.15rem] py-[0.2rem] text-[0.72rem] font-semibold text-[rgba(231,238,240,0.7)] min-[960px]:text-[0.78rem]'
+  'min-h-9 rounded-xl px-1 py-1.5 text-[0.75rem] font-semibold text-mist/75 transition-colors hover:text-paper min-[960px]:text-[0.8rem]'
 
-const tabActiveClass = 'bg-white/14 text-[var(--paper)]'
+const tabActiveClass = 'bg-white/18 text-paper'
 
 const sliderLabelsClass =
   'mb-[0.4rem] flex justify-between text-[0.84rem] text-[rgba(231,238,240,0.82)]'
@@ -370,7 +367,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
           <div className={cn(statusBaseClass, 'border-[rgba(239,139,139,0.4)]')}>
             <p>{error}</p>
             <p className={statusNoteClass}>
-              Можно подключить телефон во вкладке «Связь» или настроить референс заранее.
+              Можно подключить телефон в настройках (шестерёнка → Связь) или настроить референс заранее.
             </p>
           </div>
         )}
@@ -420,26 +417,40 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       </div>
 
       {!uiHidden && (
-        <header className="absolute inset-x-0 top-0 z-[3] grid grid-cols-[1fr_auto_1fr] items-center gap-2 bg-[linear-gradient(to_bottom,rgba(20,26,29,0.45),transparent)] px-[0.85rem] pb-[0.7rem] pt-[calc(var(--safe-top)_+_0.7rem)] animate-[rise-in_0.35s_ease_both]">
+        <header className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-[linear-gradient(to_bottom,rgba(20,26,29,0.55),transparent)] px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4">
           <button type="button" className={glassButtonClass} onClick={onExit}>
             Назад
           </button>
-          <div className="grid justify-items-center gap-[0.15rem]">
-            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[rgba(245,247,248,0.9)]">
+          <div className="min-w-0 justify-self-center text-center">
+            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-paper/90">
               EYEPAINT
             </p>
-            <p className="text-[0.68rem] text-[rgba(231,238,240,0.58)]">{cameraLabel}</p>
+            <p className="truncate text-[0.68rem] text-mist/60">{cameraLabel}</p>
           </div>
-          <div className="flex items-center gap-[0.4rem] justify-self-end">
+          <div className="flex shrink-0 items-center gap-2 justify-self-end">
+            {roomEnabled && (
+              <span
+                className={cn(
+                  'hidden rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold sm:inline-flex',
+                  usingPhoneCam
+                    ? 'border-accent/50 bg-accent/20 text-accent-soft'
+                    : 'border-white/20 bg-white/10 text-mist/80',
+                )}
+              >
+                {usingPhoneCam ? 'Телефон' : 'Жду…'}
+              </span>
+            )}
             <button
               type="button"
               className={cn(
-                'grid h-[2.4rem] w-[2.4rem] place-items-center rounded-full border border-[var(--line)] bg-[var(--glass)] text-[var(--mist)] backdrop-blur-[14px]',
-                settingsOpen &&
-                  'border-[rgba(224,154,106,0.55)] bg-[rgba(224,154,106,0.2)] text-[#ffd9bd]',
+                'grid h-10 w-10 place-items-center rounded-full border backdrop-blur-md',
+                settingsOpen
+                  ? 'border-accent/55 bg-accent/20 text-accent-soft'
+                  : 'border-white/25 bg-white/12 text-paper',
               )}
-              aria-label="Настройки"
-              title="Настройки"
+              aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
+              title={settingsOpen ? 'К студии' : 'Настройки'}
+              aria-pressed={settingsOpen}
               onClick={() => setSettingsOpen((value) => !value)}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -457,27 +468,204 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       )}
 
       {!uiHidden && (
-        <aside className={controlsPanelClass}>
-          <div
-            className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-white/8 bg-[linear-gradient(180deg,rgba(28,36,40,0.92)_0%,rgba(28,36,40,0.78)_100%)] px-[0.55rem] pb-[0.45rem] pt-[0.55rem] backdrop-blur-[16px] [-webkit-backdrop-filter:blur(16px)]"
-            role="tablist"
-            aria-label="Панели студии"
-          >
-            {TABS.map(([id, label]) => (
+        <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
+          {settingsOpen ? (
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-3">
+              <p className={sectionTitleClass}>Настройки</p>
               <button
-                key={id}
                 type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={cn(tabBaseClass, tab === id && tabActiveClass)}
-                onClick={() => setTab(id)}
+                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.78rem] font-semibold text-paper"
+                onClick={() => setSettingsOpen(false)}
               >
-                {label}
+                К студии
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div
+              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-white/10 bg-[linear-gradient(180deg,rgba(28,36,40,0.94)_0%,rgba(28,36,40,0.82)_100%)] px-2 py-2 backdrop-blur-md"
+              role="tablist"
+              aria-label="Панели студии"
+            >
+              {TABS.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  className={cn(tabBaseClass, tab === id && tabActiveClass)}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
-          <div className="overflow-auto overscroll-contain px-[0.85rem] pb-[0.9rem] pt-3 [-webkit-overflow-scrolling:touch]">
+          <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
+            {settingsOpen ? (
+              <div className={panelClass}>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className={cn(
+                      'min-h-10 rounded-xl border text-sm font-semibold',
+                      settingsSection === 'link'
+                        ? 'border-accent/50 bg-accent/20 text-accent-soft'
+                        : 'border-white/15 bg-white/8 text-mist/85',
+                    )}
+                    onClick={() => setSettingsSection('link')}
+                  >
+                    Связь
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      'min-h-10 rounded-xl border text-sm font-semibold',
+                      settingsSection === 'keys'
+                        ? 'border-accent/50 bg-accent/20 text-accent-soft'
+                        : 'border-white/15 bg-white/8 text-mist/85',
+                    )}
+                    onClick={() => setSettingsSection('keys')}
+                  >
+                    Клавиши
+                  </button>
+                </div>
+
+                {settingsSection === 'link' && (
+                  <div className={panelClass}>
+                    <p className={sectionTitleClass}>Телефон как камера</p>
+                    <div className="grid gap-1.5 rounded-2xl border border-white/12 bg-ink-deep/45 px-3 py-3 text-[0.82rem] leading-snug text-mist/80">
+                      <p>
+                        <strong className="text-accent-soft">1.</strong> Создай комнату — появится код
+                      </p>
+                      <p>
+                        <strong className="text-accent-soft">2.</strong> На телефоне: «Телефон как
+                        камера» → введи код
+                      </p>
+                      <p>
+                        <strong className="text-accent-soft">3.</strong> Смотри «С камеры» и «В эфир»
+                        — 2K часто стабильнее 4K
+                      </p>
+                    </div>
+
+                    {roomEnabled ? (
+                      <>
+                        <div className="grid gap-1 rounded-2xl border border-white/20 bg-ink-deep/55 px-4 py-3.5 text-center">
+                          <span className="text-[0.75rem] text-[var(--text-muted)]">Код комнаты</span>
+                          <strong className="font-[family-name:var(--font-display)] text-[clamp(1.4rem,4vw,1.8rem)] font-extrabold tracking-[0.18em] text-paper">
+                            {roomCode}
+                          </strong>
+                        </div>
+                        <div className={rowClass}>
+                          <button
+                            type="button"
+                            className={chipNeutralClass}
+                            onClick={() => {
+                              void copyText(roomCode).then((ok) =>
+                                showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
+                              )
+                            }}
+                          >
+                            Копировать
+                          </button>
+                          <button
+                            type="button"
+                            className={chipNeutralClass}
+                            onClick={() => {
+                              const next = createRoomCode()
+                              setRoomCode(next)
+                              saveHostRoomCode(next)
+                              showToast('Новая комната')
+                            }}
+                          >
+                            Новый код
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              chipBaseClass,
+                              'border border-danger/40 bg-danger/15 text-danger-soft',
+                            )}
+                            onClick={() => setRoomEnabled(false)}
+                          >
+                            Отключить
+                          </button>
+                        </div>
+                        <p className={tipClass}>
+                          {room.status === 'connected'
+                            ? `Телефон подключён${trackInfo ? ` · ${trackInfo}` : ''}`
+                            : room.error || `Жду телефон… код ${roomCode}`}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={poseSaveClass}
+                          onClick={() => {
+                            if (!roomCode) {
+                              const next = createRoomCode()
+                              setRoomCode(next)
+                              saveHostRoomCode(next)
+                            }
+                            setRoomEnabled(true)
+                          }}
+                        >
+                          Создать комнату
+                        </button>
+                        <p className={tipClass}>
+                          Код только на ПК. Качество стрима выбирается на телефоне.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {settingsSection === 'keys' && (
+                  <div className={panelClass}>
+                    <p className={sectionTitleClass}>Горячие клавиши</p>
+                    <p className={tipClass}>
+                      Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.
+                    </p>
+                    <div className="grid gap-2">
+                      {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
+                        <div
+                          key={action}
+                          className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-white/12 bg-white/8 px-3 py-2.5"
+                        >
+                          <span className="text-[0.82rem] text-mist/85">{HOTKEY_LABELS[action]}</span>
+                          <button
+                            type="button"
+                            className={cn(
+                              'min-h-9 min-w-[4.5rem] rounded-[10px] border border-accent/40 px-2.5 text-[0.78rem] font-bold',
+                              listeningFor === action
+                                ? 'bg-accent/35 text-accent-ink'
+                                : 'bg-accent/15 text-accent-soft',
+                            )}
+                            onClick={() =>
+                              setListeningFor((prev) => (prev === action ? null : action))
+                            }
+                          >
+                            {listeningFor === action ? 'Нажми…' : formatHotkey(hotkeys[action])}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className={chipNeutralClass}
+                      onClick={() => {
+                        setHotkeys({ ...DEFAULT_HOTKEYS })
+                        showToast('Клавиши сброшены')
+                      }}
+                    >
+                      Сбросить по умолчанию
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
             {tab === 'main' && (
               <div className={panelClass}>
                 <div>
@@ -552,7 +740,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                   </button>
                 </div>
 
-                <div className={rowClass}>
+                <div className="grid grid-cols-2 gap-2">
                   <button type="button" className={chipNeutralClass} onClick={reset}>
                     Сброс
                   </button>
@@ -561,14 +749,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     className={chipAccentClass(locked)}
                     onClick={() => setLocked((value) => !value)}
                   >
-                    {locked ? 'Разблок.' : 'Фикс'}
-                  </button>
-                  <button
-                    type="button"
-                    className={chipNeutralClass}
-                    onClick={() => setUiHidden(true)}
-                  >
-                    Скрыть UI
+                    {locked ? 'Разблокировать' : 'Зафиксировать'}
                   </button>
                 </div>
               </div>
@@ -840,184 +1021,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                 )}
               </div>
             )}
-          </div>
-        </aside>
-      )}
-
-      {!uiHidden && settingsOpen && (
-        <aside className={settingsPanelClass} translate="no">
-          <div className="flex items-center justify-between gap-2 px-[0.85rem] pb-[0.55rem] pt-3">
-            <p className={sectionTitleClass}>Настройки</p>
-            <button
-              type="button"
-              className={glassButtonClass}
-              onClick={() => setSettingsOpen(false)}
-            >
-              Закрыть
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-[0.35rem] px-3 pb-[0.55rem]">
-            <button
-              type="button"
-              className={cn(
-                'min-h-[2.2rem] rounded-[12px] border text-[0.84rem] font-semibold',
-                settingsSection === 'link'
-                  ? 'border-[rgba(224,154,106,0.45)] bg-[rgba(224,154,106,0.18)] text-[#ffd9bd]'
-                  : 'border-[var(--line-soft)] bg-white/6 text-[rgba(231,238,240,0.75)]',
-              )}
-              onClick={() => setSettingsSection('link')}
-            >
-              Связь
-            </button>
-            <button
-              type="button"
-              className={cn(
-                'min-h-[2.2rem] rounded-[12px] border text-[0.84rem] font-semibold',
-                settingsSection === 'keys'
-                  ? 'border-[rgba(224,154,106,0.45)] bg-[rgba(224,154,106,0.18)] text-[#ffd9bd]'
-                  : 'border-[var(--line-soft)] bg-white/6 text-[rgba(231,238,240,0.75)]',
-              )}
-              onClick={() => setSettingsSection('keys')}
-            >
-              Клавиши
-            </button>
-          </div>
-
-          <div className="overflow-auto overscroll-contain px-[0.85rem] pb-[0.9rem]">
-            {settingsSection === 'link' && (
-              <div className={panelClass}>
-                <p className={sectionTitleClass}>Телефон как камера</p>
-                <div className="grid gap-[0.35rem] rounded-[14px] border border-[var(--line-soft)] bg-[rgba(20,26,29,0.28)] px-3 py-[0.7rem] text-[0.82rem] leading-[1.4] text-[rgba(231,238,240,0.78)]">
-                  <p>
-                    <strong className="text-[#ffd9bd]">1.</strong> Создай комнату здесь —
-                    появится код
-                  </p>
-                  <p>
-                    <strong className="text-[#ffd9bd]">2.</strong> На телефоне: «Телефон как
-                    камера» → введи код
-                  </p>
-                  <p>
-                    <strong className="text-[#ffd9bd]">3.</strong> На телефоне смотри «С камеры» и
-                    «В эфир» — 2K часто чётче 4K, если браузер жмёт кодирование
-                  </p>
-                </div>
-
-                {roomEnabled ? (
-                  <>
-                    <div className="grid gap-[0.35rem] rounded-2xl border border-[var(--line)] bg-[rgba(20,26,29,0.42)] px-[0.9rem] py-[0.85rem] text-center">
-                      <span className="text-[0.75rem] text-[var(--text-muted)]">
-                        Код комнаты
-                      </span>
-                      <strong className="font-[family-name:var(--font-display)] text-[clamp(1.4rem,4vw,1.8rem)] font-extrabold tracking-[0.18em] text-[var(--paper)]">
-                        {roomCode}
-                      </strong>
-                    </div>
-                    <div className={rowClass}>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        onClick={() => {
-                          void copyText(roomCode).then((ok) =>
-                            showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
-                          )
-                        }}
-                      >
-                        Копировать
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        onClick={() => {
-                          const next = createRoomCode()
-                          setRoomCode(next)
-                          saveHostRoomCode(next)
-                          showToast('Новая комната')
-                        }}
-                      >
-                        Новый код
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        onClick={() => setRoomEnabled(false)}
-                      >
-                        Закрыть
-                      </button>
-                    </div>
-                    <p className={tipClass}>
-                      {room.status === 'connected'
-                        ? `Телефон подключён${trackInfo ? ` · ${trackInfo}` : ''}`
-                        : room.error || `Жду телефон… код ${roomCode}`}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={poseSaveClass}
-                      onClick={() => {
-                        if (!roomCode) {
-                          const next = createRoomCode()
-                          setRoomCode(next)
-                          saveHostRoomCode(next)
-                        }
-                        setRoomEnabled(true)
-                      }}
-                    >
-                      Создать комнату
-                    </button>
-                    <p className={tipClass}>
-                      Код только на ПК. На телефоне его вводят. Качество — в экране камеры телефона.
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-
-            {settingsSection === 'keys' && (
-              <div className={panelClass}>
-                <p className={sectionTitleClass}>Горячие клавиши</p>
-                <p className={tipClass}>
-                  Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую клавишу.
-                </p>
-                <div className="grid gap-[0.45rem]">
-                  {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
-                    <div
-                      key={action}
-                      className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-[12px] border border-[var(--line-soft)] bg-white/6 px-[0.65rem] py-[0.55rem]"
-                    >
-                      <span className="text-[0.82rem] text-[rgba(231,238,240,0.82)]">
-                        {HOTKEY_LABELS[action]}
-                      </span>
-                      <button
-                        type="button"
-                        className={cn(
-                          'min-h-[2.2rem] min-w-[4.5rem] rounded-[10px] border border-[rgba(224,154,106,0.4)] px-[0.55rem] py-[0.3rem] text-[0.78rem] font-bold',
-                          listeningFor === action
-                            ? 'bg-[rgba(224,154,106,0.35)] text-[#1a1008]'
-                            : 'bg-[rgba(224,154,106,0.14)] text-[#ffd9bd]',
-                        )}
-                        onClick={() =>
-                          setListeningFor((prev) => (prev === action ? null : action))
-                        }
-                      >
-                        {listeningFor === action ? 'Нажми…' : formatHotkey(hotkeys[action])}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={chipNeutralClass}
-                  onClick={() => {
-                    setHotkeys({ ...DEFAULT_HOTKEYS })
-                    showToast('Клавиши сброшены')
-                  }}
-                >
-                  Сбросить по умолчанию
-                </button>
-              </div>
+              </>
             )}
           </div>
         </aside>
@@ -1025,7 +1029,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
       {!uiHidden && (
         <div
-          className="absolute bottom-[calc(var(--safe-bottom)_+_1rem)] left-4 z-[3] hidden rounded-[12px] border border-[var(--line)] bg-[rgba(20,26,29,0.55)] px-3 py-[0.55rem] text-[0.78rem] text-[rgba(231,238,240,0.8)] backdrop-blur-[12px] min-[960px]:block"
+          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-white/15 bg-ink-deep/60 px-3 py-2 text-[0.78rem] text-mist/80 backdrop-blur-md min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}
@@ -1035,7 +1039,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       )}
 
       {toast && (
-        <div className="absolute left-1/2 top-[calc(var(--safe-top)_+_4.2rem)] z-[5] -translate-x-1/2 whitespace-nowrap rounded-full border border-[var(--line)] bg-[var(--glass-strong)] px-[0.95rem] py-[0.65rem] text-[0.84rem] text-[var(--paper)] backdrop-blur-[16px] [-webkit-backdrop-filter:blur(16px)] animate-[rise-in_0.25s_ease_both]">
+        <div className="absolute left-1/2 top-[calc(var(--safe-top)+4.2rem)] z-[5] -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-white/16 px-4 py-2.5 text-[0.84rem] text-paper backdrop-blur-md animate-[rise-in_0.25s_ease_both]">
           {toast}
         </div>
       )}
@@ -1043,7 +1047,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       {uiHidden && (
         <button
           type="button"
-          className="absolute bottom-[calc(var(--safe-bottom)_+_0.25rem)] right-1 z-[6] h-12 w-12 rounded-full border border-white/6 bg-white/3 active:bg-white/10"
+          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-white/10 bg-white/5 active:bg-white/15"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
         />
