@@ -1,18 +1,23 @@
 import type { CalcModeSettings, GuideKind, GuideSettings } from '../../lib/studioTools'
-import { GUIDE_LABELS } from '../../lib/studioTools'
+import { GUIDE_LABELS, GUIDE_TITLES } from '../../lib/studioTools'
 import type { RefLayer } from '../../lib/layers'
 import type { SessionShot } from '../../lib/sessionGallery'
 import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
+import { StableLabel } from './StableLabel'
 import {
   chipAccentClass,
   chipFileClass,
   chipNeutralClass,
+  cn,
   hiddenFileInputClass,
+  mutedTextClass,
+  panelCardClass,
   panelClass,
   rangeInputClass,
   rowClass,
   sectionTitleClass,
   sliderLabelsClass,
+  toggleChipClass,
 } from './studioUi'
 
 const GUIDE_KIND_OPTIONS: GuideKind[] = ['none', 'thirds', 'face', 'figure']
@@ -81,15 +86,16 @@ export function MainPanel(props: MainPanelProps) {
         />
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+      <div className={panelCardClass}>
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div>
             <p className={sectionTitleClass}>Режим кальки</p>
-            <p className="mt-0.5 text-[0.72rem] text-mist/55">Подсвечивает лист через камеру</p>
+            <p className={`mt-0.5 ${mutedTextClass}`}>Подсвечивает лист через камеру</p>
           </div>
           <button
             type="button"
-            className={chipAccentClass(props.calcMode.enabled)}
+            className={`${chipAccentClass(props.calcMode.enabled)} ${toggleChipClass}`}
+            aria-pressed={props.calcMode.enabled}
             onClick={() =>
               props.onCalcMode((prev) => ({
                 ...prev,
@@ -97,7 +103,7 @@ export function MainPanel(props: MainPanelProps) {
               }))
             }
           >
-            {props.calcMode.enabled ? 'Вкл' : 'Выкл'}
+            <StableLabel active={props.calcMode.enabled} on="Вкл" off="Выкл" />
           </button>
         </div>
         {props.calcMode.enabled && (
@@ -144,13 +150,14 @@ export function MainPanel(props: MainPanelProps) {
         </div>
       )}
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+      <div className={panelCardClass}>
         <p className={sectionTitleClass}>Направляющие</p>
         <div className="grid grid-cols-4 gap-2">
           {GUIDE_KIND_OPTIONS.map((kind) => (
             <button
               key={kind}
               type="button"
+              title={GUIDE_TITLES[kind]}
               className={chipAccentClass(props.guides.kind === kind)}
               onClick={() => props.onGuides((prev) => ({ ...prev, kind }))}
             >
@@ -183,28 +190,39 @@ export function MainPanel(props: MainPanelProps) {
         )}
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+      <div className={panelCardClass}>
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div>
             <p className={sectionTitleClass}>Лупа</p>
-            <p className="mt-0.5 text-[0.72rem] text-mist/55">
+            <p className={`mt-0.5 ${mutedTextClass}`}>
               Круг показывает точку внимания, колесо зумит 2×
             </p>
           </div>
-          <button type="button" className={chipAccentClass(props.loupeOn)} onClick={props.onLoupeToggle}>
-            {props.loupeOn ? 'Вкл' : 'Выкл'}
+          <button
+            type="button"
+            className={`${chipAccentClass(props.loupeOn)} ${toggleChipClass}`}
+            aria-pressed={props.loupeOn}
+            onClick={props.onLoupeToggle}
+          >
+            <StableLabel active={props.loupeOn} on="Вкл" off="Выкл" />
           </button>
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
+      <div className={panelCardClass}>
+        <div className="flex min-h-8 items-center justify-between gap-2">
           <p className={sectionTitleClass}>Сессия</p>
-          {props.sessionRemainingLabel && (
-            <span className="rounded-full border border-accent/35 bg-accent/15 px-2.5 py-1 text-[0.78rem] font-bold text-accent-soft">
-              {props.sessionRemainingLabel}
-            </span>
-          )}
+          <span
+            className={cn(
+              'min-w-[3.5rem] rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold [font-variant-numeric:tabular-nums]',
+              props.sessionRemainingLabel
+                ? 'border-accent/35 bg-accent/15 text-[var(--chip-accent-fg)]'
+                : 'border-transparent text-transparent',
+            )}
+            aria-hidden={!props.sessionRemainingLabel}
+          >
+            {props.sessionRemainingLabel ?? '0:00'}
+          </span>
         </div>
         <div className={rowClass}>
           {SESSION_OPTIONS.map((minutes) => (
@@ -220,10 +238,11 @@ export function MainPanel(props: MainPanelProps) {
         </div>
         {props.galleryEnabled && (
           <>
-            <label className="flex items-center justify-between gap-2 text-[0.78rem] text-mist/75">
-              <span>Авто-снимок «до» при старте</span>
+            <label className="flex min-h-8 items-center justify-between gap-2 text-[0.78rem] text-[var(--fg-muted)]">
+              <span className="min-w-0 leading-snug">Авто-снимок «до»</span>
               <input
                 type="checkbox"
+                className="shrink-0"
                 checked={props.autoSessionShot}
                 onChange={(event) => props.onAutoSessionShot(event.target.checked)}
               />
@@ -247,12 +266,12 @@ export function MainPanel(props: MainPanelProps) {
                   <button
                     key={shot.id}
                     type="button"
-                    className="relative h-16 w-16 flex-none overflow-hidden rounded-xl border border-white/20"
+                    className="relative h-16 w-16 flex-none overflow-hidden rounded-xl border border-[var(--glass-border)]"
                     title={`${SHOT_KIND_LABEL[shot.kind]} · скачать`}
                     onClick={() => props.onDownloadShot(shot)}
                   >
                     <img src={shot.dataUrl} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute inset-x-0 bottom-0 bg-ink-deep/70 text-center text-[0.62rem] text-paper">
+                    <span className="absolute inset-x-0 bottom-0 bg-[color-mix(in_srgb,var(--ink-deep)_75%,transparent)] text-center text-[0.62rem] text-[var(--fg-strong)]">
                       {SHOT_KIND_LABEL[shot.kind]}
                     </span>
                   </button>
@@ -264,25 +283,32 @@ export function MainPanel(props: MainPanelProps) {
       </div>
 
       {props.layersEnabled && props.layers.length > 0 && (
-        <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+        <div className={panelCardClass}>
           <p className={sectionTitleClass}>Слои референса</p>
           {props.layers.map((layer) => (
-            <div key={layer.id} className="grid gap-1.5 rounded-xl border border-white/10 bg-white/6 px-2.5 py-2">
+            <div
+              key={layer.id}
+              className="grid gap-1.5 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-2.5 py-2"
+            >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[0.82rem] font-semibold text-paper">{layer.name}</span>
+                <span className="truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
+                  {layer.name}
+                </span>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    className={chipAccentClass(layer.visible)}
+                    className={`${chipAccentClass(layer.visible)} ${toggleChipClass}`}
+                    aria-pressed={layer.visible}
                     onClick={() => props.onLayerVisible(layer.id)}
                   >
-                    {layer.visible ? 'Вкл' : 'Выкл'}
+                    <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
                   </button>
                   {layer.kind === 'aux' && (
                     <button
                       type="button"
-                      className={chipNeutralClass}
+                      className={`${chipNeutralClass} w-10 shrink-0`}
                       onClick={() => props.onRemoveLayer(layer.id)}
+                      aria-label={`Удалить ${layer.name}`}
                     >
                       ×
                     </button>
@@ -301,7 +327,7 @@ export function MainPanel(props: MainPanelProps) {
               />
             </div>
           ))}
-          <p className="text-center text-[0.72rem] text-mist/55">
+          <p className={`text-center ${mutedTextClass}`}>
             Галерея/камера добавят вспомогательный слой, если основной занят
           </p>
         </div>
@@ -312,13 +338,15 @@ export function MainPanel(props: MainPanelProps) {
           <button
             type="button"
             className={chipAccentClass(props.remoteFrozen)}
+            aria-pressed={props.remoteFrozen}
             onClick={props.onToggleFreeze}
           >
-            {props.remoteFrozen ? 'Разморозить' : 'Заморозить на телефоне'}
+            Заморозка
           </button>
           <button
             type="button"
             className={chipAccentClass(props.remoteTorch)}
+            aria-pressed={props.remoteTorch}
             onClick={props.onToggleTorch}
           >
             Фонарик
@@ -329,7 +357,7 @@ export function MainPanel(props: MainPanelProps) {
       <div className="grid grid-cols-[auto_1fr] items-center gap-[0.85rem] px-[0.15rem] pb-[0.05rem] pt-[0.15rem]">
         <button
           type="button"
-          className="group grid h-[4.1rem] w-[4.1rem] place-items-center rounded-full border-2 border-white/55 bg-white/14 backdrop-blur-[8px] disabled:cursor-not-allowed disabled:opacity-45"
+          className="group grid h-[4.1rem] w-[4.1rem] place-items-center rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-fill-mid)] backdrop-blur-[8px] disabled:cursor-not-allowed disabled:opacity-45"
           onClick={props.onCapture}
           disabled={!props.ready || props.capturing}
           aria-label="Сфотографировать композит"
@@ -337,10 +365,10 @@ export function MainPanel(props: MainPanelProps) {
           <span className="h-[3.1rem] w-[3.1rem] rounded-full bg-[rgba(245,247,248,0.92)] shadow-[inset_0_0_0_2px_rgba(20,26,29,0.08)] transition-transform group-active:scale-[0.92]" />
         </button>
         <div>
-          <p className="font-[family-name:var(--font-display)] text-base font-bold text-[var(--paper)]">
+          <p className="font-[family-name:var(--font-display)] text-base font-bold text-[var(--fg-strong)]">
             Снять фото
           </p>
-          <p className="mt-[0.15rem] text-[0.82rem] text-[var(--text-muted)]">
+          <p className="mt-[0.15rem] text-[0.82rem] text-[var(--fg-muted)]">
             Камера + референс → сохранить
           </p>
         </div>
@@ -372,8 +400,13 @@ export function MainPanel(props: MainPanelProps) {
             }}
           />
         </label>
-        <button type="button" className={chipNeutralClass} onClick={props.onFlip}>
-          {props.flipped ? 'Отражено' : 'Отразить'}
+        <button
+          type="button"
+          className={chipAccentClass(props.flipped)}
+          aria-pressed={props.flipped}
+          onClick={props.onFlip}
+        >
+          Отражение
         </button>
       </div>
 
@@ -381,8 +414,13 @@ export function MainPanel(props: MainPanelProps) {
         <button type="button" className={chipNeutralClass} onClick={props.onReset}>
           Сброс
         </button>
-        <button type="button" className={chipAccentClass(props.locked)} onClick={props.onToggleLock}>
-          {props.locked ? 'Разблокировать' : 'Зафиксировать'}
+        <button
+          type="button"
+          className={chipAccentClass(props.locked)}
+          aria-pressed={props.locked}
+          onClick={props.onToggleLock}
+        >
+          Фиксация
         </button>
       </div>
     </div>

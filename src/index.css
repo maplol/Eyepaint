@@ -16,7 +16,8 @@
 }
 
 @layer base {
-  :root {
+  :root,
+  [data-atmosphere='dark'] {
     --ink: #1c2428;
     --ink-deep: #141a1d;
     --mist: #e7eef0;
@@ -30,14 +31,45 @@
     --glass-dark: rgba(20, 26, 29, 0.38);
     --text-muted: rgba(231, 238, 240, 0.68);
     --danger: #ef8b8b;
+    --danger-soft: #ffb4b4;
+
+    /* Semantic UI tokens (flip with atmosphere) */
+    --fg: #e7eef0;
+    --fg-strong: #f5f7f8;
+    --fg-muted: rgba(231, 238, 240, 0.68);
+    --fg-faint: rgba(231, 238, 240, 0.55);
+    --fg-slider: rgba(231, 238, 240, 0.82);
+    --chip-accent-fg: #ffd9bd;
+    --chip-accent-fg-active: #2a1a10;
+    --chip-accent-bg: rgba(224, 154, 106, 0.22);
+    --chip-accent-bg-active: rgba(224, 154, 106, 0.9);
+    --chip-accent-border: rgba(224, 154, 106, 0.45);
+    --glass-fill: rgba(255, 255, 255, 0.08);
+    --glass-fill-mid: rgba(255, 255, 255, 0.12);
+    --glass-fill-strong: rgba(255, 255, 255, 0.16);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-border-soft: rgba(255, 255, 255, 0.1);
+    --header-fade: linear-gradient(to bottom, rgba(20, 26, 29, 0.55), transparent);
+    --dock-bg: linear-gradient(
+      170deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.08) 100%
+    );
+    --tab-strip-bg: linear-gradient(
+      180deg,
+      rgba(28, 36, 40, 0.94) 0%,
+      rgba(28, 36, 40, 0.82) 100%
+    );
+    --panel-inset-bg: rgba(20, 26, 29, 0.28);
+    --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
+
     --font-display: 'Outfit', sans-serif;
     --font-body: 'Manrope', sans-serif;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --radius-lg: 24px;
     --radius-md: 16px;
-    --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
-    color: var(--mist);
+    color: var(--fg);
     background: var(--ink);
     font-family: var(--font-body);
     font-synthesis: none;
@@ -55,17 +87,53 @@
     min-height: 100dvh;
     overflow: hidden;
     background: var(--ink-deep);
+    color: var(--fg);
   }
 
   [data-atmosphere='light'] {
-    --ink: #e8eef0;
-    --ink-deep: #d5dde2;
+    --ink: #e7eef1;
+    --ink-deep: #ced6db;
     --mist: #1c2428;
-    --paper: #141a1d;
-    --text-muted: rgba(28, 36, 40, 0.68);
-    --line: rgba(20, 26, 29, 0.18);
-    --line-soft: rgba(20, 26, 29, 0.1);
-    color: var(--mist);
+    --paper: #12171a;
+    --accent-soft: rgba(224, 154, 106, 0.28);
+    --line: rgba(18, 23, 26, 0.2);
+    --line-soft: rgba(18, 23, 26, 0.12);
+    --glass: rgba(255, 255, 255, 0.55);
+    --glass-strong: rgba(255, 255, 255, 0.72);
+    --glass-dark: rgba(255, 255, 255, 0.45);
+    --text-muted: rgba(18, 23, 26, 0.68);
+    --danger: #c44b4b;
+    --danger-soft: #a33a3a;
+
+    --fg: #1c2428;
+    --fg-strong: #12171a;
+    --fg-muted: rgba(18, 23, 26, 0.68);
+    --fg-faint: rgba(18, 23, 26, 0.55);
+    --fg-slider: rgba(18, 23, 26, 0.82);
+    --chip-accent-fg: #6b3a18;
+    --chip-accent-fg-active: #2a1a10;
+    --chip-accent-bg: rgba(224, 154, 106, 0.3);
+    --chip-accent-bg-active: rgba(224, 154, 106, 0.92);
+    --chip-accent-border: rgba(160, 90, 40, 0.45);
+    --glass-fill: rgba(255, 255, 255, 0.55);
+    --glass-fill-mid: rgba(255, 255, 255, 0.68);
+    --glass-fill-strong: rgba(255, 255, 255, 0.82);
+    --glass-border: rgba(18, 23, 26, 0.16);
+    --glass-border-soft: rgba(18, 23, 26, 0.1);
+    --header-fade: linear-gradient(to bottom, rgba(206, 214, 219, 0.82), transparent);
+    --dock-bg: linear-gradient(
+      170deg,
+      rgba(255, 255, 255, 0.86) 0%,
+      rgba(245, 247, 248, 0.72) 100%
+    );
+    --tab-strip-bg: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.96) 0%,
+      rgba(245, 247, 248, 0.9) 100%
+    );
+    --panel-inset-bg: rgba(255, 255, 255, 0.45);
+    --shadow-glass: 0 12px 36px rgba(12, 16, 18, 0.12);
+    color: var(--fg);
   }
 
   button {

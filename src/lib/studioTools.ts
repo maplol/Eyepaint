@@ -32,8 +32,15 @@ export const DEFAULT_GUIDES: GuideSettings = {
 }
 
 export const GUIDE_LABELS: Record<GuideKind, string> = {
-  none: 'Выкл',
-  thirds: 'Сетка 3×3',
+  none: 'Нет',
+  thirds: '3×3',
   face: 'Лицо',
-  figure: 'Фигура',
+  figure: 'Рост',
+}
+
+export const GUIDE_TITLES: Record<GuideKind, string> = {
+  none: 'Без направляющих',
+  thirds: 'Сетка 3×3',
+  face: 'Оси лица',
+  figure: 'Пропорции фигуры',
 }
