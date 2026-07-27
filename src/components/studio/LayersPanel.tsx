@@ -13,6 +13,7 @@ import {
   cn,
   glassButtonClass,
   hiddenFileInputClass,
+  layerRowClass,
   layersColumnPanelClass,
   layersSheetClass,
   mutedTextClass,
@@ -20,7 +21,6 @@ import {
   rowClass,
   scrollAreaClass,
   sectionTitleClass,
-  toggleChipClass,
 } from './studioUi'
 
 const LAYERS_OPEN_KEY = 'eyepaint-layers-sheet-open-v1'
@@ -241,16 +241,14 @@ export function LayersPanel(props: LayersPanelProps) {
 
     const nextGhost: DragGhost = {
       id: layer.id,
-      width: rect.width,
-      height: rect.height,
+      width: Math.max(rect.width, 200),
+      height: 44,
       grabX,
-      grabY,
+      grabY: Math.min(grabY, 22),
       pointerX: event.clientX,
       pointerY: event.clientY,
       name: layer.name,
-      hint: isActive
-        ? `Активен · ${stackHint || 'редактирование'}`
-        : `Нажми · ${stackHint || 'выбрать'}`,
+      hint: isActive ? `Активен · ${stackHint || 'edit'}` : stackHint || 'выбрать',
       active: isActive,
     }
 
@@ -377,8 +375,7 @@ export function LayersPanel(props: LayersPanelProps) {
                   if (node) itemRefs.current.set(layer.id, node)
                   else itemRefs.current.delete(layer.id)
                 }}
-                className="rounded-xl border border-dashed border-accent/45 bg-accent/10"
-                style={{ height: ghost.height }}
+                className="h-11 rounded-xl border border-dashed border-accent/45 bg-accent/10"
                 aria-hidden="true"
               />
             )
@@ -392,7 +389,7 @@ export function LayersPanel(props: LayersPanelProps) {
                 else itemRefs.current.delete(layer.id)
               }}
               className={cn(
-                'grid gap-1.5 rounded-xl border px-2 py-2 transition-[border-color,background-color,transform]',
+                layerRowClass,
                 isActive
                   ? 'border-accent/45 bg-accent/10'
                   : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)]',
@@ -404,78 +401,45 @@ export function LayersPanel(props: LayersPanelProps) {
                 openLayerMenu(layer.id, new DOMRect(event.clientX, event.clientY, 0, 0))
               }}
             >
-              <div className="flex items-center gap-1.5">
-                {canReorder && (
-                  <button
-                    type="button"
-                    className="grid h-9 w-8 shrink-0 touch-none cursor-grab place-items-center rounded-lg text-[var(--fg-faint)] active:cursor-grabbing"
-                    aria-label={`Перетащить ${layer.name}`}
-                    title="Перетащить"
-                    onPointerDown={(event) => onHandlePointerDown(event, layer)}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="text-[0.95rem] leading-none tracking-[-0.12em]"
-                    >
-                      ≡
-                    </span>
-                  </button>
-                )}
-
+              {canReorder ? (
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left"
-                  onClick={() => {
-                    props.onSelectLayer(layer.id)
-                    setMenu(null)
-                  }}
-                  aria-pressed={isActive}
-                  aria-current={isActive ? 'true' : undefined}
+                  className="grid h-8 w-7 shrink-0 touch-none cursor-grab place-items-center rounded-lg text-[var(--fg-faint)] active:cursor-grabbing"
+                  aria-label={`Перетащить ${layer.name}`}
+                  title="Перетащить"
+                  onPointerDown={(event) => onHandlePointerDown(event, layer)}
                 >
-                  <span className="block truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
-                    {layer.name}
-                  </span>
-                  <span className="block text-[0.68rem] text-[var(--fg-faint)]">
-                    {isActive
-                      ? `Активен · ${stackHint || 'редактирование'}`
-                      : `Нажми · ${stackHint || 'выбрать'}`}
+                  <span
+                    aria-hidden="true"
+                    className="text-[0.9rem] leading-none tracking-[-0.12em]"
+                  >
+                    ≡
                   </span>
                 </button>
+              ) : (
+                <span className="w-1" aria-hidden="true" />
+              )}
 
-                <div className="flex shrink-0 gap-1">
-                  <button
-                    type="button"
-                    className={`${chipAccentClass(layer.visible)} ${toggleChipClass}`}
-                    aria-pressed={layer.visible}
-                    onClick={() => props.onLayerVisible(layer.id)}
-                  >
-                    <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={cn(chipNeutralClass, 'w-10 shrink-0')}
-                    aria-label={`Меню слоя ${layer.name}`}
-                    aria-haspopup="menu"
-                    aria-expanded={menuOpen}
-                    aria-controls={menuOpen ? `${menuRootId}-menu` : undefined}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      props.onSelectLayer(layer.id)
-                      if (menuOpen) {
-                        setMenu(null)
-                        return
-                      }
-                      openLayerMenu(layer.id, event.currentTarget.getBoundingClientRect())
-                    }}
-                  >
-                    ⋮
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="min-w-0 text-left"
+                onClick={() => {
+                  props.onSelectLayer(layer.id)
+                  setMenu(null)
+                }}
+                aria-pressed={isActive}
+                aria-current={isActive ? 'true' : undefined}
+              >
+                <span className="block truncate text-[0.78rem] font-semibold text-[var(--fg-strong)]">
+                  {layer.name}
+                </span>
+                <span className="block truncate text-[0.62rem] text-[var(--fg-faint)]">
+                  {isActive ? `Активен · ${stackHint || 'edit'}` : stackHint || 'выбрать'}
+                </span>
+              </button>
 
               <input
-                className={rangeInputClass}
+                className={cn(rangeInputClass, 'h-7')}
                 type="range"
                 min={0.05}
                 max={1}
@@ -486,6 +450,40 @@ export function LayersPanel(props: LayersPanelProps) {
                 }
                 aria-label={`Прозрачность ${layer.name}`}
               />
+
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className={cn(
+                    chipAccentClass(layer.visible),
+                    'min-h-8 w-10 rounded-lg px-0 py-0 text-[0.72rem]',
+                  )}
+                  aria-pressed={layer.visible}
+                  onClick={() => props.onLayerVisible(layer.id)}
+                >
+                  <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
+                </button>
+
+                <button
+                  type="button"
+                  className={cn(chipNeutralClass, 'min-h-8 w-8 shrink-0 rounded-lg px-0 py-0')}
+                  aria-label={`Меню слоя ${layer.name}`}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  aria-controls={menuOpen ? `${menuRootId}-menu` : undefined}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    props.onSelectLayer(layer.id)
+                    if (menuOpen) {
+                      setMenu(null)
+                      return
+                    }
+                    openLayerMenu(layer.id, event.currentTarget.getBoundingClientRect())
+                  }}
+                >
+                  ⋮
+                </button>
+              </div>
             </li>
           )
         })}
@@ -564,7 +562,7 @@ export function LayersPanel(props: LayersPanelProps) {
           <div
             ref={ghostNodeRef}
             className={cn(
-              'pointer-events-none fixed z-[90] grid gap-1.5 rounded-xl border px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.35)]',
+              'pointer-events-none fixed z-[90] flex items-center gap-1.5 rounded-xl border px-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.35)]',
               ghost.active
                 ? 'border-accent/55 bg-[color-mix(in_srgb,var(--panel-inset-bg)_92%,var(--accent)_8%)]'
                 : 'border-[var(--glass-border)] bg-[var(--panel-inset-bg)]',
@@ -579,20 +577,20 @@ export function LayersPanel(props: LayersPanelProps) {
             }}
             aria-hidden="true"
           >
-            <div className="flex items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-[var(--fg-faint)]"
-              >
-                ≡
+            <span
+              aria-hidden="true"
+              className="grid h-8 w-7 shrink-0 place-items-center text-[var(--fg-faint)]"
+            >
+              ≡
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[0.78rem] font-semibold text-[var(--fg-strong)]">
+                {ghost.name}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
-                  {ghost.name}
-                </span>
-                <span className="block text-[0.68rem] text-[var(--fg-faint)]">{ghost.hint}</span>
+              <span className="block truncate text-[0.62rem] text-[var(--fg-faint)]">
+                {ghost.hint}
               </span>
-            </div>
+            </span>
           </div>,
           document.body,
         )}
