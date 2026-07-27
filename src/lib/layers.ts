@@ -1,9 +1,17 @@
+import {
+  DEFAULT_TRANSFORM,
+  type OverlayTransform,
+} from '../hooks/useOverlayTransform'
+
 export type RefLayer = {
   id: string
   url: string
   name: string
   opacity: number
   visible: boolean
+  /** Independent pose for this reference */
+  transform: OverlayTransform
+  flipped: boolean
   /** Primary comes from Studio props; aux are local blobs */
   kind: 'primary' | 'aux'
 }
@@ -17,18 +25,27 @@ export function createPrimaryLayer(url: string): RefLayer {
     name: 'Основной',
     opacity: 1,
     visible: true,
+    transform: { ...DEFAULT_TRANSFORM },
+    flipped: false,
     kind: 'primary',
   }
 }
 
 export function createAuxLayer(url: string, name: string, existing: RefLayer[]): RefLayer | null {
   if (existing.length >= MAX_LAYERS) return null
+  const offset = existing.length * 28
   return {
     id: `aux-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     url,
     name,
     opacity: 0.55,
     visible: true,
+    transform: {
+      ...DEFAULT_TRANSFORM,
+      x: offset,
+      y: offset,
+    },
+    flipped: false,
     kind: 'aux',
   }
 }
@@ -56,4 +73,16 @@ export function revokeAuxUrls(layers: RefLayer[], keepIds?: Set<string>) {
 
 export function canAddAux(layers: RefLayer[]) {
   return layers.length < MAX_LAYERS
+}
+
+export function patchLayerTransform(
+  layers: RefLayer[],
+  layerId: string,
+  update: OverlayTransform | ((prev: OverlayTransform) => OverlayTransform),
+): RefLayer[] {
+  return layers.map((layer) => {
+    if (layer.id !== layerId) return layer
+    const next = typeof update === 'function' ? update(layer.transform) : update
+    return { ...layer, transform: next }
+  })
 }

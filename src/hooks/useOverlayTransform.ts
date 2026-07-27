@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  type Dispatch,
+  type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
+} from 'react'
 import type { HotkeyAction } from '../lib/hotkeys'
 
 export type OverlayTransform = {
@@ -50,8 +56,13 @@ export function buildOverlayCssTransform(transform: OverlayTransform, flipped: b
   ].join(' ')
 }
 
-export function useOverlayTransform(locked: boolean, dragMode: HotkeyAction = 'pan') {
-  const [transform, setTransform] = useState<OverlayTransform>(DEFAULT_TRANSFORM)
+/** Controlled transform — caller owns state (e.g. per reference layer). */
+export function useOverlayTransform(
+  locked: boolean,
+  dragMode: HotkeyAction = 'pan',
+  transform: OverlayTransform,
+  setTransform: Dispatch<SetStateAction<OverlayTransform>>,
+) {
   const transformRef = useRef(transform)
   const dragModeRef = useRef(dragMode)
   const pointersRef = useRef<Map<number, PointerSample>>(new Map())
@@ -73,7 +84,7 @@ export function useOverlayTransform(locked: boolean, dragMode: HotkeyAction = 'p
     dragModeRef.current = dragMode
   }, [dragMode])
 
-  const reset = () => setTransform(DEFAULT_TRANSFORM)
+  const reset = () => setTransform({ ...DEFAULT_TRANSFORM })
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (locked) return
@@ -173,16 +184,11 @@ export function useOverlayTransform(locked: boolean, dragMode: HotkeyAction = 'p
 
       setTransform({
         ...gesture.startTransform,
-        x:
-          gesture.startTransform.x +
-          (nextMid.x - (gesture.startMid?.x ?? nextMid.x)),
-        y:
-          gesture.startTransform.y +
-          (nextMid.y - (gesture.startMid?.y ?? nextMid.y)),
+        x: gesture.startTransform.x + (nextMid.x - (gesture.startMid?.x ?? nextMid.x)),
+        y: gesture.startTransform.y + (nextMid.y - (gesture.startMid?.y ?? nextMid.y)),
         scale: Math.min(6, Math.max(0.2, gesture.startTransform.scale * scaleFactor)),
         rotation:
-          gesture.startTransform.rotation +
-          (nextAngle - (gesture.startAngle ?? nextAngle)),
+          gesture.startTransform.rotation + (nextAngle - (gesture.startAngle ?? nextAngle)),
       })
     }
   }
@@ -224,8 +230,6 @@ export function useOverlayTransform(locked: boolean, dragMode: HotkeyAction = 'p
   }
 
   return {
-    transform,
-    setTransform,
     reset,
     handlers: {
       onPointerDown,

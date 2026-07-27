@@ -342,7 +342,9 @@ export function MainPanel(props: MainPanelProps) {
       {props.layersEnabled && props.layers.length > 0 && (
         <div className={panelCardClass}>
           <p className={sectionTitleClass}>Слои референса</p>
-          <p className={mutedTextClass}>Выбери слой — палитра и фильтр цветов работают по нему</p>
+          <p className={mutedTextClass}>
+            Активный слой: цвета, движение, поворот и масштаб — только у него
+          </p>
           {props.layers.map((layer) => {
             const isActive = props.activeLayerId === layer.id
             return (
@@ -366,7 +368,7 @@ export function MainPanel(props: MainPanelProps) {
                       {layer.name}
                     </span>
                     <span className="block text-[0.68rem] text-[var(--fg-faint)]">
-                      {isActive ? 'Цвета · активный' : 'Нажми, чтобы править цвета'}
+                      {isActive ? 'Активен · двигай / цвета' : 'Нажми, чтобы двигать'}
                     </span>
                   </button>
                   <div className="flex gap-1.5">

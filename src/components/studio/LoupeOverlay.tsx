@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
-import { buildOverlayCssTransform, type OverlayTransform } from '../../hooks/useOverlayTransform'
+import { buildOverlayCssTransform } from '../../hooks/useOverlayTransform'
 import type { RefLayer } from '../../lib/layers'
 
 type LoupeOverlayProps = {
@@ -10,13 +10,10 @@ type LoupeOverlayProps = {
   pos: { x: number; y: number }
   stageRef: RefObject<HTMLDivElement | null>
   sourceVideoRef: RefObject<HTMLVideoElement | null>
-  displayUrl: string
-  transform: OverlayTransform
-  flipped: boolean
+  primaryLayer: RefLayer | null
+  primaryDisplayUrl: string
   opacity: number
-  primaryVisible: boolean
-  primaryOpacity: number
-  framed: boolean
+  framedPrimary: boolean
   calcFilter?: string
   auxLayers: RefLayer[]
 }
@@ -28,13 +25,10 @@ export function LoupeOverlay({
   pos,
   stageRef,
   sourceVideoRef,
-  displayUrl,
-  transform,
-  flipped,
+  primaryLayer,
+  primaryDisplayUrl,
   opacity,
-  primaryVisible,
-  primaryOpacity,
-  framed,
+  framedPrimary,
   calcFilter,
   auxLayers,
 }: LoupeOverlayProps) {
@@ -106,20 +100,20 @@ export function LoupeOverlay({
           autoPlay
         />
 
-        {primaryVisible && (
+        {primaryLayer?.visible && (
           <div
             className={
-              framed
+              framedPrimary
                 ? 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)] rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]'
                 : 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]'
             }
             style={{
-              opacity: opacity * primaryOpacity,
-              transform: buildOverlayCssTransform(transform, flipped),
+              opacity: opacity * primaryLayer.opacity,
+              transform: buildOverlayCssTransform(primaryLayer.transform, primaryLayer.flipped),
             }}
           >
             <img
-              src={displayUrl}
+              src={primaryDisplayUrl}
               alt=""
               draggable={false}
               className="h-auto max-h-[75dvh] w-full object-contain"
@@ -127,20 +121,13 @@ export function LoupeOverlay({
           </div>
         )}
 
-        {auxLayers.map((layer, index) => (
+        {auxLayers.map((layer) => (
           <div
             key={layer.id}
             className="absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]"
             style={{
               opacity: opacity * layer.opacity,
-              transform: buildOverlayCssTransform(
-                {
-                  ...transform,
-                  x: transform.x + (index + 1) * 8,
-                  y: transform.y + (index + 1) * 8,
-                },
-                flipped,
-              ),
+              transform: buildOverlayCssTransform(layer.transform, layer.flipped),
             }}
           >
             <img
