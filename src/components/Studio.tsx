@@ -1640,7 +1640,7 @@ export function Studio({
 
       {!uiHidden && desktopLayout && !showToolInspector && (
         <div
-          className="pointer-events-none absolute left-[4.5rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
+          className="pointer-events-none absolute left-[4.75rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}

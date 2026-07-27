@@ -83,16 +83,16 @@ export const STUDIO_TOOL_LABELS: Record<StudioToolId, string> = {
 
 /** Outer shell — mobile bottom stack */
 export const dockShellClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.25rem] right-3 z-[3] flex max-h-[min(54dvh,480px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[3.6rem]'
+  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.75rem] right-3 z-[3] flex max-h-[min(54dvh,480px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[4.1rem]'
 
 export const dockClass = cn(
   'flex min-h-0 max-h-[min(50dvh,460px)] flex-1 flex-col overflow-hidden rounded-3xl',
   glassSurfaceClass,
 )
 
-/** Compact vertical tool rail — centered */
+/** Compact vertical tool rail — без скролла; ширина ≥ кнопка + padding */
 export const toolRailClass = cn(
-  'absolute left-2 top-1/2 z-[5] flex w-11 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl p-1.5 animate-[rise-in_0.35s_ease_both] sm:left-3 min-[960px]:w-12',
+  'absolute left-2 top-1/2 z-[5] flex w-12 -translate-y-1/2 flex-col items-center gap-1 overflow-hidden overscroll-none rounded-2xl p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-[rise-in_0.35s_ease_both] sm:left-3 min-[960px]:w-[3.25rem]',
   glassSurfaceClass,
 )
 
@@ -104,7 +104,7 @@ export const toolRailBtnActiveClass =
 
 /** Left tool settings */
 export const toolInspectorClass = cn(
-  'absolute left-[3.55rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.1rem] min-[960px]:flex sm:left-[3.9rem]',
+  'absolute left-[3.75rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.35rem] min-[960px]:flex sm:left-[4.1rem]',
   glassSurfaceClass,
 )
 
