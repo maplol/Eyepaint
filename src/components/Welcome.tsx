@@ -1,15 +1,20 @@
+import { LESSONS, type LessonCard } from '../lib/lessons'
+import { loadFlags } from '../lib/flags'
+
 type WelcomeProps = {
   onPickImage: (file: File) => void
   onStartCameraRoom: () => void
+  onStartLesson?: (lesson: LessonCard) => void
 }
 
 const ctaBase =
   'inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full px-5 py-3.5 font-bold tracking-[0.01em] transition-[transform,background] duration-150 active:scale-[0.98]'
 
-export function Welcome({ onPickImage, onStartCameraRoom }: WelcomeProps) {
+export function Welcome({ onPickImage, onStartCameraRoom, onStartLesson }: WelcomeProps) {
   const handleFile = (file: File | undefined) => {
     if (file) onPickImage(file)
   }
+  const lessonsEnabled = loadFlags().lessons
 
   return (
     <section className="relative isolate grid min-h-dvh overflow-hidden px-4 py-[calc(var(--safe-top)+1.5rem)] pb-[calc(var(--safe-bottom)+1.5rem)] text-paper md:pl-[clamp(2rem,8vw,7rem)]">
@@ -75,6 +80,25 @@ export function Welcome({ onPickImage, onStartCameraRoom }: WelcomeProps) {
               Телефон как камера
             </button>
           </div>
+
+          {lessonsEnabled && onStartLesson && (
+            <div className="mt-5 grid gap-2">
+              <p className="text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-mist/55">
+                Уроки
+              </p>
+              {LESSONS.map((lesson) => (
+                <button
+                  key={lesson.id}
+                  type="button"
+                  className="rounded-2xl border border-white/15 bg-white/8 px-3.5 py-3 text-left transition-colors hover:bg-white/12"
+                  onClick={() => onStartLesson(lesson)}
+                >
+                  <p className="text-[0.92rem] font-bold text-paper">{lesson.title}</p>
+                  <p className="mt-0.5 text-[0.78rem] text-mist/60">{lesson.description}</p>
+                </button>
+              ))}
+            </div>
+          )}
 
           <p className="mt-4 text-[0.84rem] text-mist/50">
             Порядок связи: ПК создаёт комнату (код) → телефон вводит этот код и стримит камеру.

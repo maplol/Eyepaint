@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { joinRoom, type Room } from '@trystero-p2p/mqtt'
 import { normalizeRoomCode, roomTopicId } from '../lib/rooms'
+import {
+  ROOM_COMMAND_ACTION,
+  isRoomCommand,
+  type RoomCommand,
+} from '../lib/roomCommands'
 import {
   applySenderBitrate,
   describeOutbound,
@@ -16,12 +21,17 @@ type UseRoomPeerArgs = {
   role: RoomRole
   code: string
   localStream?: MediaStream | null
-  /** Target WebRTC video bitrate for the phone sender. */
   maxBitrate?: number
   maxFramerate?: number
+  onCommand?: (command: RoomCommand) => void
 }
 
 type RoomStatus = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
+
+type CommandAction = {
+  send: (data: RoomCommand) => Promise<void>
+  onMessage: ((data: RoomCommand, context: { peerId: string }) => void) | null
+}
 
 export function useRoomPeer({
   enabled,
@@ -30,19 +40,23 @@ export function useRoomPeer({
   localStream = null,
   maxBitrate = 10_000_000,
   maxFramerate = 30,
+  onCommand,
 }: UseRoomPeerArgs) {
   const [status, setStatus] = useState<RoomStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const [outboundInfo, setOutboundInfo] = useState<OutboundVideoInfo | null>(null)
   const roomRef = useRef<Room | null>(null)
+  const commandActionRef = useRef<CommandAction | null>(null)
   const localStreamRef = useRef(localStream)
   const bitrateRef = useRef(maxBitrate)
   const framerateRef = useRef(maxFramerate)
+  const onCommandRef = useRef(onCommand)
   const pushedStreamIdRef = useRef<string | null>(null)
   localStreamRef.current = localStream
   bitrateRef.current = maxBitrate
   framerateRef.current = maxFramerate
+  onCommandRef.current = onCommand
 
   useEffect(() => {
     const normalized = normalizeRoomCode(code)
@@ -52,6 +66,7 @@ export function useRoomPeer({
       setRemoteStream(null)
       setOutboundInfo(null)
       pushedStreamIdRef.current = null
+      commandActionRef.current = null
       return
     }
 
@@ -85,6 +100,13 @@ export function useRoomPeer({
     }
 
     roomRef.current = room
+
+    const commandAction = room.makeAction<RoomCommand>(ROOM_COMMAND_ACTION)
+    commandActionRef.current = commandAction
+    commandAction.onMessage = (data) => {
+      if (!active || !isRoomCommand(data)) return
+      onCommandRef.current?.(data)
+    }
 
     const tuneBitrate = () => {
       void applySenderBitrate(room.getPeers(), bitrateRef.current, framerateRef.current)
@@ -124,6 +146,7 @@ export function useRoomPeer({
         setError(null)
       } else {
         setStatus((prev) => (prev === 'connected' ? prev : 'waiting'))
+        void commandAction.send({ type: 'ping', at: Date.now() }).catch(() => undefined)
       }
     }
 
@@ -179,6 +202,8 @@ export function useRoomPeer({
       active = false
       if (retryTimer) window.clearInterval(retryTimer)
       bitrateTimers.forEach((id) => window.clearTimeout(id))
+      commandAction.onMessage = null
+      commandActionRef.current = null
       room.onPeerJoin = null
       room.onPeerLeave = null
       room.onPeerStream = null
@@ -191,7 +216,6 @@ export function useRoomPeer({
     }
   }, [enabled, role, code, localStream])
 
-  // Quality / bitrate changes: rebind track + retune encodings without leaving.
   useEffect(() => {
     if (!enabled || role !== 'camera') return
     const room = roomRef.current
@@ -210,7 +234,6 @@ export function useRoomPeer({
     return () => timers.forEach((id) => window.clearTimeout(id))
   }, [enabled, role, maxBitrate, maxFramerate, localStream])
 
-  // Poll what is actually encoded to the PC (often lower than camera capture).
   useEffect(() => {
     if (!enabled || role !== 'camera' || status !== 'connected') {
       setOutboundInfo(null)
@@ -231,11 +254,23 @@ export function useRoomPeer({
     }
   }, [enabled, role, status])
 
+  const sendCommand = useCallback(async (command: RoomCommand) => {
+    const action = commandActionRef.current
+    if (!action) return false
+    try {
+      await action.send(command)
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   return {
     status,
     error,
     remoteStream,
     outboundInfo,
     outboundLabel: describeOutbound(outboundInfo),
+    sendCommand,
   }
 }

@@ -1,4 +1,30 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import { GuideOverlay } from './GuideOverlay'
+import { Toast } from './Toast'
+import { ColorsPanel } from './studio/ColorsPanel'
+import { MainPanel } from './studio/MainPanel'
+import { MaskPainter } from './studio/MaskPainter'
+import { PosesPanel } from './studio/PosesPanel'
+import { ProjectPanel } from './studio/ProjectPanel'
+import { SettingsPanel } from './studio/SettingsPanel'
+import {
+  cameraClass,
+  cn,
+  dockClass,
+  glassButtonClass,
+  sectionTitleClass,
+  statusBaseClass,
+  statusNoteClass,
+  tabActiveClass,
+  tabBaseClass,
+} from './studio/studioUi'
 import { useCamera } from '../hooks/useCamera'
 import {
   buildOverlayCssTransform,
@@ -6,10 +32,12 @@ import {
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
+import { DEFAULT_BRUSH_MASK, type BrushMaskSettings } from '../lib/brushMask'
 import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposite'
 import {
   PRECISION_PROFILES,
   createPickedColor,
+  estimateSelectionCoverage,
   extractPalette,
   loadColorPrecision,
   loadMatchTolerance,
@@ -22,27 +50,72 @@ import {
   type ColorPrecision,
   type PaletteColor,
 } from '../lib/colors'
+import { loadFlags, saveFlags, type FeatureFlags } from '../lib/flags'
 import {
-  DEFAULT_HOTKEYS,
-  HOTKEY_LABELS,
-  type HotkeyAction,
-} from '../lib/hotkeys'
-import { createPose, formatPoseStats, loadPoses, savePoses, type SavedPose } from '../lib/poses'
+  canAddAux,
+  createAuxLayer,
+  createPrimaryLayer,
+  nextAuxName,
+  revokeAuxUrls,
+  syncPrimaryUrl,
+  type RefLayer,
+} from '../lib/layers'
+import {
+  createSavedPalette,
+  loadSavedPalettes,
+  matchPreset,
+  saveSavedPalettes,
+  selectIdsByHexes,
+  type PalettePresetId,
+  type SavedPalette,
+} from '../lib/palettes'
+import {
+  createPose,
+  downloadPosesJson,
+  importPosesJson,
+  loadPoses,
+  renderPoseThumbnail,
+  savePoses,
+  type SavedPose,
+} from '../lib/poses'
 import {
   copyText,
   createRoomCode,
   loadHostRoomCode,
   saveHostRoomCode,
 } from '../lib/rooms'
+import { buildJoinUrl, renderJoinQrDataUrl } from '../lib/roomQr'
+import {
+  createSessionShot,
+  downloadDataUrl,
+  fileToCompressedDataUrl,
+  loadSessionShots,
+  saveSessionShots,
+  type SessionShot,
+} from '../lib/sessionGallery'
+import {
+  DEFAULT_CALC_MODE,
+  DEFAULT_GUIDES,
+  calcModeFilter,
+  type CalcModeSettings,
+  type GuideKind,
+  type GuideSettings,
+} from '../lib/studioTools'
+import { loadAtmosphere, saveAtmosphere, type StudioAtmosphere } from '../lib/theme'
 
 type StudioProps = {
   imageUrl: string
   onChangeImage: (file: File) => void
   onExit: () => void
+  lessonBoot?: {
+    guide: GuideKind
+    opacity: number
+    calcStrength?: number
+  } | null
 }
 
 type StudioTab = 'main' | 'project' | 'colors' | 'poses'
-type SettingsSection = 'link' | 'keys'
+type SettingsSection = 'link' | 'keys' | 'flags'
 
 const TABS: Array<[StudioTab, string]> = [
   ['main', 'Основное'],
@@ -50,94 +123,6 @@ const TABS: Array<[StudioTab, string]> = [
   ['colors', 'Цвета'],
   ['poses', 'Позы'],
 ]
-
-const STAT_LABELS: Record<string, string> = {
-  scale: 'Масштаб',
-  rotation: 'Поворот',
-  tiltX: 'Наклон X',
-  tiltY: 'Наклон Y',
-  x: 'X',
-  y: 'Y',
-  opacity: 'Прозр.',
-  flipped: 'Отражение',
-}
-
-const cn = (...classes: Array<string | false | null | undefined>) =>
-  classes.filter(Boolean).join(' ')
-
-const rootClass =
-  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--mist)]'
-
-const stageBaseClass =
-  'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
-
-const cameraClass =
-  'absolute inset-0 h-full w-full bg-[#141a1d] object-cover'
-
-const statusBaseClass =
-  'absolute inset-x-4 bottom-[36%] rounded-2xl border border-white/20 bg-white/14 px-4 py-4 text-center text-mist shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] animate-[rise-in_0.4s_ease_both] min-[960px]:left-5 min-[960px]:right-auto min-[960px]:max-w-md'
-
-const statusNoteClass = 'mt-2 text-[0.86rem] text-[var(--text-muted)]'
-
-const glassButtonClass =
-  'inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/12 px-3.5 text-sm font-semibold text-paper shadow-[0_6px_18px_rgba(12,16,18,0.16)] backdrop-blur-md'
-
-const dockClass =
-  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(58dvh,520px)] flex-col overflow-hidden rounded-3xl border border-white/20 bg-[linear-gradient(170deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.08)_100%)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
-
-const panelClass = 'grid gap-3'
-
-const sectionTitleClass = 'text-sm font-bold text-paper'
-
-const tabBaseClass =
-  'min-h-9 rounded-xl px-1 py-1.5 text-[0.75rem] font-semibold text-mist/75 transition-colors hover:text-paper min-[960px]:text-[0.8rem]'
-
-const tabActiveClass = 'bg-white/18 text-paper'
-
-const sliderLabelsClass =
-  'mb-[0.4rem] flex justify-between text-[0.84rem] text-[rgba(231,238,240,0.82)]'
-
-const rangeInputClass = 'w-full cursor-pointer accent-[var(--accent)]'
-
-const rowClass = 'grid grid-cols-3 gap-2'
-
-const chipBaseClass =
-  'min-h-[2.5rem] rounded-[14px] px-[0.35rem] py-[0.4rem] text-[0.82rem] font-semibold disabled:cursor-not-allowed disabled:opacity-40'
-
-const chipNeutralClass = cn(
-  chipBaseClass,
-  'border border-[var(--line-soft)] bg-white/8 text-[var(--mist)]',
-)
-
-const chipAccentClass = (active = false) =>
-  cn(
-    chipBaseClass,
-    active
-      ? 'border border-transparent bg-[rgba(224,154,106,0.9)] text-[#2a1a10]'
-      : 'border border-[rgba(224,154,106,0.45)] bg-[rgba(224,154,106,0.22)] text-[#ffd9bd]',
-  )
-
-const chipFileClass = cn(
-  chipNeutralClass,
-  'relative inline-flex cursor-pointer items-center justify-center',
-)
-
-const hiddenFileInputClass = 'absolute h-px w-px opacity-0 pointer-events-none'
-
-const tipClass = 'text-center text-[0.78rem] text-[rgba(231,238,240,0.55)]'
-
-const poseStatsClass = 'grid grid-cols-4 gap-[0.4rem]'
-
-const poseStatClass =
-  'grid gap-[0.12rem] rounded-[12px] border border-white/6 bg-white/7 px-2 py-[0.45rem]'
-
-const poseStatLabelClass = 'text-[0.68rem] text-[rgba(231,238,240,0.55)]'
-
-const poseStatValueClass =
-  'text-[0.86rem] font-bold text-[var(--paper)] [font-variant-numeric:tabular-nums]'
-
-const poseSaveClass =
-  'min-h-[2.7rem] rounded-[14px] border border-[rgba(224,154,106,0.4)] bg-[rgba(224,154,106,0.18)] font-bold text-[#ffd9bd]'
 
 const getStageCursorClass = (locked: boolean, dragMode: string) => {
   if (locked) return 'cursor-default'
@@ -147,9 +132,28 @@ const getStageCursorClass = (locked: boolean, dragMode: string) => {
   return 'cursor-grab active:cursor-grabbing'
 }
 
-export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
+const formatSessionRemaining = (ms: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+const rootClass =
+  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--mist)]'
+
+const stageBase =
+  'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
+
+const stageLight =
+  'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#d8e0e4_0%,#b7c2c8_72%)]'
+
+export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioProps) {
   const [roomEnabled, setRoomEnabled] = useState(false)
   const [roomCode, setRoomCode] = useState(() => loadHostRoomCode() ?? createRoomCode())
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [remoteFrozen, setRemoteFrozen] = useState(false)
+  const [remoteTorch, setRemoteTorch] = useState(false)
   const room = useRoomPeer({
     enabled: roomEnabled,
     role: 'host',
@@ -160,13 +164,57 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     saveHostRoomCode(roomCode)
   }, [roomCode])
 
+  useEffect(() => {
+    if (!roomEnabled || !roomCode) {
+      setQrDataUrl(null)
+      return
+    }
+    let cancelled = false
+    void renderJoinQrDataUrl(roomCode)
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url)
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [roomEnabled, roomCode])
+
   const { videoRef, ready, error, trackInfo } = useCamera(
     !roomEnabled,
     roomEnabled ? room.remoteStream : null,
   )
   const usingPhoneCam = Boolean(room.remoteStream)
 
-  const [opacity, setOpacity] = useState(0.45)
+  useEffect(() => {
+    if (usingPhoneCam) return
+    setRemoteFrozen(false)
+    setRemoteTorch(false)
+  }, [usingPhoneCam])
+
+  const [flags, setFlags] = useState<FeatureFlags>(() => loadFlags())
+  const [atmosphere, setAtmosphere] = useState<StudioAtmosphere>(() => loadAtmosphere())
+  const [opacity, setOpacity] = useState(() => lessonBoot?.opacity ?? 0.45)
+  const [calcMode, setCalcMode] = useState<CalcModeSettings>(() => ({
+    ...DEFAULT_CALC_MODE,
+    enabled: Boolean(lessonBoot?.calcStrength),
+    strength: lessonBoot?.calcStrength ?? DEFAULT_CALC_MODE.strength,
+  }))
+  const [guides, setGuides] = useState<GuideSettings>(() => ({
+    ...DEFAULT_GUIDES,
+    kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
+  }))
+  const [loupeOn, setLoupeOn] = useState(false)
+  const [loupePos, setLoupePos] = useState({ x: 50, y: 50 })
+  const [loupeVisible, setLoupeVisible] = useState(false)
+  const [sessionMins, setSessionMins] = useState<null | 25 | 45 | 90>(null)
+  const [sessionEndsAt, setSessionEndsAt] = useState<number | null>(null)
+  const [timerNow, setTimerNow] = useState(() => Date.now())
+  const [autoSessionShot, setAutoSessionShot] = useState(true)
+  const [shots, setShots] = useState<SessionShot[]>(() => loadSessionShots())
+  const [layers, setLayers] = useState<RefLayer[]>(() => [createPrimaryLayer(imageUrl)])
   const [locked, setLocked] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
@@ -189,6 +237,9 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   )
   const [pickMode, setPickMode] = useState(false)
   const [paletteSort, setPaletteSort] = useState<'dominance' | 'hue'>('dominance')
+  const [selectionCoverage, setSelectionCoverage] = useState<number | null>(null)
+  const [brush, setBrush] = useState<BrushMaskSettings>(() => ({ ...DEFAULT_BRUSH_MASK }))
+  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(() => loadSavedPalettes())
   const paletteRef = useRef(palette)
   const imageUrlRef = useRef(imageUrl)
   const precisionRef = useRef(colorPrecision)
@@ -207,20 +258,36 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     formatHotkey,
   } = useStudioHotkeys(true)
   const { transform, setTransform, reset, handlers, onWheel } = useOverlayTransform(
-    locked,
+    locked || brush.editing,
     dragMode,
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
+  const loupeOnRef = useRef(loupeOn)
+  loupeOnRef.current = loupeOn
 
   const displayUrl = filteredUrl ?? imageUrl
   const framed = colorMode === 'mask'
   const showToast = (message: string) => setToast(message)
 
   useEffect(() => {
+    saveFlags(flags)
+  }, [flags])
+
+  useEffect(() => {
+    saveAtmosphere(atmosphere)
+  }, [atmosphere])
+
+  useEffect(() => {
+    setLayers((prev) => syncPrimaryUrl(prev, imageUrl))
+  }, [imageUrl])
+
+  useEffect(() => {
     const node = stageRef.current
     if (!node) return
-    const wheelListener = (event: WheelEvent) => onWheelRef.current(event)
+    const wheelListener = (event: WheelEvent) => {
+      onWheelRef.current(event)
+    }
     node.addEventListener('wheel', wheelListener, { passive: false })
     return () => node.removeEventListener('wheel', wheelListener)
   }, [])
@@ -230,6 +297,23 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     const id = window.setTimeout(() => setToast(null), 2200)
     return () => window.clearTimeout(id)
   }, [toast])
+
+  useEffect(() => {
+    if (!sessionEndsAt) return
+    const tick = () => {
+      const remaining = sessionEndsAt - Date.now()
+      if (remaining <= 0) {
+        setSessionEndsAt(null)
+        setSessionMins(null)
+        setToast('Сессия окончена')
+        return
+      }
+      setTimerNow(Date.now())
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [sessionEndsAt])
 
   useEffect(() => {
     let cancelled = false
@@ -243,6 +327,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       setSelectedColorIds([])
       setColorMode('off')
       setPickMode(false)
+      setBrush((prev) => ({ ...prev, dataUrl: null, editing: false }))
       setFilteredUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
         return null
@@ -287,8 +372,20 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   useEffect(() => {
     let cancelled = false
     const selectedColors = palette.filter((color) => selectedColorIds.includes(color.id))
+    const brushOpts =
+      brush.dataUrl && flags.brushMask
+        ? {
+            maskDataUrl: brush.dataUrl,
+            maskMode: brush.mode,
+            combine: brush.combine,
+          }
+        : undefined
 
-    if (colorMode === 'off' || selectedColors.length === 0) {
+    const hasWork =
+      (colorMode !== 'off' && (selectedColors.length > 0 || Boolean(brushOpts))) ||
+      (Boolean(brushOpts) && selectedColors.length === 0)
+
+    if (!hasWork) {
       setFilteredUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
         return null
@@ -297,13 +394,9 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       return
     }
 
+    const mode = colorMode === 'mask' ? 'mask' : 'gray'
     setFilterBusy(true)
-    void renderFilteredReference(
-      imageUrl,
-      selectedColors,
-      colorMode === 'mask' ? 'mask' : 'gray',
-      matchTolerance,
-    )
+    void renderFilteredReference(imageUrl, selectedColors, mode, matchTolerance, brushOpts)
       .then((url) => {
         if (cancelled) {
           URL.revokeObjectURL(url)
@@ -324,7 +417,32 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     return () => {
       cancelled = true
     }
-  }, [imageUrl, palette, selectedColorIds, colorMode, matchTolerance])
+  }, [
+    imageUrl,
+    palette,
+    selectedColorIds,
+    colorMode,
+    matchTolerance,
+    brush.dataUrl,
+    brush.mode,
+    brush.combine,
+    flags.brushMask,
+  ])
+
+  useEffect(() => {
+    const selectedColors = palette.filter((color) => selectedColorIds.includes(color.id))
+    if (selectedColors.length === 0) {
+      setSelectionCoverage(null)
+      return
+    }
+    let cancelled = false
+    void estimateSelectionCoverage(imageUrl, selectedColors, matchTolerance).then((value) => {
+      if (!cancelled) setSelectionCoverage(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [imageUrl, palette, selectedColorIds, matchTolerance])
 
   const selectedSet = useMemo(() => new Set(selectedColorIds), [selectedColorIds])
   const visiblePalette = useMemo(
@@ -332,17 +450,18 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     [palette, paletteSort],
   )
   const precisionProfile = PRECISION_PROFILES[colorPrecision]
+  const auxLayers = layers.filter((layer) => layer.kind === 'aux' && layer.visible)
 
   useEffect(() => {
-    if (selectedColorIds.length === 0) {
+    if (selectedColorIds.length === 0 && !brush.dataUrl) {
       setColorMode('off')
       return
     }
     setColorMode((mode) => (mode === 'off' ? 'gray' : mode))
-  }, [selectedColorIds])
+  }, [selectedColorIds, brush.dataUrl])
 
   const handleOverlayPick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!pickMode) return
+    if (!pickMode || brush.editing) return
     event.stopPropagation()
     const target = overlayImageRef.current
     if (!target) return
@@ -372,7 +491,43 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
   useEffect(() => {
     if (tab !== 'colors' && pickMode) setPickMode(false)
-  }, [tab, pickMode])
+    if (tab !== 'colors' && brush.editing) {
+      setBrush((prev) => ({ ...prev, editing: false }))
+    }
+  }, [tab, pickMode, brush.editing])
+
+  const captureProgressFile = async () => {
+    const stage = stageRef.current
+    const video = videoRef.current
+    const overlayImage = overlayImageRef.current
+    if (!stage || !video || !overlayImage || !ready) return null
+    return captureCompositeFrame({
+      stage,
+      video,
+      overlayImage,
+      transform,
+      opacity,
+      flipped,
+      framed,
+    })
+  }
+
+  const pushShot = async (kind: SessionShot['kind']) => {
+    try {
+      const file = await captureProgressFile()
+      if (!file) {
+        showToast('Камера ещё не готова')
+        return
+      }
+      const dataUrl = await fileToCompressedDataUrl(file)
+      const next = [createSessionShot(kind, dataUrl), ...shots].slice(0, 10)
+      setShots(next)
+      saveSessionShots(next)
+      showToast(kind === 'start' ? 'Снимок «до» сохранён' : 'Прогресс сохранён')
+    } catch {
+      showToast('Не удалось сохранить снимок')
+    }
+  }
 
   const handleCapture = async () => {
     const stage = stageRef.current
@@ -405,39 +560,133 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
   const applyPickedFile = (file: File | undefined) => {
     if (!file) return
+    if (flags.multiLayers && canAddAux(layers)) {
+      const url = URL.createObjectURL(file)
+      const aux = createAuxLayer(url, nextAuxName(layers), layers)
+      if (aux) {
+        setLayers((prev) => [...prev, aux])
+        showToast(`Добавлен ${aux.name}`)
+        return
+      }
+    }
     onChangeImage(file)
     reset()
     setLocked(false)
   }
 
   const handleSavePose = () => {
-    const next = [createPose(transform, flipped, opacity, poses), ...poses].slice(0, 24)
-    setPoses(next)
-    savePoses(next)
-    showToast('Позиция сохранена')
+    void (async () => {
+      let thumbnail: string | null = null
+      try {
+        thumbnail = await renderPoseThumbnail(displayUrl, transform, flipped)
+      } catch {
+        thumbnail = null
+      }
+      const next = [
+        createPose(transform, flipped, opacity, poses, {
+          thumbnail,
+          selectedColorIds,
+        }),
+        ...poses,
+      ].slice(0, 24)
+      setPoses(next)
+      savePoses(next)
+      showToast('Позиция сохранена')
+    })()
   }
 
   const handleApplyPose = (pose: SavedPose) => {
     setTransform({ ...pose.transform })
     setFlipped(pose.flipped)
     setOpacity(pose.opacity)
+    if (pose.selectedColorIds?.length) {
+      setSelectedColorIds(
+        pose.selectedColorIds.filter((id) => palette.some((color) => color.id === id)),
+      )
+    }
     showToast(`Вернули: ${pose.name}`)
   }
 
+  const handleStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!loupeOn) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100))
+    const y = Math.min(100, Math.max(0, ((event.clientY - rect.top) / rect.height) * 100))
+    setLoupePos({ x, y })
+    setLoupeVisible(true)
+  }
+
+  const startSession = (minutes: 25 | 45 | 90) => {
+    const now = Date.now()
+    setTimerNow(now)
+    setSessionMins(minutes)
+    setSessionEndsAt(now + minutes * 60_000)
+    if (flags.sessionGallery && autoSessionShot) {
+      void pushShot('start')
+    }
+  }
+
+  const toggleRemoteFreeze = () => {
+    const value = !remoteFrozen
+    void room.sendCommand({ type: 'freeze', value }).then((ok) => {
+      if (ok) setRemoteFrozen(value)
+      else showToast('Телефон не ответил')
+    })
+  }
+
+  const toggleRemoteTorch = () => {
+    const value = !remoteTorch
+    void room.sendCommand({ type: 'torch', value }).then((ok) => {
+      if (ok) setRemoteTorch(value)
+      else showToast('Телефон не ответил')
+    })
+  }
+
+  const sessionRemainingLabel =
+    sessionEndsAt && sessionMins ? formatSessionRemaining(sessionEndsAt - timerNow) : null
+  const roomJoinUrl = roomEnabled && roomCode ? buildJoinUrl(roomCode) : null
   const cameraLabel = usingPhoneCam
-    ? `Камера: телефон${trackInfo ? ` · ${trackInfo}` : ''}`
+    ? `Камера: телефон${trackInfo ? ` · ${trackInfo}` : ''}${remoteFrozen ? ' · freeze' : ''}`
     : ready
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
 
+  const primaryOpacity = layers.find((layer) => layer.kind === 'primary')?.opacity ?? 1
+  const primaryVisible = layers.find((layer) => layer.kind === 'primary')?.visible ?? true
+
   return (
-    <div className={rootClass}>
+    <div className={rootClass} data-atmosphere={atmosphere}>
       <div
         ref={stageRef}
-        className={cn(stageBaseClass, getStageCursorClass(locked || pickMode, dragMode))}
-        {...(pickMode ? {} : handlers)}
+        className={cn(
+          atmosphere === 'light' ? stageLight : stageBase,
+          getStageCursorClass(locked || pickMode || brush.editing, dragMode),
+        )}
+        onPointerDown={(event) => {
+          handleStagePointerMove(event)
+          if (!pickMode && !brush.editing) handlers.onPointerDown(event)
+        }}
+        onPointerMove={(event) => {
+          handleStagePointerMove(event)
+          if (!pickMode && !brush.editing) handlers.onPointerMove(event)
+        }}
+        onPointerUp={(event) => {
+          if (!pickMode && !brush.editing) handlers.onPointerUp(event)
+        }}
+        onPointerCancel={(event) => {
+          if (!pickMode && !brush.editing) handlers.onPointerCancel(event)
+        }}
+        onPointerLeave={() => setLoupeVisible(false)}
       >
-        <video ref={videoRef} className={cameraClass} playsInline muted autoPlay />
+        <video
+          ref={videoRef}
+          className={cameraClass}
+          style={{ filter: calcModeFilter(calcMode) }}
+          playsInline
+          muted
+          autoPlay
+        />
 
         {!ready && !error && !roomEnabled && (
           <div className={statusBaseClass}>Открываю камеру…</div>
@@ -462,31 +711,93 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
           </div>
         )}
 
-        <div
-          className={cn(
-            'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
-            framed &&
-              'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
-            pickMode && 'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
-          )}
-          style={{
-            opacity,
-            transform: buildOverlayCssTransform(transform, flipped),
-            pointerEvents: pickMode ? 'auto' : locked ? 'none' : 'auto',
-          }}
-          onClick={handleOverlayPick}
-          onPointerDown={(event) => {
-            if (pickMode) event.stopPropagation()
-          }}
-        >
-          <img
-            ref={overlayImageRef}
-            src={displayUrl}
-            alt="Референс для срисовывания"
-            draggable={false}
-            className="h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] pointer-events-none"
-          />
-        </div>
+        {primaryVisible && (
+          <div
+            className={cn(
+              'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
+              framed &&
+                'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
+              (pickMode || brush.editing) &&
+                'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
+            )}
+            style={{
+              opacity: opacity * primaryOpacity,
+              transform: buildOverlayCssTransform(transform, flipped),
+              pointerEvents: pickMode || brush.editing ? 'auto' : locked ? 'none' : 'auto',
+            }}
+            onClick={handleOverlayPick}
+            onPointerDown={(event) => {
+              if (pickMode || brush.editing) event.stopPropagation()
+            }}
+          >
+            <img
+              ref={overlayImageRef}
+              src={displayUrl}
+              alt="Референс для срисовывания"
+              draggable={false}
+              className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
+            />
+            {flags.brushMask && (
+              <MaskPainter
+                settings={brush}
+                onChange={(dataUrl) =>
+                  setBrush((prev) => ({
+                    ...prev,
+                    dataUrl,
+                    enabled: true,
+                  }))
+                }
+                className="absolute inset-0 h-full w-full"
+              />
+            )}
+          </div>
+        )}
+
+        {flags.multiLayers &&
+          auxLayers.map((layer, index) => (
+            <div
+              key={layer.id}
+              className="pointer-events-none absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]"
+              style={{
+                opacity: opacity * layer.opacity,
+                transform: buildOverlayCssTransform(
+                  {
+                    ...transform,
+                    x: transform.x + (index + 1) * 8,
+                    y: transform.y + (index + 1) * 8,
+                  },
+                  flipped,
+                ),
+                zIndex: 2 + index,
+              }}
+            >
+              <img
+                src={layer.url}
+                alt={layer.name}
+                draggable={false}
+                className="h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+              />
+            </div>
+          ))}
+
+        <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
+
+        {loupeOn && loupeVisible && (
+          <div
+            className="pointer-events-none absolute z-[4] grid h-40 w-40 -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-2 border-accent-soft shadow-lg"
+            style={{
+              left: `${loupePos.x}%`,
+              top: `${loupePos.y}%`,
+              background:
+                'radial-gradient(circle, rgba(255,217,189,0.16) 0%, rgba(255,217,189,0.08) 48%, rgba(20,26,29,0.22) 100%)',
+            }}
+            aria-hidden="true"
+          >
+            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-accent-soft backdrop-blur-sm">
+              Лупа 2×
+            </span>
+          </div>
+        )}
 
         {!locked && (
           <div
@@ -592,625 +903,250 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
           <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
             {settingsOpen ? (
-              <div className={panelClass}>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className={cn(
-                      'min-h-10 rounded-xl border text-sm font-semibold',
-                      settingsSection === 'link'
-                        ? 'border-accent/50 bg-accent/20 text-accent-soft'
-                        : 'border-white/15 bg-white/8 text-mist/85',
-                    )}
-                    onClick={() => setSettingsSection('link')}
-                  >
-                    Связь
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      'min-h-10 rounded-xl border text-sm font-semibold',
-                      settingsSection === 'keys'
-                        ? 'border-accent/50 bg-accent/20 text-accent-soft'
-                        : 'border-white/15 bg-white/8 text-mist/85',
-                    )}
-                    onClick={() => setSettingsSection('keys')}
-                  >
-                    Клавиши
-                  </button>
-                </div>
-
-                {settingsSection === 'link' && (
-                  <div className={panelClass}>
-                    <p className={sectionTitleClass}>Телефон как камера</p>
-                    <div className="grid gap-1.5 rounded-2xl border border-white/12 bg-ink-deep/45 px-3 py-3 text-[0.82rem] leading-snug text-mist/80">
-                      <p>
-                        <strong className="text-accent-soft">1.</strong> Создай комнату — появится код
-                      </p>
-                      <p>
-                        <strong className="text-accent-soft">2.</strong> На телефоне: «Телефон как
-                        камера» → введи код
-                      </p>
-                      <p>
-                        <strong className="text-accent-soft">3.</strong> Смотри «С камеры» и «В эфир»
-                        — 2K часто стабильнее 4K
-                      </p>
-                    </div>
-
-                    {roomEnabled ? (
-                      <>
-                        <div className="grid gap-1 rounded-2xl border border-white/20 bg-ink-deep/55 px-4 py-3.5 text-center">
-                          <span className="text-[0.75rem] text-[var(--text-muted)]">Код комнаты</span>
-                          <strong className="font-[family-name:var(--font-display)] text-[clamp(1.4rem,4vw,1.8rem)] font-extrabold tracking-[0.18em] text-paper">
-                            {roomCode}
-                          </strong>
-                        </div>
-                        <div className={rowClass}>
-                          <button
-                            type="button"
-                            className={chipNeutralClass}
-                            onClick={() => {
-                              void copyText(roomCode).then((ok) =>
-                                showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
-                              )
-                            }}
-                          >
-                            Копировать
-                          </button>
-                          <button
-                            type="button"
-                            className={chipNeutralClass}
-                            onClick={() => {
-                              const next = createRoomCode()
-                              setRoomCode(next)
-                              saveHostRoomCode(next)
-                              showToast('Новая комната')
-                            }}
-                          >
-                            Новый код
-                          </button>
-                          <button
-                            type="button"
-                            className={cn(
-                              chipBaseClass,
-                              'border border-danger/40 bg-danger/15 text-danger-soft',
-                            )}
-                            onClick={() => setRoomEnabled(false)}
-                          >
-                            Отключить
-                          </button>
-                        </div>
-                        <p className={tipClass}>
-                          {room.status === 'connected'
-                            ? `Телефон подключён${trackInfo ? ` · ${trackInfo}` : ''}`
-                            : room.error || `Жду телефон… код ${roomCode}`}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className={poseSaveClass}
-                          onClick={() => {
-                            if (!roomCode) {
-                              const next = createRoomCode()
-                              setRoomCode(next)
-                              saveHostRoomCode(next)
-                            }
-                            setRoomEnabled(true)
-                          }}
-                        >
-                          Создать комнату
-                        </button>
-                        <p className={tipClass}>
-                          Код только на ПК. Качество стрима выбирается на телефоне.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {settingsSection === 'keys' && (
-                  <div className={panelClass}>
-                    <p className={sectionTitleClass}>Горячие клавиши</p>
-                    <p className={tipClass}>
-                      Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.
-                    </p>
-                    <div className="grid gap-2">
-                      {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
-                        <div
-                          key={action}
-                          className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-white/12 bg-white/8 px-3 py-2.5"
-                        >
-                          <span className="text-[0.82rem] text-mist/85">{HOTKEY_LABELS[action]}</span>
-                          <button
-                            type="button"
-                            className={cn(
-                              'min-h-9 min-w-[4.5rem] rounded-[10px] border border-accent/40 px-2.5 text-[0.78rem] font-bold',
-                              listeningFor === action
-                                ? 'bg-accent/35 text-accent-ink'
-                                : 'bg-accent/15 text-accent-soft',
-                            )}
-                            onClick={() =>
-                              setListeningFor((prev) => (prev === action ? null : action))
-                            }
-                          >
-                            {listeningFor === action ? 'Нажми…' : formatHotkey(hotkeys[action])}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className={chipNeutralClass}
-                      onClick={() => {
-                        setHotkeys({ ...DEFAULT_HOTKEYS })
-                        showToast('Клавиши сброшены')
-                      }}
-                    >
-                      Сбросить по умолчанию
-                    </button>
-                  </div>
-                )}
-              </div>
+              <SettingsPanel
+                section={settingsSection}
+                onSection={setSettingsSection}
+                roomEnabled={roomEnabled}
+                roomCode={roomCode}
+                qrDataUrl={qrDataUrl}
+                roomJoinUrl={roomJoinUrl}
+                roomStatus={room.status}
+                roomError={room.error}
+                trackInfo={trackInfo}
+                onCopyCode={() => {
+                  void copyText(roomCode).then((ok) =>
+                    showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
+                  )
+                }}
+                onNewCode={() => {
+                  const next = createRoomCode()
+                  setRoomCode(next)
+                  saveHostRoomCode(next)
+                  showToast('Новая комната')
+                }}
+                onDisableRoom={() => setRoomEnabled(false)}
+                onEnableRoom={() => {
+                  if (!roomCode) {
+                    const next = createRoomCode()
+                    setRoomCode(next)
+                    saveHostRoomCode(next)
+                  }
+                  setRoomEnabled(true)
+                }}
+                hotkeys={hotkeys}
+                listeningFor={listeningFor}
+                setListeningFor={setListeningFor}
+                formatHotkey={formatHotkey}
+                setHotkeys={setHotkeys}
+                onHotkeysResetToast={() => showToast('Клавиши сброшены')}
+                flags={flags}
+                onFlags={setFlags}
+              />
             ) : (
               <>
-            {tab === 'main' && (
-              <div className={panelClass}>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Прозрачность</span>
-                    <span>{Math.round(opacity * 100)}%</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={0.05}
-                    max={1}
-                    step={0.01}
-                    value={opacity}
-                    onChange={(event) => setOpacity(Number(event.target.value))}
-                    aria-label="Прозрачность референса"
-                  />
-                </div>
-
-                <div className="grid grid-cols-[auto_1fr] items-center gap-[0.85rem] px-[0.15rem] pb-[0.05rem] pt-[0.15rem]">
-                  <button
-                    type="button"
-                    className="group grid h-[4.1rem] w-[4.1rem] place-items-center rounded-full border-2 border-white/55 bg-white/14 backdrop-blur-[8px] disabled:cursor-not-allowed disabled:opacity-45"
-                    onClick={() => void handleCapture()}
-                    disabled={!ready || capturing}
-                    aria-label="Сфотографировать композит"
-                  >
-                    <span className="h-[3.1rem] w-[3.1rem] rounded-full bg-[rgba(245,247,248,0.92)] shadow-[inset_0_0_0_2px_rgba(20,26,29,0.08)] transition-transform group-active:scale-[0.92]" />
-                  </button>
-                  <div>
-                    <p className="font-[family-name:var(--font-display)] text-base font-bold text-[var(--paper)]">
-                      Снять фото
-                    </p>
-                    <p className="mt-[0.15rem] text-[0.82rem] text-[var(--text-muted)]">
-                      Камера + референс → сохранить
-                    </p>
-                  </div>
-                </div>
-
-                <div className={rowClass}>
-                  <label className={chipFileClass}>
-                    Галерея
-                    <input
-                      className={hiddenFileInputClass}
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => {
-                        applyPickedFile(event.target.files?.[0])
-                        event.target.value = ''
-                      }}
-                    />
-                  </label>
-                  <label className={chipFileClass}>
-                    Камера
-                    <input
-                      className={hiddenFileInputClass}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={(event) => {
-                        applyPickedFile(event.target.files?.[0])
-                        event.target.value = ''
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className={chipNeutralClass}
-                    onClick={() => setFlipped((value) => !value)}
-                  >
-                    Отразить
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" className={chipNeutralClass} onClick={reset}>
-                    Сброс
-                  </button>
-                  <button
-                    type="button"
-                    className={chipAccentClass(locked)}
-                    onClick={() => setLocked((value) => !value)}
-                  >
-                    {locked ? 'Разблокировать' : 'Зафиксировать'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {tab === 'project' && (
-              <div className={panelClass}>
-                <p className={sectionTitleClass}>Подстройка под угол листа</p>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Наклон X</span>
-                    <span>{Math.round(transform.rotateX)}°</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={-60}
-                    max={60}
-                    step={1}
-                    value={transform.rotateX}
-                    onChange={(event) =>
-                      setTransform((prev) => ({ ...prev, rotateX: Number(event.target.value) }))
+                {tab === 'main' && (
+                  <MainPanel
+                    opacity={opacity}
+                    onOpacity={setOpacity}
+                    calcMode={calcMode}
+                    onCalcMode={setCalcMode}
+                    guides={guides}
+                    onGuides={setGuides}
+                    loupeOn={loupeOn}
+                    onLoupeToggle={() => {
+                      setLoupeOn((value) => !value)
+                      setLoupeVisible(false)
+                    }}
+                    sessionMins={sessionMins}
+                    sessionRemainingLabel={sessionRemainingLabel}
+                    onStartSession={startSession}
+                    usingPhoneCam={usingPhoneCam}
+                    remoteFrozen={remoteFrozen}
+                    remoteTorch={remoteTorch}
+                    onToggleFreeze={toggleRemoteFreeze}
+                    onToggleTorch={toggleRemoteTorch}
+                    ready={ready}
+                    capturing={capturing}
+                    onCapture={() => void handleCapture()}
+                    onPickFile={(file) => applyPickedFile(file)}
+                    flipped={flipped}
+                    onFlip={() => setFlipped((value) => !value)}
+                    locked={locked}
+                    onToggleLock={() => setLocked((value) => !value)}
+                    onReset={reset}
+                    layersEnabled={flags.multiLayers}
+                    layers={layers}
+                    onLayerOpacity={(id, value) =>
+                      setLayers((prev) =>
+                        prev.map((layer) =>
+                          layer.id === id ? { ...layer, opacity: value } : layer,
+                        ),
+                      )
                     }
-                  />
-                </div>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Наклон Y</span>
-                    <span>{Math.round(transform.rotateY)}°</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={-60}
-                    max={60}
-                    step={1}
-                    value={transform.rotateY}
-                    onChange={(event) =>
-                      setTransform((prev) => ({ ...prev, rotateY: Number(event.target.value) }))
+                    onLayerVisible={(id) =>
+                      setLayers((prev) =>
+                        prev.map((layer) =>
+                          layer.id === id ? { ...layer, visible: !layer.visible } : layer,
+                        ),
+                      )
                     }
-                  />
-                </div>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Поворот</span>
-                    <span>{Math.round(transform.rotation)}°</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={-180}
-                    max={180}
-                    step={1}
-                    value={transform.rotation}
-                    onChange={(event) =>
-                      setTransform((prev) => ({ ...prev, rotation: Number(event.target.value) }))
+                    onRemoveLayer={(id) => {
+                      setLayers((prev) => {
+                        const target = prev.find((layer) => layer.id === id)
+                        if (target?.kind === 'aux') revokeAuxUrls([target])
+                        return prev.filter((layer) => layer.id !== id)
+                      })
+                    }}
+                    galleryEnabled={flags.sessionGallery}
+                    autoSessionShot={autoSessionShot}
+                    onAutoSessionShot={setAutoSessionShot}
+                    shots={shots}
+                    onProgressShot={() => void pushShot('progress')}
+                    onDownloadShot={(shot) =>
+                      downloadDataUrl(shot.dataUrl, `eyepaint-${shot.kind}-${shot.createdAt}.jpg`)
                     }
+                    onClearShots={() => {
+                      setShots([])
+                      saveSessionShots([])
+                      showToast('Галерея очищена')
+                    }}
+                    atmosphere={atmosphere}
+                    atmosphereEnabled={flags.lightTheme}
+                    onAtmosphere={setAtmosphere}
                   />
-                </div>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Масштаб</span>
-                    <span>{Math.round(transform.scale * 100)}%</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={0.2}
-                    max={4}
-                    step={0.01}
-                    value={transform.scale}
-                    onChange={(event) =>
-                      setTransform((prev) => ({ ...prev, scale: Number(event.target.value) }))
-                    }
-                  />
-                </div>
-                <button
-                  type="button"
-                  className={chipNeutralClass}
-                  onClick={() =>
-                    setTransform((prev) => ({
-                      ...prev,
-                      rotateX: 0,
-                      rotateY: 0,
-                      rotation: 0,
-                    }))
-                  }
-                >
-                  Сбросить углы
-                </button>
-                <p className={tipClass}>
-                  Если телефон стоит под углом — крути наклоны, пока референс ляжет на лист.
-                </p>
-              </div>
-            )}
-
-            {tab === 'colors' && (
-              <div className={panelClass}>
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Точность палитры</span>
-                    <span>
-                      {precisionProfile.label} · {precisionProfile.maxColors}
-                    </span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={colorPrecision}
-                    onChange={(event) =>
-                      setColorPrecision(Number(event.target.value) as ColorPrecision)
-                    }
-                    aria-label="Точность палитры"
-                  />
-                  <p className="mt-1 text-[0.72rem] text-mist/55">{precisionProfile.hint}</p>
-                </div>
-
-                <div>
-                  <div className={sliderLabelsClass}>
-                    <span>Допуск совпадения</span>
-                    <span>{matchTolerance}</span>
-                  </div>
-                  <input
-                    className={rangeInputClass}
-                    type="range"
-                    min={12}
-                    max={100}
-                    step={1}
-                    value={matchTolerance}
-                    onChange={(event) => setMatchTolerance(Number(event.target.value))}
-                    aria-label="Допуск совпадения цвета"
-                  />
-                  <p className="mt-1 text-[0.72rem] text-mist/55">
-                    Уже — меньше «расползания» на соседние цвета. Шире — захватывает ближние оттенки.
-                  </p>
-                </div>
-
-                {paletteLoading ? (
-                  <p className={tipClass}>Разбираю цвета референса…</p>
-                ) : palette.length === 0 ? (
-                  <p className={tipClass}>Не удалось вытащить палитру</p>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[0.78rem] text-mist/70">
-                        {palette.length} цветов · выбрано {selectedColorIds.length}
-                      </p>
-                      <button
-                        type="button"
-                        className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.72rem] font-semibold text-mist/85"
-                        onClick={() =>
-                          setPaletteSort((value) => (value === 'hue' ? 'dominance' : 'hue'))
-                        }
-                      >
-                        {paletteSort === 'hue' ? 'По тону' : 'По частоте'}
-                      </button>
-                    </div>
-
-                    <div
-                      className="flex gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      role="group"
-                      aria-label="Цвета референса"
-                    >
-                      {visiblePalette.map((color) => {
-                        const active = selectedSet.has(color.id)
-                        return (
-                          <button
-                            key={color.id}
-                            type="button"
-                            className={cn(
-                              'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]',
-                              active
-                                ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
-                                : 'border-white/35',
-                            )}
-                            style={{ background: color.hex }}
-                            aria-pressed={active}
-                            title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
-                            onClick={() =>
-                              setSelectedColorIds((prev) =>
-                                prev.includes(color.id)
-                                  ? prev.filter((id) => id !== color.id)
-                                  : [...prev, color.id],
-                              )
-                            }
-                          >
-                            {color.source === 'pick' && (
-                              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2">
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        onClick={() => setSelectedColorIds(palette.map((c) => c.id))}
-                      >
-                        Все
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        disabled={selectedColorIds.length === 0}
-                        onClick={() => {
-                          const set = new Set(selectedColorIds)
-                          setSelectedColorIds(
-                            palette.filter((c) => !set.has(c.id)).map((c) => c.id),
-                          )
-                        }}
-                      >
-                        Инверт
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        disabled={selectedColorIds.length === 0}
-                        onClick={() => {
-                          setSelectedColorIds([])
-                          setColorMode('off')
-                        }}
-                      >
-                        Сброс
-                      </button>
-                      <button
-                        type="button"
-                        className={chipAccentClass(pickMode)}
-                        onClick={() => {
-                          setPickMode((value) => !value)
-                          if (!pickMode) setTab('colors')
-                        }}
-                      >
-                        Пипетка
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        className={chipAccentClass(colorMode === 'mask')}
-                        disabled={selectedColorIds.length === 0 || filterBusy}
-                        onClick={() =>
-                          setColorMode((mode) => (mode === 'mask' ? 'gray' : 'mask'))
-                        }
-                      >
-                        Только цвет
-                      </button>
-                      <button
-                        type="button"
-                        className={chipNeutralClass}
-                        disabled={filterBusy || selectedColorIds.length === 0}
-                        onClick={() => setColorMode('gray')}
-                      >
-                        Серый фон
-                      </button>
-                    </div>
-
-                    {pickMode && (
-                      <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-accent-soft">
-                        Кликни по референсу на сцене — цвет добавится в палитру
-                      </p>
-                    )}
-
-                    <p className={tipClass}>
-                      {filterBusy
-                        ? 'Применяю фильтр…'
-                        : colorMode === 'mask'
-                          ? 'Только выбранные · рамка вокруг референса'
-                          : selectedColorIds.length > 0
-                            ? 'Выбранные цветные, остальное серое. Крути допуск, если цепляет лишнее.'
-                            : 'Выбери цвета или возьми пипеткой с референса'}
-                    </p>
-                  </>
                 )}
-              </div>
-            )}
-
-            {tab === 'poses' && (
-              <div className={panelClass}>
-                <div className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-[rgba(20,26,29,0.28)] px-3 py-[0.7rem]">
-                  <p className="text-[0.78rem] font-semibold uppercase tracking-[0.04em] text-[rgba(231,238,240,0.58)]">
-                    Сейчас
-                  </p>
-                  <div className={poseStatsClass}>
-                    {Object.entries(formatPoseStats({ transform, flipped, opacity })).map(
-                      ([key, value]) => (
-                        <div key={key} className={poseStatClass}>
-                          <span className={poseStatLabelClass}>{STAT_LABELS[key] ?? key}</span>
-                          <strong className={poseStatValueClass}>{value}</strong>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-
-                <button type="button" className={poseSaveClass} onClick={handleSavePose}>
-                  + Сохранить в список
-                </button>
-
-                {poses.length === 0 ? (
-                  <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between gap-2 text-[0.8rem] text-[rgba(231,238,240,0.62)]">
-                      <span>Сохранённые · {poses.length}</span>
-                      <button
-                        type="button"
-                        className="text-[0.78rem] font-semibold text-[#ef8b8b]"
-                        onClick={() => {
-                          setPoses([])
-                          savePoses([])
-                          showToast('Список поз очищен')
-                        }}
-                      >
-                        Очистить всё
-                      </button>
-                    </div>
-                    <ul className="grid list-none gap-[0.55rem]">
-                      {poses.map((pose) => {
-                        const stats = formatPoseStats(pose)
-                        return (
-                          <li
-                            key={pose.id}
-                            className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-white/8 p-[0.7rem]"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-[0.95rem] font-bold text-[var(--paper)]">
-                                {pose.name}
-                              </p>
-                              <button
-                                type="button"
-                                className="min-h-[1.9rem] rounded-full border border-[rgba(239,139,139,0.35)] bg-[rgba(239,139,139,0.12)] px-[0.65rem] py-1 text-[0.75rem] font-semibold text-[#ffb4b4]"
-                                onClick={() => {
-                                  const next = poses.filter((item) => item.id !== pose.id)
-                                  setPoses(next)
-                                  savePoses(next)
-                                  showToast('Поза удалена')
-                                }}
-                              >
-                                Удалить
-                              </button>
-                            </div>
-                            <div className={poseStatsClass}>
-                              {Object.entries(stats).map(([key, value]) => (
-                                <div key={key} className={poseStatClass}>
-                                  <span className={poseStatLabelClass}>
-                                    {STAT_LABELS[key] ?? key}
-                                  </span>
-                                  <strong className={poseStatValueClass}>{value}</strong>
-                                </div>
-                              ))}
-                            </div>
-                            <button
-                              type="button"
-                              className="min-h-[2.35rem] rounded-[12px] border border-[var(--line)] bg-white/12 text-[0.86rem] font-bold text-[var(--paper)]"
-                              onClick={() => handleApplyPose(pose)}
-                            >
-                              Применить
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </>
+                {tab === 'project' && (
+                  <ProjectPanel transform={transform} setTransform={setTransform} />
                 )}
-              </div>
-            )}
+                {tab === 'colors' && (
+                  <ColorsPanel
+                    precisionProfile={precisionProfile}
+                    colorPrecision={colorPrecision}
+                    onPrecision={setColorPrecision}
+                    matchTolerance={matchTolerance}
+                    onTolerance={setMatchTolerance}
+                    paletteLoading={paletteLoading}
+                    palette={palette}
+                    visiblePalette={visiblePalette}
+                    selectedColorIds={selectedColorIds}
+                    selectedSet={selectedSet}
+                    selectionCoverage={selectionCoverage}
+                    paletteSort={paletteSort}
+                    onPaletteSort={() =>
+                      setPaletteSort((value) => (value === 'hue' ? 'dominance' : 'hue'))
+                    }
+                    onToggleColor={(id) =>
+                      setSelectedColorIds((prev) =>
+                        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+                      )
+                    }
+                    onSelectAll={() => setSelectedColorIds(palette.map((c) => c.id))}
+                    onInvert={() => {
+                      const set = new Set(selectedColorIds)
+                      setSelectedColorIds(
+                        palette.filter((c) => !set.has(c.id)).map((c) => c.id),
+                      )
+                    }}
+                    onResetSelection={() => {
+                      setSelectedColorIds([])
+                      setColorMode('off')
+                    }}
+                    pickMode={pickMode}
+                    onPickMode={() => {
+                      setPickMode((value) => !value)
+                      setBrush((prev) => ({ ...prev, editing: false }))
+                      setTab('colors')
+                    }}
+                    colorMode={colorMode}
+                    filterBusy={filterBusy}
+                    onMaskMode={() =>
+                      setColorMode((mode) => (mode === 'mask' ? 'gray' : 'mask'))
+                    }
+                    onGrayMode={() => setColorMode('gray')}
+                    brushEnabled={flags.brushMask}
+                    brush={brush}
+                    onBrush={setBrush}
+                    onClearBrush={() =>
+                      setBrush((prev) => ({
+                        ...prev,
+                        dataUrl: null,
+                        editing: false,
+                      }))
+                    }
+                    onPreset={(id: PalettePresetId) => {
+                      const ids = matchPreset(palette, id)
+                      setSelectedColorIds(ids)
+                      if (ids.length === 0) showToast('Пресет ничего не нашёл')
+                      else showToast(`Пресет · ${ids.length} цветов`)
+                    }}
+                    savedPalettes={savedPalettes}
+                    onSavePalette={() => {
+                      const hexes = palette
+                        .filter((color) => selectedColorIds.includes(color.id))
+                        .map((color) => color.hex)
+                      if (hexes.length === 0) return
+                      const next = [
+                        createSavedPalette(`Палитра ${savedPalettes.length + 1}`, hexes, savedPalettes),
+                        ...savedPalettes,
+                      ].slice(0, 12)
+                      setSavedPalettes(next)
+                      saveSavedPalettes(next)
+                      showToast('Палитра сохранена')
+                    }}
+                    onApplySaved={(item) => {
+                      const ids = selectIdsByHexes(palette, item.hexes)
+                      setSelectedColorIds(ids)
+                      showToast(
+                        ids.length > 0
+                          ? `Применено: ${item.name}`
+                          : 'Нет совпадений на этом референсе',
+                      )
+                    }}
+                    onDeleteSaved={(id) => {
+                      const next = savedPalettes.filter((item) => item.id !== id)
+                      setSavedPalettes(next)
+                      saveSavedPalettes(next)
+                    }}
+                  />
+                )}
+                {tab === 'poses' && (
+                  <PosesPanel
+                    transform={transform}
+                    flipped={flipped}
+                    opacity={opacity}
+                    poses={poses}
+                    onSave={handleSavePose}
+                    onApply={handleApplyPose}
+                    onDelete={(id) => {
+                      const next = poses.filter((item) => item.id !== id)
+                      setPoses(next)
+                      savePoses(next)
+                      showToast('Поза удалена')
+                    }}
+                    onClear={() => {
+                      setPoses([])
+                      savePoses([])
+                      showToast('Список поз очищен')
+                    }}
+                    onExport={() => {
+                      downloadPosesJson(poses)
+                      showToast('JSON экспортирован')
+                    }}
+                    onImportFile={(file) => {
+                      if (!file) return
+                      void file
+                        .text()
+                        .then((raw) => {
+                          const imported = importPosesJson(raw)
+                          const next = [...imported, ...poses].slice(0, 24)
+                          setPoses(next)
+                          savePoses(next)
+                          showToast(`Импорт · ${imported.length}`)
+                        })
+                        .catch(() => showToast('Не удалось импортировать'))
+                    }}
+                  />
+                )}
               </>
             )}
           </div>
@@ -1228,11 +1164,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
         </div>
       )}
 
-      {toast && (
-        <div className="absolute left-1/2 top-[calc(var(--safe-top)+4.2rem)] z-[5] -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-white/16 px-4 py-2.5 text-[0.84rem] text-paper backdrop-blur-md animate-[rise-in_0.25s_ease_both]">
-          {toast}
-        </div>
-      )}
+      {toast && <Toast message={toast} />}
 
       {uiHidden && (
         <button

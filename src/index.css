@@ -57,6 +57,17 @@
     background: var(--ink-deep);
   }
 
+  [data-atmosphere='light'] {
+    --ink: #e8eef0;
+    --ink-deep: #d5dde2;
+    --mist: #1c2428;
+    --paper: #141a1d;
+    --text-muted: rgba(28, 36, 40, 0.68);
+    --line: rgba(20, 26, 29, 0.18);
+    --line-soft: rgba(20, 26, 29, 0.1);
+    color: var(--mist);
+  }
+
   button {
     cursor: pointer;
   }
