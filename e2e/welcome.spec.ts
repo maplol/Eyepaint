@@ -10,6 +10,7 @@ test.describe('Welcome', () => {
     await expect(page.getByText(/Смотри сквозь референс/i)).toBeVisible()
     await expect(page.getByText('Сфотографировать')).toBeVisible()
     await expect(page.getByText('Из галереи')).toBeVisible()
+    await expect(page.getByText('Открыть проект')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Телефон как камера' })).toBeVisible()
   })
 
