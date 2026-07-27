@@ -86,3 +86,69 @@ export function patchLayerTransform(
     return { ...layer, transform: next }
   })
 }
+
+/** Paint order: index 0 = farthest back, last = frontmost (closest to viewer). */
+export type LayerStackAction = 'front' | 'forward' | 'backward' | 'back'
+
+export function applyLayerStackAction(
+  layers: RefLayer[],
+  id: string,
+  action: LayerStackAction,
+): RefLayer[] {
+  const index = layers.findIndex((layer) => layer.id === id)
+  if (index < 0) return layers
+  if (layers.length < 2) return layers
+
+  const next = [...layers]
+  const [item] = next.splice(index, 1)
+
+  switch (action) {
+    case 'front':
+      next.push(item)
+      break
+    case 'back':
+      next.unshift(item)
+      break
+    case 'forward': {
+      const insertAt = Math.min(index + 1, next.length)
+      next.splice(insertAt, 0, item)
+      break
+    }
+    case 'backward': {
+      const insertAt = Math.max(index - 1, 0)
+      next.splice(insertAt, 0, item)
+      break
+    }
+  }
+
+  return next
+}
+
+/**
+ * Reorder by dragging in the UI list where the top row is frontmost
+ * (display = reverse of paint order).
+ */
+export function reorderLayersInDisplayOrder(
+  layers: RefLayer[],
+  fromId: string,
+  toId: string,
+): RefLayer[] {
+  if (fromId === toId) return layers
+  const display = [...layers].reverse()
+  const from = display.findIndex((layer) => layer.id === fromId)
+  const to = display.findIndex((layer) => layer.id === toId)
+  if (from < 0 || to < 0) return layers
+  const nextDisplay = [...display]
+  const [item] = nextDisplay.splice(from, 1)
+  nextDisplay.splice(to, 0, item)
+  return nextDisplay.reverse()
+}
+
+export function layerStackLabel(layers: RefLayer[], id: string): string {
+  const index = layers.findIndex((layer) => layer.id === id)
+  if (index < 0) return ''
+  if (layers.length === 1) return 'единственный'
+  if (index === layers.length - 1) return 'передний'
+  if (index === 0) return 'задний'
+  return `${layers.length - index} спереди`
+}

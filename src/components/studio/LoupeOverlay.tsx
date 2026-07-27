@@ -10,12 +10,12 @@ type LoupeOverlayProps = {
   pos: { x: number; y: number }
   stageRef: RefObject<HTMLDivElement | null>
   sourceVideoRef: RefObject<HTMLVideoElement | null>
-  primaryLayer: RefLayer | null
-  primaryDisplayUrl: string
+  /** Paint order: first = back, last = front */
+  layers: RefLayer[]
+  activeLayerId: string
   opacity: number
-  framedPrimary: boolean
+  framedActive: boolean
   calcFilter?: string
-  auxLayers: RefLayer[]
 }
 
 export function LoupeOverlay({
@@ -25,12 +25,11 @@ export function LoupeOverlay({
   pos,
   stageRef,
   sourceVideoRef,
-  primaryLayer,
-  primaryDisplayUrl,
+  layers,
+  activeLayerId,
   opacity,
-  framedPrimary,
+  framedActive,
   calcFilter,
-  auxLayers,
 }: LoupeOverlayProps) {
   const loupeVideoRef = useRef<HTMLVideoElement | null>(null)
   const [stageSize, setStageSize] = useState({ w: 0, h: 0 })
@@ -100,44 +99,31 @@ export function LoupeOverlay({
           autoPlay
         />
 
-        {primaryLayer?.visible && (
-          <div
-            className={
-              framedPrimary
-                ? 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)] rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]'
-                : 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]'
-            }
-            style={{
-              opacity: opacity * primaryLayer.opacity,
-              transform: buildOverlayCssTransform(primaryLayer.transform, primaryLayer.flipped),
-            }}
-          >
-            <img
-              src={primaryDisplayUrl}
-              alt=""
-              draggable={false}
-              className="h-auto max-h-[75dvh] w-full object-contain"
-            />
-          </div>
-        )}
-
-        {auxLayers.map((layer) => (
-          <div
-            key={layer.id}
-            className="absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]"
-            style={{
-              opacity: opacity * layer.opacity,
-              transform: buildOverlayCssTransform(layer.transform, layer.flipped),
-            }}
-          >
-            <img
-              src={layer.url}
-              alt=""
-              draggable={false}
-              className="h-auto max-h-[75dvh] w-full object-contain"
-            />
-          </div>
-        ))}
+        {layers.map((layer, index) => {
+          const isActive = layer.id === activeLayerId
+          return (
+            <div
+              key={layer.id}
+              className={
+                isActive && framedActive
+                  ? 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)] rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]'
+                  : 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]'
+              }
+              style={{
+                opacity: opacity * layer.opacity,
+                transform: buildOverlayCssTransform(layer.transform, layer.flipped),
+                zIndex: index,
+              }}
+            >
+              <img
+                src={layer.url}
+                alt=""
+                draggable={false}
+                className="h-auto max-h-[75dvh] w-full object-contain"
+              />
+            </div>
+          )
+        })}
       </div>
 
       <span className="absolute inset-x-0 bottom-2 mx-auto w-fit rounded-full border border-accent/35 bg-ink-deep/75 px-2 py-0.5 text-[0.68rem] font-bold text-[var(--chip-accent-fg)] backdrop-blur-sm">

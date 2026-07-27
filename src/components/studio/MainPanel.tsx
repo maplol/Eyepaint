@@ -11,8 +11,9 @@ import {
   LOUPE_SIZE_MIN,
   LOUPE_ZOOM_OPTIONS,
 } from '../../lib/studioTools'
-import type { RefLayer } from '../../lib/layers'
+import type { LayerStackAction, RefLayer } from '../../lib/layers'
 import type { SessionShot } from '../../lib/sessionGallery'
+import { LayersPanel } from './LayersPanel'
 import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
 import { StableLabel } from './StableLabel'
 import {
@@ -68,6 +69,8 @@ type MainPanelProps = {
   onRemoveLayer: (id: string) => void
   activeLayerId: string
   onSelectLayer: (id: string) => void
+  onReorderLayers: (fromId: string, toId: string) => void
+  onStackAction: (id: string, action: LayerStackAction) => void
   galleryEnabled: boolean
   autoSessionShot: boolean
   onAutoSessionShot: (value: boolean) => void
@@ -340,75 +343,16 @@ export function MainPanel(props: MainPanelProps) {
       </div>
 
       {props.layersEnabled && props.layers.length > 0 && (
-        <div className={panelCardClass}>
-          <p className={sectionTitleClass}>Слои референса</p>
-          <p className={mutedTextClass}>
-            Активный слой: цвета, движение, поворот и масштаб — только у него
-          </p>
-          {props.layers.map((layer) => {
-            const isActive = props.activeLayerId === layer.id
-            return (
-              <div
-                key={layer.id}
-                className={cn(
-                  'grid gap-1.5 rounded-xl border px-2.5 py-2',
-                  isActive
-                    ? 'border-accent/45 bg-accent/10'
-                    : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)]',
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 text-left"
-                    onClick={() => props.onSelectLayer(layer.id)}
-                    aria-pressed={isActive}
-                  >
-                    <span className="block truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
-                      {layer.name}
-                    </span>
-                    <span className="block text-[0.68rem] text-[var(--fg-faint)]">
-                      {isActive ? 'Активен · двигай / цвета' : 'Нажми, чтобы двигать'}
-                    </span>
-                  </button>
-                  <div className="flex gap-1.5">
-                    <button
-                      type="button"
-                      className={`${chipAccentClass(layer.visible)} ${toggleChipClass}`}
-                      aria-pressed={layer.visible}
-                      onClick={() => props.onLayerVisible(layer.id)}
-                    >
-                      <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
-                    </button>
-                    {layer.kind === 'aux' && (
-                      <button
-                        type="button"
-                        className={`${chipNeutralClass} w-10 shrink-0`}
-                        onClick={() => props.onRemoveLayer(layer.id)}
-                        aria-label={`Удалить ${layer.name}`}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <input
-                  className={rangeInputClass}
-                  type="range"
-                  min={0.05}
-                  max={1}
-                  step={0.01}
-                  value={layer.opacity}
-                  onChange={(event) => props.onLayerOpacity(layer.id, Number(event.target.value))}
-                  aria-label={`Прозрачность ${layer.name}`}
-                />
-              </div>
-            )
-          })}
-          <p className={`text-center ${mutedTextClass}`}>
-            Галерея/камера добавят вспомогательный слой, если основной занят
-          </p>
-        </div>
+        <LayersPanel
+          layers={props.layers}
+          activeLayerId={props.activeLayerId}
+          onSelectLayer={props.onSelectLayer}
+          onLayerOpacity={props.onLayerOpacity}
+          onLayerVisible={props.onLayerVisible}
+          onRemoveLayer={props.onRemoveLayer}
+          onReorderLayers={props.onReorderLayers}
+          onStackAction={props.onStackAction}
+        />
       )}
 
       {props.usingPhoneCam && (

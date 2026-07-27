@@ -57,13 +57,16 @@ import {
 } from '../lib/colors'
 import { loadFlags, saveFlags, type FeatureFlags } from '../lib/flags'
 import {
+  applyLayerStackAction,
   canAddAux,
   createAuxLayer,
   createPrimaryLayer,
   nextAuxName,
   patchLayerTransform,
+  reorderLayersInDisplayOrder,
   revokeAuxUrls,
   syncPrimaryUrl,
+  type LayerStackAction,
   type RefLayer,
 } from '../lib/layers'
 import {
@@ -476,7 +479,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     [palette, paletteSort],
   )
   const precisionProfile = PRECISION_PROFILES[colorPrecision]
-  const auxLayers = layers.filter((layer) => layer.kind === 'aux' && layer.visible)
+  const visibleLayers = layers.filter((layer) => layer.visible)
 
   useEffect(() => {
     if (selectedColorIds.length === 0 && !brush.dataUrl) {
@@ -706,12 +709,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
 
-  const primaryLayer = layers.find((layer) => layer.kind === 'primary') ?? null
-  const primaryOpacity = primaryLayer?.opacity ?? 1
-  const primaryVisible = primaryLayer?.visible ?? true
-  const primaryTransform = primaryLayer?.transform ?? DEFAULT_TRANSFORM
-  const primaryFlipped = primaryLayer?.flipped ?? false
-
   return (
     <div className={rootClass} data-atmosphere={atmosphere}>
       <div
@@ -768,108 +765,65 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
           </div>
         )}
 
-        {primaryVisible && (
-          <div
-            className={cn(
-              'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
-              framed &&
-                activeLayerId === 'primary' &&
-                'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
-              activeLayerId === 'primary' &&
-                (pickMode || brush.editing) &&
-                'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
-            )}
-            style={{
-              opacity: opacity * primaryOpacity,
-              transform: buildOverlayCssTransform(primaryTransform, primaryFlipped),
-              pointerEvents:
-                activeLayerId === 'primary' && (pickMode || brush.editing)
-                  ? 'auto'
-                  : locked
-                    ? 'none'
-                    : activeLayerId === 'primary'
-                      ? 'auto'
-                      : 'none',
-            }}
-            onClick={activeLayerId === 'primary' ? handleOverlayPick : undefined}
-            onPointerDown={(event) => {
-              if (activeLayerId === 'primary' && (pickMode || brush.editing)) {
-                event.stopPropagation()
-              }
-            }}
-          >
-            <img
-              ref={activeLayerId === 'primary' ? overlayImageRef : undefined}
-              src={layerDisplayUrl('primary', imageUrl)}
-              alt="Референс для срисовывания"
-              draggable={false}
-              className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
-            />
-            {flags.brushMask && activeLayerId === 'primary' && (
-              <MaskPainter
-                settings={brush}
-                onChange={(dataUrl) =>
-                  setBrush((prev) => ({
-                    ...prev,
-                    dataUrl,
-                    enabled: true,
-                  }))
+        {visibleLayers.map((layer, index) => {
+          const isActive = activeLayerId === layer.id
+          const isPrimary = layer.kind === 'primary'
+          const layerUrl = isPrimary ? imageUrl : layer.url
+          return (
+            <div
+              key={layer.id}
+              className={cn(
+                'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
+                isActive &&
+                  framed &&
+                  'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
+                isActive &&
+                  (pickMode || brush.editing) &&
+                  'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
+              )}
+              style={{
+                opacity: opacity * layer.opacity,
+                transform: buildOverlayCssTransform(layer.transform, layer.flipped),
+                zIndex: 2 + index,
+                pointerEvents:
+                  isActive && (pickMode || brush.editing)
+                    ? 'auto'
+                    : locked
+                      ? 'none'
+                      : isActive
+                        ? 'auto'
+                        : 'none',
+              }}
+              onClick={isActive ? handleOverlayPick : undefined}
+              onPointerDown={(event) => {
+                if (isActive && (pickMode || brush.editing)) {
+                  event.stopPropagation()
                 }
-                className="absolute inset-0 h-full w-full"
+              }}
+            >
+              <img
+                ref={isActive ? overlayImageRef : undefined}
+                src={layerDisplayUrl(layer.id, layerUrl)}
+                alt={isPrimary ? 'Референс для срисовывания' : layer.name}
+                draggable={false}
+                className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
               />
-            )}
-          </div>
-        )}
-
-        {flags.multiLayers &&
-          auxLayers.map((layer, index) => {
-            const isActive = activeLayerId === layer.id
-            return (
-              <div
-                key={layer.id}
-                className={cn(
-                  'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]',
-                  isActive &&
-                    framed &&
-                    'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
-                  isActive &&
-                    (pickMode || brush.editing) &&
-                    'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
-                )}
-                style={{
-                  opacity: opacity * layer.opacity,
-                  transform: buildOverlayCssTransform(layer.transform, layer.flipped),
-                  zIndex: 2 + index,
-                  pointerEvents: isActive && (pickMode || brush.editing) ? 'auto' : 'none',
-                }}
-                onClick={isActive ? handleOverlayPick : undefined}
-                onPointerDown={(event) => {
-                  if (isActive && (pickMode || brush.editing)) event.stopPropagation()
-                }}
-              >
-                <img
-                  ref={isActive ? overlayImageRef : undefined}
-                  src={layerDisplayUrl(layer.id, layer.url)}
-                  alt={layer.name}
-                  draggable={false}
-                  className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+              {flags.brushMask && isPrimary && isActive && (
+                <MaskPainter
+                  settings={brush}
+                  onChange={(dataUrl) =>
+                    setBrush((prev) => ({
+                      ...prev,
+                      dataUrl,
+                      enabled: true,
+                    }))
+                  }
+                  className="absolute inset-0 h-full w-full"
                 />
-                {flags.brushMask && isActive && (
-                  <MaskPainter
-                    settings={brush}
-                    onChange={(dataUrl) =>
-                      setBrush((prev) => ({
-                        ...prev,
-                        dataUrl,
-                        enabled: true,
-                      }))
-                    }
-                    className="absolute inset-0 h-full w-full"
-                  />
-                )}
-              </div>
-            )
-          })}
+              )}
+            </div>
+          )
+        })}
 
         <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
 
@@ -881,19 +835,14 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             pos={loupePos}
             stageRef={stageRef}
             sourceVideoRef={videoRef}
-            primaryLayer={primaryLayer}
-            primaryDisplayUrl={layerDisplayUrl('primary', imageUrl)}
+            layers={visibleLayers.map((layer) => ({
+              ...layer,
+              url: layerDisplayUrl(layer.id, layer.kind === 'primary' ? imageUrl : layer.url),
+            }))}
+            activeLayerId={activeLayerId}
             opacity={opacity}
-            framedPrimary={framed && activeLayerId === 'primary'}
+            framedActive={framed}
             calcFilter={calcModeFilter(calcMode)}
-            auxLayers={
-              flags.multiLayers
-                ? auxLayers.map((layer) => ({
-                    ...layer,
-                    url: layerDisplayUrl(layer.id, layer.url),
-                  }))
-                : []
-            }
           />
         )}
 
@@ -1089,6 +1038,22 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     layers={layers}
                     activeLayerId={activeLayerId}
                     onSelectLayer={selectLayer}
+                    onReorderLayers={(fromId, toId) => {
+                      setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
+                      setActiveLayerId(fromId)
+                      showToast('Порядок слоёв обновлён')
+                    }}
+                    onStackAction={(id, action: LayerStackAction) => {
+                      setLayers((prev) => applyLayerStackAction(prev, id, action))
+                      setActiveLayerId(id)
+                      const labels: Record<LayerStackAction, string> = {
+                        front: 'на передний план',
+                        forward: 'ближе',
+                        backward: 'дальше',
+                        back: 'на задний план',
+                      }
+                      showToast(`Слой ${labels[action]}`)
+                    }}
                     onLayerOpacity={(id, value) =>
                       setLayers((prev) =>
                         prev.map((layer) =>
