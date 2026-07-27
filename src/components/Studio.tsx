@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import { GuideOverlay } from '../components/GuideOverlay'
 import { useCamera } from '../hooks/useCamera'
 import {
   buildOverlayCssTransform,
@@ -34,6 +42,16 @@ import {
   loadHostRoomCode,
   saveHostRoomCode,
 } from '../lib/rooms'
+import { buildJoinUrl, renderJoinQrDataUrl } from '../lib/roomQr'
+import {
+  DEFAULT_CALC_MODE,
+  DEFAULT_GUIDES,
+  GUIDE_LABELS,
+  calcModeFilter,
+  type CalcModeSettings,
+  type GuideKind,
+  type GuideSettings,
+} from '../lib/studioTools'
 
 type StudioProps = {
   imageUrl: string
@@ -50,6 +68,9 @@ const TABS: Array<[StudioTab, string]> = [
   ['colors', 'Цвета'],
   ['poses', 'Позы'],
 ]
+
+const GUIDE_KIND_OPTIONS: GuideKind[] = ['none', 'thirds', 'face', 'figure']
+const SESSION_OPTIONS = [25, 45, 90] as const
 
 const STAT_LABELS: Record<string, string> = {
   scale: 'Масштаб',
@@ -147,9 +168,19 @@ const getStageCursorClass = (locked: boolean, dragMode: string) => {
   return 'cursor-grab active:cursor-grabbing'
 }
 
+const formatSessionRemaining = (ms: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
 export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const [roomEnabled, setRoomEnabled] = useState(false)
   const [roomCode, setRoomCode] = useState(() => loadHostRoomCode() ?? createRoomCode())
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [remoteFrozen, setRemoteFrozen] = useState(false)
+  const [remoteTorch, setRemoteTorch] = useState(false)
   const room = useRoomPeer({
     enabled: roomEnabled,
     role: 'host',
@@ -160,13 +191,47 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     saveHostRoomCode(roomCode)
   }, [roomCode])
 
+  useEffect(() => {
+    if (!roomEnabled || !roomCode) {
+      setQrDataUrl(null)
+      return
+    }
+
+    let cancelled = false
+    void renderJoinQrDataUrl(roomCode)
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url)
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [roomEnabled, roomCode])
+
   const { videoRef, ready, error, trackInfo } = useCamera(
     !roomEnabled,
     roomEnabled ? room.remoteStream : null,
   )
   const usingPhoneCam = Boolean(room.remoteStream)
 
+  useEffect(() => {
+    if (usingPhoneCam) return
+    setRemoteFrozen(false)
+    setRemoteTorch(false)
+  }, [usingPhoneCam])
+
   const [opacity, setOpacity] = useState(0.45)
+  const [calcMode, setCalcMode] = useState<CalcModeSettings>(() => ({ ...DEFAULT_CALC_MODE }))
+  const [guides, setGuides] = useState<GuideSettings>(() => ({ ...DEFAULT_GUIDES }))
+  const [loupeOn, setLoupeOn] = useState(false)
+  const [loupePos, setLoupePos] = useState({ x: 50, y: 50 })
+  const [loupeVisible, setLoupeVisible] = useState(false)
+  const [sessionMins, setSessionMins] = useState<null | 25 | 45 | 90>(null)
+  const [sessionEndsAt, setSessionEndsAt] = useState<number | null>(null)
+  const [timerNow, setTimerNow] = useState(() => Date.now())
   const [locked, setLocked] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
@@ -212,6 +277,8 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
+  const loupeOnRef = useRef(loupeOn)
+  loupeOnRef.current = loupeOn
 
   const displayUrl = filteredUrl ?? imageUrl
   const framed = colorMode === 'mask'
@@ -220,7 +287,10 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   useEffect(() => {
     const node = stageRef.current
     if (!node) return
-    const wheelListener = (event: WheelEvent) => onWheelRef.current(event)
+    const wheelListener = (event: WheelEvent) => {
+      onWheelRef.current(event)
+      if (loupeOnRef.current) onWheelRef.current(event)
+    }
     node.addEventListener('wheel', wheelListener, { passive: false })
     return () => node.removeEventListener('wheel', wheelListener)
   }, [])
@@ -230,6 +300,25 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     const id = window.setTimeout(() => setToast(null), 2200)
     return () => window.clearTimeout(id)
   }, [toast])
+
+  useEffect(() => {
+    if (!sessionEndsAt) return
+
+    const tick = () => {
+      const remaining = sessionEndsAt - Date.now()
+      if (remaining <= 0) {
+        setSessionEndsAt(null)
+        setSessionMins(null)
+        setToast('Сессия окончена')
+        return
+      }
+      setTimerNow(Date.now())
+    }
+
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [sessionEndsAt])
 
   useEffect(() => {
     let cancelled = false
@@ -424,8 +513,53 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     showToast(`Вернули: ${pose.name}`)
   }
 
+  const handleStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!loupeOn) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100))
+    const y = Math.min(100, Math.max(0, ((event.clientY - rect.top) / rect.height) * 100))
+    setLoupePos({ x, y })
+    setLoupeVisible(true)
+  }
+
+  const startSession = (minutes: 25 | 45 | 90) => {
+    const now = Date.now()
+    setTimerNow(now)
+    setSessionMins(minutes)
+    setSessionEndsAt(now + minutes * 60_000)
+  }
+
+  const toggleRemoteFreeze = () => {
+    const value = !remoteFrozen
+    void room.sendCommand({ type: 'freeze', value }).then((ok) => {
+      if (ok) {
+        setRemoteFrozen(value)
+      } else {
+        showToast('Телефон не ответил')
+      }
+    })
+  }
+
+  const toggleRemoteTorch = () => {
+    const value = !remoteTorch
+    void room.sendCommand({ type: 'torch', value }).then((ok) => {
+      if (ok) {
+        setRemoteTorch(value)
+      } else {
+        showToast('Телефон не ответил')
+      }
+    })
+  }
+
+  const sessionRemainingLabel =
+    sessionEndsAt && sessionMins
+      ? formatSessionRemaining(sessionEndsAt - timerNow)
+      : null
+  const roomJoinUrl = roomEnabled && roomCode ? buildJoinUrl(roomCode) : null
+
   const cameraLabel = usingPhoneCam
-    ? `Камера: телефон${trackInfo ? ` · ${trackInfo}` : ''}`
+    ? `Камера: телефон${trackInfo ? ` · ${trackInfo}` : ''}${remoteFrozen ? ' · freeze' : ''}`
     : ready
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
@@ -435,9 +569,30 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       <div
         ref={stageRef}
         className={cn(stageBaseClass, getStageCursorClass(locked || pickMode, dragMode))}
-        {...(pickMode ? {} : handlers)}
+        onPointerDown={(event) => {
+          handleStagePointerMove(event)
+          if (!pickMode) handlers.onPointerDown(event)
+        }}
+        onPointerMove={(event) => {
+          handleStagePointerMove(event)
+          if (!pickMode) handlers.onPointerMove(event)
+        }}
+        onPointerUp={(event) => {
+          if (!pickMode) handlers.onPointerUp(event)
+        }}
+        onPointerCancel={(event) => {
+          if (!pickMode) handlers.onPointerCancel(event)
+        }}
+        onPointerLeave={() => setLoupeVisible(false)}
       >
-        <video ref={videoRef} className={cameraClass} playsInline muted autoPlay />
+        <video
+          ref={videoRef}
+          className={cameraClass}
+          style={{ filter: calcModeFilter(calcMode) }}
+          playsInline
+          muted
+          autoPlay
+        />
 
         {!ready && !error && !roomEnabled && (
           <div className={statusBaseClass}>Открываю камеру…</div>
@@ -487,6 +642,25 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
             className="h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] pointer-events-none"
           />
         </div>
+
+        <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
+
+        {loupeOn && loupeVisible && (
+          <div
+            className="pointer-events-none absolute z-[4] grid h-40 w-40 -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-2 border-accent-soft shadow-lg"
+            style={{
+              left: `${loupePos.x}%`,
+              top: `${loupePos.y}%`,
+              background:
+                'radial-gradient(circle, rgba(255,217,189,0.16) 0%, rgba(255,217,189,0.08) 48%, rgba(20,26,29,0.22) 100%)',
+            }}
+            aria-hidden="true"
+          >
+            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-accent-soft backdrop-blur-sm">
+              Лупа 2×
+            </span>
+          </div>
+        )}
 
         {!locked && (
           <div
@@ -645,6 +819,18 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                             {roomCode}
                           </strong>
                         </div>
+                        {qrDataUrl && roomJoinUrl && (
+                          <div className="grid gap-2 rounded-2xl border border-white/12 bg-white/8 px-3 py-3 text-center">
+                            <img
+                              src={qrDataUrl}
+                              alt="QR комнаты"
+                              className="mx-auto rounded-2xl bg-paper p-2 w-[200px] h-[200px]"
+                            />
+                            <p className="truncate text-[0.72rem] text-mist/60" title={roomJoinUrl}>
+                              {roomJoinUrl}
+                            </p>
+                          </div>
+                        )}
                         <div className={rowClass}>
                           <button
                             type="button"
@@ -773,6 +959,154 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     aria-label="Прозрачность референса"
                   />
                 </div>
+
+                <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                    <div>
+                      <p className={sectionTitleClass}>Режим кальки</p>
+                      <p className="mt-0.5 text-[0.72rem] text-mist/55">
+                        Подсвечивает лист через камеру
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={chipAccentClass(calcMode.enabled)}
+                      onClick={() =>
+                        setCalcMode((prev) => ({
+                          ...prev,
+                          enabled: !prev.enabled,
+                        }))
+                      }
+                    >
+                      {calcMode.enabled ? 'Вкл' : 'Выкл'}
+                    </button>
+                  </div>
+                  {calcMode.enabled && (
+                    <div>
+                      <div className={sliderLabelsClass}>
+                        <span>Сила</span>
+                        <span>{Math.round(calcMode.strength * 100)}%</span>
+                      </div>
+                      <input
+                        className={rangeInputClass}
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={calcMode.strength}
+                        onChange={(event) =>
+                          setCalcMode((prev) => ({
+                            ...prev,
+                            strength: Number(event.target.value),
+                          }))
+                        }
+                        aria-label="Сила режима кальки"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+                  <p className={sectionTitleClass}>Направляющие</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {GUIDE_KIND_OPTIONS.map((kind) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        className={chipAccentClass(guides.kind === kind)}
+                        onClick={() => setGuides((prev) => ({ ...prev, kind }))}
+                      >
+                        {GUIDE_LABELS[kind]}
+                      </button>
+                    ))}
+                  </div>
+                  {guides.kind !== 'none' && (
+                    <div>
+                      <div className={sliderLabelsClass}>
+                        <span>Прозрачность сетки</span>
+                        <span>{Math.round(guides.opacity * 100)}%</span>
+                      </div>
+                      <input
+                        className={rangeInputClass}
+                        type="range"
+                        min={0.05}
+                        max={1}
+                        step={0.01}
+                        value={guides.opacity}
+                        onChange={(event) =>
+                          setGuides((prev) => ({
+                            ...prev,
+                            opacity: Number(event.target.value),
+                          }))
+                        }
+                        aria-label="Прозрачность направляющих"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                    <div>
+                      <p className={sectionTitleClass}>Лупа</p>
+                      <p className="mt-0.5 text-[0.72rem] text-mist/55">
+                        Круг показывает точку внимания, колесо зумит 2×
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={chipAccentClass(loupeOn)}
+                      onClick={() => {
+                        setLoupeOn((value) => !value)
+                        setLoupeVisible(false)
+                      }}
+                    >
+                      {loupeOn ? 'Вкл' : 'Выкл'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={sectionTitleClass}>Сессия</p>
+                    {sessionRemainingLabel && (
+                      <span className="rounded-full border border-accent/35 bg-accent/15 px-2.5 py-1 text-[0.78rem] font-bold text-accent-soft">
+                        {sessionRemainingLabel}
+                      </span>
+                    )}
+                  </div>
+                  <div className={rowClass}>
+                    {SESSION_OPTIONS.map((minutes) => (
+                      <button
+                        key={minutes}
+                        type="button"
+                        className={chipAccentClass(sessionMins === minutes)}
+                        onClick={() => startSession(minutes)}
+                      >
+                        {minutes} мин
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {usingPhoneCam && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className={chipAccentClass(remoteFrozen)}
+                      onClick={toggleRemoteFreeze}
+                    >
+                      {remoteFrozen ? 'Разморозить' : 'Заморозить на телефоне'}
+                    </button>
+                    <button
+                      type="button"
+                      className={chipAccentClass(remoteTorch)}
+                      onClick={toggleRemoteTorch}
+                    >
+                      Фонарик
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-[auto_1fr] items-center gap-[0.85rem] px-[0.15rem] pb-[0.05rem] pt-[0.15rem]">
                   <button
