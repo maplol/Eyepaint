@@ -23,5 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local agent skills
-.cursor/
+# Local agent / Cursor — version only product skills
+.cursor/*
+!.cursor/skills/
+.cursor/skills/*
+!.cursor/skills/eyepaint-features/
+!.cursor/skills/eyepaint-features/**
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
