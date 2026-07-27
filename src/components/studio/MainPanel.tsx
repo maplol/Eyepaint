@@ -13,7 +13,6 @@ import {
 } from '../../lib/studioTools'
 import type { SessionShot } from '../../lib/sessionGallery'
 import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
-import { StableLabel } from './StableLabel'
 import {
   chipAccentClass,
   chipNeutralClass,
@@ -25,7 +24,6 @@ import {
   rowClass,
   sectionTitleClass,
   sliderLabelsClass,
-  toggleChipClass,
 } from './studioUi'
 
 const GUIDE_KIND_OPTIONS: GuideKind[] = ['none', 'thirds', 'face', 'figure']
@@ -43,7 +41,6 @@ type MainPanelProps = {
   onGuides: (next: GuideSettings | ((prev: GuideSettings) => GuideSettings)) => void
   loupe: LoupeSettings
   onLoupeChange: (next: LoupeSettings | ((prev: LoupeSettings) => LoupeSettings)) => void
-  onLoupeToggle: () => void
   sessionMins: null | 25 | 45 | 90
   sessionRemainingLabel: string | null
   onStartSession: (minutes: 25 | 45 | 90) => void
@@ -95,48 +92,31 @@ export function MainPanel(props: MainPanelProps) {
 
       {show('calc') && (
         <div className={panelCardClass}>
-          <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-            <div>
-              <p className={sectionTitleClass}>Режим кальки</p>
-              <p className={`mt-0.5 ${mutedTextClass}`}>Подсвечивает лист через камеру</p>
+          <div>
+            <p className={sectionTitleClass}>Режим кальки</p>
+            <p className={`mt-0.5 ${mutedTextClass}`}>Подсвечивает лист через камеру</p>
+          </div>
+          <div>
+            <div className={sliderLabelsClass}>
+              <span>Сила</span>
+              <span>{Math.round(props.calcMode.strength * 100)}%</span>
             </div>
-            <button
-              type="button"
-              className={`${chipAccentClass(props.calcMode.enabled)} ${toggleChipClass}`}
-              aria-pressed={props.calcMode.enabled}
-              onClick={() =>
+            <input
+              className={rangeInputClass}
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={props.calcMode.strength}
+              onChange={(event) =>
                 props.onCalcMode((prev) => ({
                   ...prev,
-                  enabled: !prev.enabled,
+                  strength: Number(event.target.value),
                 }))
               }
-            >
-              <StableLabel active={props.calcMode.enabled} on="Вкл" off="Выкл" />
-            </button>
+              aria-label="Сила режима кальки"
+            />
           </div>
-          {props.calcMode.enabled && (
-            <div>
-              <div className={sliderLabelsClass}>
-                <span>Сила</span>
-                <span>{Math.round(props.calcMode.strength * 100)}%</span>
-              </div>
-              <input
-                className={rangeInputClass}
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={props.calcMode.strength}
-                onChange={(event) =>
-                  props.onCalcMode((prev) => ({
-                    ...prev,
-                    strength: Number(event.target.value),
-                  }))
-                }
-                aria-label="Сила режима кальки"
-              />
-            </div>
-          )}
         </div>
       )}
 
@@ -203,65 +183,51 @@ export function MainPanel(props: MainPanelProps) {
 
       {show('loupe') && (
         <div className={panelCardClass}>
-          <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-            <div>
-              <p className={sectionTitleClass}>Лупа</p>
-              <p className={`mt-0.5 ${mutedTextClass}`}>
-                Увеличивает камеру и референс под курсором
-              </p>
-            </div>
-            <button
-              type="button"
-              className={`${chipAccentClass(props.loupe.enabled)} ${toggleChipClass}`}
-              aria-pressed={props.loupe.enabled}
-              onClick={props.onLoupeToggle}
-            >
-              <StableLabel active={props.loupe.enabled} on="Вкл" off="Выкл" />
-            </button>
+          <div>
+            <p className={sectionTitleClass}>Лупа</p>
+            <p className={`mt-0.5 ${mutedTextClass}`}>
+              Увеличивает камеру и референс под курсором
+            </p>
           </div>
-          {props.loupe.enabled && (
-            <>
-              <div>
-                <div className={sliderLabelsClass}>
-                  <span>Размер</span>
-                  <span>{Math.round(props.loupe.size)}px</span>
-                </div>
-                <input
-                  className={rangeInputClass}
-                  type="range"
-                  min={LOUPE_SIZE_MIN}
-                  max={LOUPE_SIZE_MAX}
-                  step={4}
-                  value={props.loupe.size}
-                  onChange={(event) =>
-                    props.onLoupeChange((prev) => ({
-                      ...prev,
-                      size: Number(event.target.value),
-                    }))
-                  }
-                  aria-label="Размер лупы"
-                />
-              </div>
-              <div>
-                <div className={sliderLabelsClass}>
-                  <span>Увеличение</span>
-                  <span>{props.loupe.zoom}×</span>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {LOUPE_ZOOM_OPTIONS.map((zoom) => (
-                    <button
-                      key={zoom}
-                      type="button"
-                      className={chipAccentClass(props.loupe.zoom === zoom)}
-                      onClick={() => props.onLoupeChange((prev) => ({ ...prev, zoom }))}
-                    >
-                      {zoom}×
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          <div>
+            <div className={sliderLabelsClass}>
+              <span>Размер</span>
+              <span>{Math.round(props.loupe.size)}px</span>
+            </div>
+            <input
+              className={rangeInputClass}
+              type="range"
+              min={LOUPE_SIZE_MIN}
+              max={LOUPE_SIZE_MAX}
+              step={4}
+              value={props.loupe.size}
+              onChange={(event) =>
+                props.onLoupeChange((prev) => ({
+                  ...prev,
+                  size: Number(event.target.value),
+                }))
+              }
+              aria-label="Размер лупы"
+            />
+          </div>
+          <div>
+            <div className={sliderLabelsClass}>
+              <span>Увеличение</span>
+              <span>{props.loupe.zoom}×</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {LOUPE_ZOOM_OPTIONS.map((zoom) => (
+                <button
+                  key={zoom}
+                  type="button"
+                  className={chipAccentClass(props.loupe.zoom === zoom)}
+                  onClick={() => props.onLoupeChange((prev) => ({ ...prev, zoom }))}
+                >
+                  {zoom}×
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

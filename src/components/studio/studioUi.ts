@@ -107,7 +107,7 @@ export const layersSheetClass =
 
 /** Compact fixed-height layer row */
 export const layerRowClass =
-  'grid h-11 shrink-0 grid-cols-[auto_minmax(0,1fr)_minmax(4.5rem,5.5rem)_auto] items-center gap-1.5 rounded-xl border px-1.5'
+  'grid h-10 shrink-0 grid-cols-[auto_minmax(0,1fr)_minmax(3.75rem,4.75rem)_auto] items-center gap-1 rounded-lg border px-1'
 
 export const scrollAreaClass = 'eyepaint-scroll'
 
