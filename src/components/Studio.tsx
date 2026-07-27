@@ -5,6 +5,7 @@ import {
   useOverlayTransform,
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
+import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
 import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposite'
 import {
   extractPalette,
@@ -12,6 +13,11 @@ import {
   type ColorFilterMode,
   type PaletteColor,
 } from '../lib/colors'
+import {
+  DEFAULT_HOTKEYS,
+  HOTKEY_LABELS,
+  type HotkeyAction,
+} from '../lib/hotkeys'
 import { createPose, formatPoseStats, loadPoses, savePoses, type SavedPose } from '../lib/poses'
 import {
   copyText,
@@ -27,7 +33,7 @@ type StudioProps = {
   onExit: () => void
 }
 
-type StudioTab = 'main' | 'project' | 'colors' | 'poses' | 'link'
+type StudioTab = 'main' | 'project' | 'colors' | 'poses' | 'link' | 'keys'
 
 const TABS: Array<[StudioTab, string]> = [
   ['main', 'Основное'],
@@ -35,6 +41,7 @@ const TABS: Array<[StudioTab, string]> = [
   ['colors', 'Цвета'],
   ['poses', 'Позы'],
   ['link', 'Связь'],
+  ['keys', 'Клавиши'],
 ]
 
 const STAT_LABELS: Record<string, string> = {
@@ -84,7 +91,18 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const overlayImageRef = useRef<HTMLImageElement | null>(null)
-  const { transform, setTransform, reset, handlers, onWheel } = useOverlayTransform(locked)
+  const {
+    hotkeys,
+    setHotkeys,
+    dragMode,
+    listeningFor,
+    setListeningFor,
+    formatHotkey,
+  } = useStudioHotkeys(true)
+  const { transform, setTransform, reset, handlers, onWheel } = useOverlayTransform(
+    locked,
+    dragMode,
+  )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
 
@@ -244,7 +262,11 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     <div
       className={`studio ${locked ? 'studio--locked' : ''} ${uiHidden ? 'studio--ui-hidden' : ''}`}
     >
-      <div ref={stageRef} className="studio__stage" {...handlers}>
+      <div
+        ref={stageRef}
+        className={`studio__stage studio__stage--${dragMode}`}
+        {...handlers}
+      >
         <video ref={videoRef} className="studio__camera" playsInline muted autoPlay />
 
         {!ready && !error && !roomEnabled && (
@@ -731,12 +753,64 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     <p className="studio__tip">
                       Код создаётся на ПК и только читается. На телефоне его вводят.
                     </p>
+                    <p className="studio__tip">
+                      Качество картинки выбирай на телефоне в экране камеры.
+                    </p>
                   </>
                 )}
               </div>
             )}
+
+            {tab === 'keys' && (
+              <div className="studio__panel">
+                <p className="studio__section-title">Горячие клавиши (ПК)</p>
+                <p className="studio__tip">
+                  Зажми клавишу и тяни мышью — как в Photoshop. Клик по кнопке → нажми новую
+                  клавишу.
+                </p>
+                <div className="studio__hotkey-list">
+                  {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
+                    <div key={action} className="studio__hotkey-row">
+                      <span>{HOTKEY_LABELS[action]}</span>
+                      <button
+                        type="button"
+                        className={`studio__hotkey-bind ${listeningFor === action ? 'is-listening' : ''}`}
+                        onClick={() =>
+                          setListeningFor((prev) => (prev === action ? null : action))
+                        }
+                      >
+                        {listeningFor === action
+                          ? 'Нажми…'
+                          : formatHotkey(hotkeys[action])}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="studio__chip"
+                  onClick={() => {
+                    setHotkeys({ ...DEFAULT_HOTKEYS })
+                    showToast('Клавиши сброшены')
+                  }}
+                >
+                  Сбросить по умолчанию
+                </button>
+                <p className="studio__tip">
+                  Сейчас: {dragMode === 'pan' ? 'движение' : dragMode === 'rotate' ? 'поворот' : dragMode === 'scale' ? 'масштаб' : 'наклон'}
+                </p>
+              </div>
+            )}
           </div>
         </aside>
+      )}
+
+      {!uiHidden && (
+        <div className="studio__hotkey-hint" aria-hidden="true">
+          {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}
+          {formatHotkey(hotkeys.scale)} масштаб · {formatHotkey(hotkeys.tilt)} наклон · колёсико
+          зум
+        </div>
       )}
 
       {toast && <div className="studio__toast">{toast}</div>}

@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import {
+  qualityConstraints,
+  QUALITY_PRESETS,
+  type VideoQuality,
+} from '../lib/videoQuality'
 
 type CameraState = {
   ready: boolean
@@ -6,7 +11,11 @@ type CameraState = {
   stream: MediaStream | null
 }
 
-export function useCamera(enabled: boolean, externalStream: MediaStream | null = null) {
+export function useCamera(
+  enabled: boolean,
+  externalStream: MediaStream | null = null,
+  quality: VideoQuality = 'high',
+) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [state, setState] = useState<CameraState>({
     ready: false,
@@ -49,11 +58,7 @@ export function useCamera(enabled: boolean, externalStream: MediaStream | null =
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+          video: qualityConstraints(quality),
         })
 
         if (!active) {
@@ -61,14 +66,35 @@ export function useCamera(enabled: boolean, externalStream: MediaStream | null =
           return
         }
 
+        for (const track of mediaStream.getVideoTracks()) {
+          try {
+            track.contentHint = 'detail'
+          } catch {
+            /* optional */
+          }
+        }
+
         setState({ ready: true, error: null, stream: mediaStream })
       } catch {
-        if (active) {
-          setState({
-            ready: false,
-            error: 'Не удалось открыть камеру. Разреши доступ и обнови страницу.',
-            stream: null,
+        // Fallback without exact constraints if device rejects ideals.
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' } },
           })
+          if (!active) {
+            mediaStream.getTracks().forEach((track) => track.stop())
+            return
+          }
+          setState({ ready: true, error: null, stream: mediaStream })
+        } catch {
+          if (active) {
+            setState({
+              ready: false,
+              error: 'Не удалось открыть камеру. Разреши доступ и обнови страницу.',
+              stream: null,
+            })
+          }
         }
       }
     }
@@ -80,7 +106,7 @@ export function useCamera(enabled: boolean, externalStream: MediaStream | null =
       mediaStream?.getTracks().forEach((track) => track.stop())
       setState({ ready: false, error: null, stream: null })
     }
-  }, [enabled, externalStream])
+  }, [enabled, externalStream, quality])
 
   useEffect(() => {
     const video = videoRef.current
@@ -98,5 +124,5 @@ export function useCamera(enabled: boolean, externalStream: MediaStream | null =
     }
   }, [state.stream])
 
-  return { videoRef, ...state }
+  return { videoRef, ...state, qualityPreset: QUALITY_PRESETS[quality] }
 }

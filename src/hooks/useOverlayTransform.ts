@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import type { HotkeyAction } from '../lib/hotkeys'
 
 export type OverlayTransform = {
   x: number
@@ -49,12 +50,14 @@ export function buildOverlayCssTransform(transform: OverlayTransform, flipped: b
   ].join(' ')
 }
 
-export function useOverlayTransform(locked: boolean) {
+export function useOverlayTransform(locked: boolean, dragMode: HotkeyAction = 'pan') {
   const [transform, setTransform] = useState<OverlayTransform>(DEFAULT_TRANSFORM)
   const transformRef = useRef(transform)
+  const dragModeRef = useRef(dragMode)
   const pointersRef = useRef<Map<number, PointerSample>>(new Map())
   const gestureRef = useRef<{
-    mode: 'pan' | 'pinch'
+    mode: 'drag' | 'pinch'
+    tool: HotkeyAction
     startTransform: OverlayTransform
     startPointer?: PointerSample
     startDistance?: number
@@ -65,6 +68,10 @@ export function useOverlayTransform(locked: boolean) {
   useEffect(() => {
     transformRef.current = transform
   }, [transform])
+
+  useEffect(() => {
+    dragModeRef.current = dragMode
+  }, [dragMode])
 
   const reset = () => setTransform(DEFAULT_TRANSFORM)
 
@@ -82,7 +89,8 @@ export function useOverlayTransform(locked: boolean) {
     const pointers = [...pointersRef.current.values()]
     if (pointers.length === 1) {
       gestureRef.current = {
-        mode: 'pan',
+        mode: 'drag',
+        tool: dragModeRef.current,
         startTransform: { ...transformRef.current },
         startPointer: sample,
       }
@@ -90,6 +98,7 @@ export function useOverlayTransform(locked: boolean) {
       const [a, b] = pointers
       gestureRef.current = {
         mode: 'pinch',
+        tool: 'pan',
         startTransform: { ...transformRef.current },
         startDistance: distance(a, b),
         startAngle: angle(a, b),
@@ -112,12 +121,42 @@ export function useOverlayTransform(locked: boolean) {
 
     const pointers = [...pointersRef.current.values()]
 
-    if (gesture.mode === 'pan' && pointers.length === 1 && gesture.startPointer) {
+    if (gesture.mode === 'drag' && pointers.length === 1 && gesture.startPointer) {
       const p = pointers[0]
+      const dx = p.x - gesture.startPointer.x
+      const dy = p.y - gesture.startPointer.y
+      const start = gesture.startTransform
+
+      if (gesture.tool === 'rotate') {
+        setTransform({
+          ...start,
+          rotation: start.rotation + dx * 0.35,
+        })
+        return
+      }
+
+      if (gesture.tool === 'scale') {
+        const next = start.scale * (1 - dy * 0.004)
+        setTransform({
+          ...start,
+          scale: Math.min(6, Math.max(0.2, next)),
+        })
+        return
+      }
+
+      if (gesture.tool === 'tilt') {
+        setTransform({
+          ...start,
+          rotateY: Math.min(60, Math.max(-60, start.rotateY + dx * 0.2)),
+          rotateX: Math.min(60, Math.max(-60, start.rotateX - dy * 0.2)),
+        })
+        return
+      }
+
       setTransform({
-        ...gesture.startTransform,
-        x: gesture.startTransform.x + (p.x - gesture.startPointer.x),
-        y: gesture.startTransform.y + (p.y - gesture.startPointer.y),
+        ...start,
+        x: start.x + dx,
+        y: start.y + dy,
       })
       return
     }
@@ -166,7 +205,8 @@ export function useOverlayTransform(locked: boolean) {
 
     if (pointers.length === 1) {
       gestureRef.current = {
-        mode: 'pan',
+        mode: 'drag',
+        tool: dragModeRef.current,
         startTransform: { ...transformRef.current },
         startPointer: pointers[0],
       }

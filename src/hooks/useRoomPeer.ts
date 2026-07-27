@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { joinRoom, type Room } from '@trystero-p2p/mqtt'
 import { normalizeRoomCode, roomTopicId } from '../lib/rooms'
+import { applySenderBitrate, QUALITY_PRESETS, type VideoQuality } from '../lib/videoQuality'
 
 type RoomRole = 'host' | 'camera'
 
@@ -9,17 +10,26 @@ type UseRoomPeerArgs = {
   role: RoomRole
   code: string
   localStream?: MediaStream | null
+  quality?: VideoQuality
 }
 
 type RoomStatus = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
 
-export function useRoomPeer({ enabled, role, code, localStream = null }: UseRoomPeerArgs) {
+export function useRoomPeer({
+  enabled,
+  role,
+  code,
+  localStream = null,
+  quality = 'high',
+}: UseRoomPeerArgs) {
   const [status, setStatus] = useState<RoomStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const roomRef = useRef<Room | null>(null)
   const localStreamRef = useRef(localStream)
+  const qualityRef = useRef(quality)
   localStreamRef.current = localStream
+  qualityRef.current = quality
 
   useEffect(() => {
     const normalized = normalizeRoomCode(code)
@@ -51,10 +61,18 @@ export function useRoomPeer({ enabled, role, code, localStream = null }: UseRoom
 
     roomRef.current = room
 
+    const tuneBitrate = () => {
+      const bitrate = QUALITY_PRESETS[qualityRef.current].maxBitrate
+      void applySenderBitrate(room.getPeers(), bitrate)
+    }
+
     const pushStream = (peerId?: string) => {
       const stream = localStreamRef.current
       if (!stream || role !== 'camera') return
-      void room.addStream(stream, peerId ? { target: peerId } : undefined)
+      const tasks = room.addStream(stream, peerId ? { target: peerId } : undefined)
+      void Promise.all(tasks).then(() => {
+        if (active) tuneBitrate()
+      })
     }
 
     room.onPeerJoin = (peerId) => {
@@ -109,18 +127,20 @@ export function useRoomPeer({ enabled, role, code, localStream = null }: UseRoom
     }
   }, [enabled, role, code])
 
-  // If camera stream appears after room join, publish it.
   useEffect(() => {
     if (!enabled || role !== 'camera' || !localStream) return
     const room = roomRef.current
     if (!room) return
-    void room.addStream(localStream)
+    const tasks = room.addStream(localStream)
+    void Promise.all(tasks).then(() => {
+      void applySenderBitrate(room.getPeers(), QUALITY_PRESETS[quality].maxBitrate)
+    })
     const peers = Object.keys(room.getPeers())
     if (peers.length > 0) {
       setStatus('connected')
       setError(null)
     }
-  }, [enabled, role, localStream])
+  }, [enabled, role, localStream, quality])
 
   return { status, error, remoteStream }
 }
