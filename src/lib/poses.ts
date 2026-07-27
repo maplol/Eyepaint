@@ -1,4 +1,5 @@
 import type { OverlayTransform } from '../hooks/useOverlayTransform'
+import { DEFAULT_TRANSFORM } from '../hooks/useOverlayTransform'
 
 export type SavedPose = {
   id: string
@@ -9,29 +10,42 @@ export type SavedPose = {
   opacity: number
 }
 
-const STORAGE_KEY = 'eyepaint-poses-v2'
+const STORAGE_KEY = 'eyepaint-poses-v3'
 const MAX_POSES = 24
+
+function normalizeTransform(raw: Partial<OverlayTransform> | undefined): OverlayTransform {
+  return {
+    x: typeof raw?.x === 'number' ? raw.x : 0,
+    y: typeof raw?.y === 'number' ? raw.y : 0,
+    scale: typeof raw?.scale === 'number' ? raw.scale : 1,
+    rotation: typeof raw?.rotation === 'number' ? raw.rotation : 0,
+    rotateX: typeof raw?.rotateX === 'number' ? raw.rotateX : 0,
+    rotateY: typeof raw?.rotateY === 'number' ? raw.rotateY : 0,
+  }
+}
 
 export function loadPoses(): SavedPose[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('eyepaint-poses-v1')
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem('eyepaint-poses-v2') ??
+      localStorage.getItem('eyepaint-poses-v1')
     if (!raw) return []
     const parsed = JSON.parse(raw) as Partial<SavedPose>[]
     if (!Array.isArray(parsed)) return []
     return parsed
       .filter(
-        (pose): pose is SavedPose =>
+        (pose) =>
           !!pose &&
           typeof pose.id === 'string' &&
           typeof pose.name === 'string' &&
-          !!pose.transform &&
-          typeof pose.transform.x === 'number' &&
-          typeof pose.transform.y === 'number' &&
-          typeof pose.transform.scale === 'number' &&
-          typeof pose.transform.rotation === 'number',
+          !!pose.transform,
       )
       .map((pose) => ({
-        ...pose,
+        id: pose.id as string,
+        name: pose.name as string,
+        createdAt: typeof pose.createdAt === 'number' ? pose.createdAt : Date.now(),
+        transform: normalizeTransform(pose.transform),
         flipped: Boolean(pose.flipped),
         opacity:
           typeof pose.opacity === 'number' && pose.opacity > 0 && pose.opacity <= 1
@@ -69,22 +83,20 @@ export function createPose(
     id: `pose-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     name: nextPoseName(poses),
     createdAt: Date.now(),
-    transform: { ...transform },
+    transform: { ...DEFAULT_TRANSFORM, ...transform },
     flipped,
     opacity,
   }
 }
 
 export function formatPoseStats(pose: Pick<SavedPose, 'transform' | 'flipped' | 'opacity'>) {
-  const scalePercent = Math.round(pose.transform.scale * 100)
-  const rotation = Math.round(pose.transform.rotation)
-  const x = Math.round(pose.transform.x)
-  const y = Math.round(pose.transform.y)
   return {
-    scale: `${scalePercent}%`,
-    rotation: `${rotation}°`,
-    x: `${x}px`,
-    y: `${y}px`,
+    scale: `${Math.round(pose.transform.scale * 100)}%`,
+    rotation: `${Math.round(pose.transform.rotation)}°`,
+    tiltX: `${Math.round(pose.transform.rotateX)}°`,
+    tiltY: `${Math.round(pose.transform.rotateY)}°`,
+    x: `${Math.round(pose.transform.x)}px`,
+    y: `${Math.round(pose.transform.y)}px`,
     opacity: `${Math.round(pose.opacity * 100)}%`,
     flipped: pose.flipped ? 'да' : 'нет',
   }

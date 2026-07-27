@@ -6,7 +6,7 @@ type CameraState = {
   stream: MediaStream | null
 }
 
-export function useCamera(enabled: boolean) {
+export function useCamera(enabled: boolean, externalStream: MediaStream | null = null) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [state, setState] = useState<CameraState>({
     ready: false,
@@ -16,6 +16,13 @@ export function useCamera(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return
+
+    if (externalStream) {
+      setState({ ready: true, error: null, stream: externalStream })
+      return () => {
+        setState({ ready: false, error: null, stream: null })
+      }
+    }
 
     let active = true
     let mediaStream: MediaStream | null = null
@@ -47,12 +54,6 @@ export function useCamera(enabled: boolean) {
           return
         }
 
-        const video = videoRef.current
-        if (video) {
-          video.srcObject = mediaStream
-          await video.play().catch(() => undefined)
-        }
-
         setState({ ready: true, error: null, stream: mediaStream })
       } catch {
         if (active) {
@@ -67,21 +68,23 @@ export function useCamera(enabled: boolean) {
 
     void start()
 
-    const video = videoRef.current
-
     return () => {
       active = false
       mediaStream?.getTracks().forEach((track) => track.stop())
-      if (video) {
-        video.srcObject = null
-      }
+      setState({ ready: false, error: null, stream: null })
     }
-  }, [enabled])
+  }, [enabled, externalStream])
 
   useEffect(() => {
     const video = videoRef.current
     const stream = state.stream
-    if (!video || !stream) return
+    if (!video) return
+
+    if (!stream) {
+      video.srcObject = null
+      return
+    }
+
     if (video.srcObject !== stream) {
       video.srcObject = stream
       void video.play().catch(() => undefined)

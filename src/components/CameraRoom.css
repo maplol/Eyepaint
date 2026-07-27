@@ -1,0 +1,145 @@
+.camroom {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  color: var(--paper);
+  background: var(--ink-deep);
+}
+
+.camroom__stage {
+  position: absolute;
+  inset: 0;
+}
+
+.camroom__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #101418;
+}
+
+.camroom__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(14, 18, 20, 0.55), transparent 28%),
+    linear-gradient(to top, rgba(14, 18, 20, 0.72), transparent 42%);
+  pointer-events: none;
+}
+
+.camroom__top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: calc(var(--safe-top) + 0.75rem) 0.9rem 0.75rem;
+}
+
+.camroom__brand {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.camroom__spacer {
+  width: 4.5rem;
+}
+
+.camroom__panel {
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: calc(var(--safe-bottom) + 0.85rem);
+  z-index: 2;
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.camroom__label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.camroom__code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.camroom__code {
+  min-height: 3rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(20, 26, 29, 0.35);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.camroom__btn {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+}
+
+.camroom__status {
+  text-align: center;
+  font-size: 0.9rem;
+  color: rgba(231, 238, 240, 0.82);
+}
+
+.camroom__cta {
+  min-height: 3.1rem;
+  border-radius: 999px;
+  background: rgba(224, 154, 106, 0.92);
+  color: #2a1a10;
+  font-weight: 700;
+}
+
+.camroom__cta:disabled {
+  opacity: 0.45;
+}
+
+.camroom__cta--ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.camroom__hint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (min-width: 900px) {
+  .camroom__panel {
+    left: 50%;
+    right: auto;
+    width: min(420px, calc(100% - 2rem));
+    transform: translateX(-50%);
+  }
+}
