@@ -8,7 +8,6 @@ import {
 } from '../lib/rooms'
 import {
   loadVideoQuality,
-  QUALITY_PRESETS,
   saveVideoQuality,
   type VideoQuality,
 } from '../lib/videoQuality'
@@ -22,13 +21,23 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
   const [code, setCode] = useState(() => loadJoinRoomCode())
   const [started, setStarted] = useState(false)
   const [quality, setQuality] = useState<VideoQuality>(() => loadVideoQuality())
-  const { videoRef, ready, error, stream, trackInfo } = useCamera(true, null, quality)
+  const {
+    videoRef,
+    ready,
+    error,
+    stream,
+    trackInfo,
+    probing,
+    capabilities,
+    qualityOptions,
+    qualityPreset,
+  } = useCamera(true, null, quality)
   const room = useRoomPeer({
     enabled: started && ready && Boolean(stream) && code.length >= 4,
     role: 'camera',
     code,
     localStream: stream,
-    quality,
+    maxBitrate: qualityPreset.maxBitrate,
   })
 
   useEffect(() => {
@@ -38,6 +47,12 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
   useEffect(() => {
     saveVideoQuality(quality)
   }, [quality])
+
+  // Drop presets the device cannot reach (e.g. 4K on a 1080p webcam).
+  useEffect(() => {
+    if (qualityOptions.some((option) => option.id === quality)) return
+    setQuality('max')
+  }, [qualityOptions, quality])
 
   useEffect(() => {
     if (!started) return
@@ -51,15 +66,23 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
     void wake()
   }, [started])
 
-  const statusText = !ready
-    ? 'Открываю камеру…'
-    : !started
-      ? 'Введи код с ПК и нажми «Подключиться»'
-      : room.status === 'connected'
-        ? `Стрим на ПК · ${QUALITY_PRESETS[quality].label}`
-        : room.status === 'error'
-          ? room.error || 'Ошибка связи'
-          : 'Ищу комнату на ПК… оставь экран включённым'
+  const statusText = probing
+    ? 'Определяю камеру и максимум качества…'
+    : !ready
+      ? 'Открываю камеру…'
+      : !started
+        ? 'Введи код с ПК и нажми «Подключиться»'
+        : room.status === 'connected'
+          ? `Стрим на ПК · ${qualityPreset.label}`
+          : room.status === 'error'
+            ? room.error || 'Ошибка связи'
+            : 'Ищу комнату на ПК… оставь экран включённым'
+
+  const capsNote = capabilities
+    ? `Камера: ${capabilities.label} · потолок ${capabilities.maxWidth}×${capabilities.maxHeight}`
+    : probing
+      ? 'Сканирую датчики камеры…'
+      : null
 
   return (
     <section className="camroom">
@@ -108,21 +131,23 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
         <div className="camroom__quality">
           <span className="camroom__label">Качество стрима</span>
           <div className="camroom__quality-grid">
-            {(Object.keys(QUALITY_PRESETS) as VideoQuality[]).map((id) => (
+            {qualityOptions.map((option) => (
               <button
-                key={id}
+                key={option.id}
                 type="button"
-                className={`camroom__quality-btn ${quality === id ? 'is-active' : ''}`}
-                onClick={() => setQuality(id)}
+                className={`camroom__quality-btn ${quality === option.id ? 'is-active' : ''}`}
+                disabled={probing && !ready}
+                onClick={() => setQuality(option.id)}
               >
-                {QUALITY_PRESETS[id].label}
+                {option.label}
               </button>
             ))}
           </div>
           <p className="camroom__quality-note">
+            {capsNote ? `${capsNote}. ` : ''}
             {trackInfo
               ? `Сейчас с камеры: ${trackInfo}`
-              : 'Менять можно до и во время стрима. Смотри реальное разрешение выше.'}
+              : 'Выбери «Максимум» — приложение само возьмёт потолок этого телефона.'}
           </p>
         </div>
 
