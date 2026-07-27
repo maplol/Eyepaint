@@ -22,9 +22,9 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
   const [code, setCode] = useState(() => loadJoinRoomCode())
   const [started, setStarted] = useState(false)
   const [quality, setQuality] = useState<VideoQuality>(() => loadVideoQuality())
-  const { videoRef, ready, error, stream } = useCamera(true, null, quality)
+  const { videoRef, ready, error, stream, trackInfo } = useCamera(true, null, quality)
   const room = useRoomPeer({
-    enabled: started && ready && code.length >= 4,
+    enabled: started && ready && Boolean(stream) && code.length >= 4,
     role: 'camera',
     code,
     localStream: stream,
@@ -113,7 +113,6 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
                 key={id}
                 type="button"
                 className={`camroom__quality-btn ${quality === id ? 'is-active' : ''}`}
-                disabled={started}
                 onClick={() => setQuality(id)}
               >
                 {QUALITY_PRESETS[id].label}
@@ -121,7 +120,9 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             ))}
           </div>
           <p className="camroom__quality-note">
-            Меняй до подключения. Выше качество = больше трафик и нагрузка.
+            {trackInfo
+              ? `Сейчас с камеры: ${trackInfo}`
+              : 'Менять можно до и во время стрима. Смотри реальное разрешение выше.'}
           </p>
         </div>
 
