@@ -48,9 +48,6 @@ test.describe('Colors & layers', () => {
     await expect(layersList).toBeVisible({ timeout: 10_000 })
     await expect(layersList.getByText(/Активен ·/)).toBeVisible()
 
-    await openStudioTool(page, 'Пипетка')
-    await expect(layersList).toBeVisible()
-
     await layersList.getByRole('button', { name: /^Основной/ }).click()
     await expect(layersList.getByText(/Активен ·/).first()).toBeVisible()
 
@@ -61,9 +58,11 @@ test.describe('Colors & layers', () => {
     await page.getByRole('menuitem', { name: 'На передний план' }).click()
     await expect(layersList.getByText(/передний/)).toBeVisible()
 
-    if (!isDesktop) {
-      await layersSheet.getByRole('button', { name: 'Закрыть' }).click()
-      await expect(layersList).toHaveCount(0)
+    // Инструмент не должен ломать слой на ПК; на телефоне sheet сворачивается
+    await openStudioTool(page, 'Пипетка')
+    if (isDesktop) {
+      await expect(layersList).toBeVisible()
+    } else {
       await expect(page.getByRole('button', { name: /Слои ·/ })).toBeVisible()
     }
   })

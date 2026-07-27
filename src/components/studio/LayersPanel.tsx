@@ -329,15 +329,15 @@ export function LayersPanel(props: LayersPanelProps) {
       aria-label="Блок слоёв"
       aria-modal="false"
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--glass-border-soft)] px-3 py-2">
         <div className="min-w-0 flex-1">
           <p className={sectionTitleClass}>Слои</p>
           <p className={cn(mutedTextClass, 'truncate')}>
             {activeLayer
-              ? `Активен: ${activeLayer.name} · тяни ≡ для порядка`
+              ? `${activeLayer.name} · ≡ порядок`
               : variant === 'column'
-                ? 'Колонка слоёв'
-                : 'Экран над меню студии'}
+                ? 'Активный слой'
+                : 'Список слоёв'}
           </p>
         </div>
         {variant === 'sheet' && (
@@ -358,7 +358,8 @@ export function LayersPanel(props: LayersPanelProps) {
       <ul
         ref={listRef}
         className={cn(
-          'grid min-h-0 flex-1 gap-1.5 overflow-auto overscroll-contain px-3 py-2 [-webkit-overflow-scrolling:touch]',
+          'grid min-h-0 gap-1.5 overflow-auto overscroll-contain px-2.5 py-1.5 [-webkit-overflow-scrolling:touch]',
+          variant === 'column' ? 'max-h-[9.5rem]' : 'max-h-[11rem] flex-1',
           scrollAreaClass,
         )}
         aria-label="Слои референса"
@@ -491,19 +492,19 @@ export function LayersPanel(props: LayersPanelProps) {
         })}
       </ul>
 
-      <div className="shrink-0 grid gap-2 border-t border-[var(--glass-border-soft)] px-3 py-2.5">
-        <div className="grid grid-cols-[auto_1fr] items-center gap-3">
+      <div className="shrink-0 grid gap-1.5 border-t border-[var(--glass-border-soft)] px-2.5 py-2">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2.5">
           <button
             type="button"
-            className="group grid h-[3.4rem] w-[3.4rem] place-items-center rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-fill-mid)] disabled:cursor-not-allowed disabled:opacity-45"
+            className="group grid h-[2.85rem] w-[2.85rem] place-items-center rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-fill-mid)] disabled:cursor-not-allowed disabled:opacity-45"
             onClick={props.onCapture}
             disabled={!props.ready || props.capturing}
             aria-label="Сфотографировать композит"
           >
-            <span className="h-[2.5rem] w-[2.5rem] rounded-full bg-[rgba(245,247,248,0.92)] shadow-[inset_0_0_0_2px_rgba(20,26,29,0.08)] transition-transform group-active:scale-[0.92]" />
+            <span className="h-[2.05rem] w-[2.05rem] rounded-full bg-[rgba(245,247,248,0.92)] shadow-[inset_0_0_0_2px_rgba(20,26,29,0.08)] transition-transform group-active:scale-[0.92]" />
           </button>
           <div className="min-w-0">
-            <p className="text-[0.86rem] font-bold text-[var(--fg-strong)]">Снять фото</p>
+            <p className="text-[0.8rem] font-bold text-[var(--fg-strong)]">Снять фото</p>
             <p className={mutedTextClass}>Камера + референс</p>
           </div>
         </div>
