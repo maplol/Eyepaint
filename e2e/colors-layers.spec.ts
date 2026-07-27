@@ -103,4 +103,26 @@ test.describe('Colors & layers', () => {
     }
     await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible()
   })
+
+  test('можно добавить больше трёх слоёв', async ({ page }) => {
+    const layersSheet = page.getByLabel('Блок слоёв')
+    if (!(await layersSheet.isVisible().catch(() => false))) {
+      await openStudioTool(page, 'Слои')
+      const chip = page.getByRole('button', { name: /Слои ·/ })
+      if (await chip.isVisible().catch(() => false)) await chip.click()
+    }
+    await expect(layersSheet).toBeVisible()
+
+    const galleryInLayers = layersSheet
+      .locator('label')
+      .filter({ hasText: 'Галерея' })
+      .locator('input[type="file"]')
+
+    for (let i = 0; i < 4; i++) {
+      await galleryInLayers.setInputFiles('e2e/fixtures/reference.png')
+    }
+
+    const layersList = page.getByRole('list', { name: 'Слои референса' })
+    await expect(layersList.getByRole('listitem')).toHaveCount(5, { timeout: 10_000 })
+  })
 })
