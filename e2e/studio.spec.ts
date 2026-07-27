@@ -48,7 +48,7 @@ test.describe('Studio smoke', () => {
     await expect(page.getByText('Прозрачность сетки')).toBeVisible()
     await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
 
-    await page.getByRole('button', { name: 'Закрыть' }).click()
+    await page.getByLabel('Настройки инструмента').getByRole('button', { name: 'Закрыть' }).click()
     await expect(page.getByLabel('Настройки инструмента')).toHaveCount(0)
     await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
 
