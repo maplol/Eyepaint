@@ -1,3 +1,20 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #1c2428;
+  --color-ink-deep: #141a1d;
+  --color-mist: #e7eef0;
+  --color-paper: #f5f7f8;
+  --color-accent: #e09a6a;
+  --color-accent-ink: #2a1a10;
+  --color-accent-soft: #ffd9bd;
+  --color-danger: #ef8b8b;
+  --color-danger-soft: #ffb4b4;
+  --shadow-glass: 0 12px 40px rgba(12, 16, 18, 0.22);
+}
+
 :root {
   --ink: #1c2428;
   --ink-deep: #141a1d;
@@ -90,4 +107,28 @@ img {
   to {
     opacity: 0;
   }
+}
+
+@utility animate-rise-in {
+  animation: rise-in 0.65s ease both;
+}
+
+@utility animate-soft-float {
+  animation: soft-float 16s ease-in-out infinite alternate;
+}
+
+@utility animate-shutter-flash {
+  animation: shutter-flash 0.22s ease forwards;
+}
+
+@utility glass-panel {
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
 }

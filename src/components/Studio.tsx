@@ -63,7 +63,7 @@ const stageBaseClass =
   'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
 
 const cameraClass =
-  'absolute inset-0 h-full w-full bg-[#141a1d] object-cover [image-rendering:auto]'
+  'absolute inset-0 h-full w-full bg-[#141a1d] object-cover'
 
 const statusBaseClass =
   'absolute inset-x-[1.1rem] bottom-[38%] rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--glass-strong)] px-[1.1rem] py-4 text-center text-[var(--mist)] shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] [-webkit-backdrop-filter:blur(18px)_saturate(1.2)] animate-[rise-in_0.4s_ease_both] min-[960px]:left-[1.2rem] min-[960px]:right-auto min-[960px]:max-w-[min(28rem,calc(100%_-_min(380px,34vw)_-_3rem))]'
@@ -898,8 +898,8 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     камера» → введи код
                   </p>
                   <p>
-                    <strong className="text-[#ffd9bd]">3.</strong> На телефоне качество: список
-                    подстроится под потолок камеры, «Максимум» берёт всё что отдаёт браузер
+                    <strong className="text-[#ffd9bd]">3.</strong> На телефоне смотри «С камеры» и
+                    «В эфир» — 2K часто чётче 4K, если браузер жмёт кодирование
                   </p>
                 </div>
 

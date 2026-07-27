@@ -17,22 +17,37 @@ export type CameraCapabilitiesInfo = {
   maxFrameRate: number
 }
 
-const BASE_PRESETS: Array<Omit<QualityPreset, 'maxBitrate'> & { maxBitrate?: number }> = [
+export type OutboundVideoInfo = {
+  width: number
+  height: number
+  fps: number | null
+  bitrateKbps: number | null
+}
+
+const BASE_PRESETS: Array<Omit<QualityPreset, 'maxBitrate'>> = [
   { id: 'low', label: 'Низкое · 480p', width: 854, height: 480, frameRate: 24 },
   { id: 'medium', label: 'Среднее · 720p', width: 1280, height: 720, frameRate: 30 },
   { id: 'high', label: 'Высокое · 1080p', width: 1920, height: 1080, frameRate: 30 },
-  { id: 'quad', label: 'Quad HD · 1440p', width: 2560, height: 1440, frameRate: 30 },
+  { id: 'quad', label: '2K · 1440p', width: 2560, height: 1440, frameRate: 30 },
   { id: 'uhd', label: '4K · 2160p', width: 3840, height: 2160, frameRate: 30 },
 ]
 
 const STORAGE_KEY = 'eyepaint-video-quality-v2'
-const CAPS_CACHE_KEY = 'eyepaint-camera-caps-v2'
+const CAPS_CACHE_KEY = 'eyepaint-camera-caps-v3'
 
+/** Detail-heavy tracing needs much more bpp than a typical video call. */
 export function estimateBitrate(width: number, height: number, frameRate: number) {
   const pixels = width * height
-  // Rough bpp target for detail-heavy tracing streams.
-  const bitsPerPixel = pixels >= 3840 * 2160 ? 0.12 : pixels >= 1920 * 1080 ? 0.14 : 0.16
-  return Math.round(pixels * frameRate * bitsPerPixel)
+  const bitsPerPixel =
+    pixels >= 3840 * 2160 ? 0.22 : pixels >= 2560 * 1440 ? 0.2 : pixels >= 1920 * 1080 ? 0.18 : 0.16
+  const raw = Math.round(pixels * frameRate * bitsPerPixel)
+
+  // Floors so WebRTC does not silently scaleResolutionDownBy under load.
+  if (pixels >= 3840 * 2160) return Math.max(raw, 32_000_000)
+  if (pixels >= 2560 * 1440) return Math.max(raw, 18_000_000)
+  if (pixels >= 1920 * 1080) return Math.max(raw, 10_000_000)
+  if (pixels >= 1280 * 720) return Math.max(raw, 4_500_000)
+  return Math.max(raw, 2_000_000)
 }
 
 export function withBitrate(preset: Omit<QualityPreset, 'maxBitrate'>): QualityPreset {
@@ -85,6 +100,13 @@ export function describeTrackSettings(stream: MediaStream | null) {
   return fps ? `${width}×${height} @ ${fps}fps` : `${width}×${height}`
 }
 
+export function describeOutbound(info: OutboundVideoInfo | null) {
+  if (!info?.width || !info?.height) return null
+  const fps = info.fps ? ` @ ${Math.round(info.fps)}fps` : ''
+  const br = info.bitrateKbps ? ` · ~${Math.round(info.bitrateKbps / 1000)} Мбит/с` : ''
+  return `${info.width}×${info.height}${fps}${br}`
+}
+
 function readULongMax(value: number | { max?: number } | undefined, fallback: number) {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (value && typeof value === 'object' && typeof value.max === 'number') return value.max
@@ -109,7 +131,6 @@ export function readTrackCapabilities(track: MediaStreamTrack): Omit<CameraCapab
 
 function isLikelyBackCamera(label: string) {
   const value = label.toLowerCase()
-  // Empty labels (before/without permission text) — include and score by resolution.
   if (!value) return true
   if (/(front|user|face|selfie|передн)/i.test(value)) return false
   return true
@@ -214,7 +235,6 @@ export async function probeBestCameraCapabilities(): Promise<CameraCapabilitiesI
   const cached = loadCachedCapabilities()
   if (cached) return cached
 
-  // Warm permission so device labels become available.
   try {
     const warm = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -255,8 +275,6 @@ export async function probeBestCameraCapabilities(): Promise<CameraCapabilitiesI
       if (!track) continue
       const caps = readTrackCapabilities(track)
       const settings = track.getSettings()
-      // Some browsers under-report getCapabilities; actual settings after a
-      // high ideal request are a better floor (flagships like S25+).
       const maxWidth = Math.max(caps.maxWidth, settings.width ?? 0)
       const maxHeight = Math.max(caps.maxHeight, settings.height ?? 0)
       const maxFrameRate = Math.max(
@@ -286,35 +304,147 @@ export async function probeBestCameraCapabilities(): Promise<CameraCapabilitiesI
   return best
 }
 
+function preferHardwareCodecs(pc: RTCPeerConnection) {
+  const capabilities = RTCRtpSender.getCapabilities?.('video')
+  if (!capabilities?.codecs?.length) return
+
+  const ranked = [...capabilities.codecs].sort((a, b) => {
+    const score = (codec: RTCRtpCodec) => {
+      const mime = codec.mimeType.toLowerCase()
+      // Samsung / Chrome Android: H264 HW usually sustains higher res than VP8.
+      if (mime.includes('h264')) return 0
+      if (mime.includes('vp9')) return 1
+      if (mime.includes('av1')) return 2
+      if (mime.includes('vp8')) return 3
+      return 4
+    }
+    return score(a) - score(b)
+  })
+
+  for (const transceiver of pc.getTransceivers()) {
+    if (transceiver.sender.track?.kind !== 'video' && transceiver.receiver.track?.kind !== 'video') {
+      continue
+    }
+    try {
+      transceiver.setCodecPreferences?.(ranked)
+    } catch {
+      /* optional */
+    }
+  }
+}
+
 export async function applySenderBitrate(
   peers: Record<string, RTCPeerConnection>,
   maxBitrate: number,
+  maxFramerate = 30,
 ) {
   await Promise.all(
-    Object.values(peers).flatMap((pc) =>
-      pc.getSenders().map(async (sender) => {
-        if (sender.track?.kind !== 'video') return
-        try {
-          const params = sender.getParameters()
-          if (!params.encodings || params.encodings.length === 0) {
-            params.encodings = [{}]
+    Object.values(peers).map(async (pc) => {
+      preferHardwareCodecs(pc)
+
+      await Promise.all(
+        pc.getSenders().map(async (sender) => {
+          if (sender.track?.kind !== 'video') return
+          try {
+            sender.track.contentHint = 'detail'
+          } catch {
+            /* optional */
           }
-          params.encodings = params.encodings.map((encoding) => ({
-            ...encoding,
-            maxBitrate,
-            scaleResolutionDownBy: 1,
-            maxFramerate: encoding.maxFramerate,
-          }))
-          if ('degradationPreference' in params) {
+          try {
+            const params = sender.getParameters()
+            if (!params.encodings || params.encodings.length === 0) {
+              params.encodings = [{}]
+            }
+            // Single full-res encoding — drop simulcast layers that steal bitrate.
+            const primary = params.encodings[0] ?? {}
+            params.encodings = [
+              {
+                ...primary,
+                active: true,
+                maxBitrate,
+                scaleResolutionDownBy: 1,
+                maxFramerate,
+                priority: 'high',
+                networkPriority: 'high',
+              },
+            ]
             ;(
               params as RTCRtpSendParameters & { degradationPreference?: string }
             ).degradationPreference = 'maintain-resolution'
+            await sender.setParameters(params)
+          } catch {
+            /* some browsers reject mid-flight updates */
           }
-          await sender.setParameters(params)
+        }),
+      )
+    }),
+  )
+}
+
+/** Force senders to re-bind the (possibly re-constrained) local track. */
+export async function refreshSenderTracks(
+  peers: Record<string, RTCPeerConnection>,
+  stream: MediaStream | null,
+) {
+  const track = stream?.getVideoTracks()[0]
+  if (!track) return
+  await Promise.all(
+    Object.values(peers).flatMap((pc) =>
+      pc.getSenders().map(async (sender) => {
+        if (sender.track?.kind !== 'video' && sender.track != null) return
+        try {
+          await sender.replaceTrack(track)
         } catch {
-          /* some browsers reject mid-flight updates */
+          /* ignore */
         }
       }),
     ),
   )
+}
+
+const outboundByteCursor = new WeakMap<RTCPeerConnection, { bytes: number; at: number }>()
+
+export async function readOutboundVideoInfo(
+  peers: Record<string, RTCPeerConnection>,
+): Promise<OutboundVideoInfo | null> {
+  for (const pc of Object.values(peers)) {
+    try {
+      const stats = await pc.getStats()
+      for (const report of stats.values()) {
+        const row = report as RTCStats & {
+          type: string
+          kind?: string
+          frameWidth?: number
+          frameHeight?: number
+          framesPerSecond?: number
+          bytesSent?: number
+          timestamp?: number
+        }
+        if (row.type !== 'outbound-rtp' || row.kind !== 'video') continue
+        if (!row.frameWidth || !row.frameHeight) continue
+
+        let bitrateKbps: number | null = null
+        if (typeof row.bytesSent === 'number' && typeof row.timestamp === 'number') {
+          const prev = outboundByteCursor.get(pc)
+          if (prev) {
+            const dt = (row.timestamp - prev.at) / 1000
+            if (dt > 0.2) {
+              bitrateKbps = ((row.bytesSent - prev.bytes) * 8) / dt / 1000
+            }
+          }
+          outboundByteCursor.set(pc, { bytes: row.bytesSent, at: row.timestamp })
+        }
+
+        return {
+          width: row.frameWidth,
+          height: row.frameHeight,
+          fps: row.framesPerSecond ?? null,
+          bitrateKbps,
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return null
 }
