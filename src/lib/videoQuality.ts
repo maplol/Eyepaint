@@ -350,30 +350,35 @@ export async function applySenderBitrate(
           } catch {
             /* optional */
           }
-          try {
-            const params = sender.getParameters()
-            if (!params.encodings || params.encodings.length === 0) {
-              params.encodings = [{}]
+
+          // Try full params first; fall back if browser rejects exotic fields.
+          const attempts: Array<Partial<RTCRtpEncodingParameters>> = [
+            {
+              active: true,
+              maxBitrate,
+              scaleResolutionDownBy: 1,
+              maxFramerate,
+            },
+            {
+              maxBitrate,
+              scaleResolutionDownBy: 1,
+            },
+            { maxBitrate },
+          ]
+
+          for (const encodingPatch of attempts) {
+            try {
+              const params = sender.getParameters()
+              const primary = params.encodings?.[0] ?? {}
+              params.encodings = [{ ...primary, ...encodingPatch }]
+              ;(
+                params as RTCRtpSendParameters & { degradationPreference?: string }
+              ).degradationPreference = 'maintain-resolution'
+              await sender.setParameters(params)
+              break
+            } catch {
+              /* try simpler patch */
             }
-            // Single full-res encoding — drop simulcast layers that steal bitrate.
-            const primary = params.encodings[0] ?? {}
-            params.encodings = [
-              {
-                ...primary,
-                active: true,
-                maxBitrate,
-                scaleResolutionDownBy: 1,
-                maxFramerate,
-                priority: 'high',
-                networkPriority: 'high',
-              },
-            ]
-            ;(
-              params as RTCRtpSendParameters & { degradationPreference?: string }
-            ).degradationPreference = 'maintain-resolution'
-            await sender.setParameters(params)
-          } catch {
-            /* some browsers reject mid-flight updates */
           }
         }),
       )
