@@ -336,26 +336,83 @@ export async function estimateSelectionCoverage(
   return Math.round((matched / total) * 100)
 }
 
+export type BrushFilterOptions = {
+  /** Grayscale/alpha mask data URL painted by user */
+  maskDataUrl?: string | null
+  /** keep = painted stays; remove = painted goes */
+  maskMode?: 'keep' | 'remove'
+  /** and = color ∩ mask; or = color ∪ mask */
+  combine?: 'and' | 'or'
+}
+
+async function sampleMaskAlphas(
+  maskDataUrl: string,
+  width: number,
+  height: number,
+): Promise<Uint8ClampedArray> {
+  const maskImg = await loadImage(maskDataUrl)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('Canvas недоступен')
+  ctx.clearRect(0, 0, width, height)
+  ctx.drawImage(maskImg, 0, 0, width, height)
+  return ctx.getImageData(0, 0, width, height).data
+}
+
+function pixelInBrushMask(
+  maskData: Uint8ClampedArray | null,
+  index: number,
+  maskMode: 'keep' | 'remove',
+) {
+  if (!maskData) return true
+  const painted = maskData[index + 3]! > 24
+  return maskMode === 'keep' ? painted : !painted
+}
+
 export async function renderFilteredReference(
   src: string,
   selectedColors: PaletteColor[],
   mode: Exclude<ColorFilterMode, 'off'>,
   tolerance: number,
+  brush?: BrushFilterOptions,
 ): Promise<string> {
-  if (selectedColors.length === 0) {
-    throw new Error('Нет выбранных цветов')
+  const hasColors = selectedColors.length > 0
+  const hasMask = Boolean(brush?.maskDataUrl)
+  if (!hasColors && !hasMask) {
+    throw new Error('Нет выбранных цветов и маски')
   }
 
   const img = await loadImage(src)
   const { canvas, ctx, width, height } = drawToCanvas(img, 1400)
   const imageData = ctx.getImageData(0, 0, width, height)
   const { data } = imageData
+  const maskData = brush?.maskDataUrl
+    ? await sampleMaskAlphas(brush.maskDataUrl, width, height)
+    : null
+  const maskMode = brush?.maskMode ?? 'keep'
+  const combine = brush?.combine ?? 'and'
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3]! < 10) continue
 
     const pixel = { r: data[i]!, g: data[i + 1]!, b: data[i + 2]! }
-    if (pixelMatchesSelection(pixel, selectedColors, tolerance)) continue
+    const colorMatch = hasColors
+      ? pixelMatchesSelection(pixel, selectedColors, tolerance)
+      : false
+    const maskMatch = pixelInBrushMask(maskData, i, maskMode)
+
+    let keep = false
+    if (hasColors && hasMask) {
+      keep = combine === 'and' ? colorMatch && maskMatch : colorMatch || maskMatch
+    } else if (hasColors) {
+      keep = colorMatch
+    } else {
+      keep = maskMatch
+    }
+
+    if (keep) continue
 
     if (mode === 'mask') {
       data[i + 3] = 0
