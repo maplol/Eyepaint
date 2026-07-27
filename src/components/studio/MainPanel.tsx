@@ -16,10 +16,8 @@ import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
 import { StableLabel } from './StableLabel'
 import {
   chipAccentClass,
-  chipFileClass,
   chipNeutralClass,
   cn,
-  hiddenFileInputClass,
   mutedTextClass,
   panelCardClass,
   panelClass,
@@ -51,15 +49,6 @@ type MainPanelProps = {
   remoteTorch: boolean
   onToggleFreeze: () => void
   onToggleTorch: () => void
-  ready: boolean
-  capturing: boolean
-  onCapture: () => void
-  onPickFile: (file: File | undefined, source: 'gallery' | 'camera') => void
-  flipped: boolean
-  onFlip: () => void
-  locked: boolean
-  onToggleLock: () => void
-  onReset: () => void
   galleryEnabled: boolean
   autoSessionShot: boolean
   onAutoSessionShot: (value: boolean) => void
@@ -351,76 +340,6 @@ export function MainPanel(props: MainPanelProps) {
           </button>
         </div>
       )}
-
-      <div className="grid grid-cols-[auto_1fr] items-center gap-[0.85rem] px-[0.15rem] pb-[0.05rem] pt-[0.15rem]">
-        <button
-          type="button"
-          className="group grid h-[4.1rem] w-[4.1rem] place-items-center rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-fill-mid)] backdrop-blur-[8px] disabled:cursor-not-allowed disabled:opacity-45"
-          onClick={props.onCapture}
-          disabled={!props.ready || props.capturing}
-          aria-label="Сфотографировать композит"
-        >
-          <span className="h-[3.1rem] w-[3.1rem] rounded-full bg-[rgba(245,247,248,0.92)] shadow-[inset_0_0_0_2px_rgba(20,26,29,0.08)] transition-transform group-active:scale-[0.92]" />
-        </button>
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-base font-bold text-[var(--fg-strong)]">
-            Снять фото
-          </p>
-          <p className="mt-[0.15rem] text-[0.82rem] text-[var(--fg-muted)]">
-            Камера + референс → сохранить
-          </p>
-        </div>
-      </div>
-
-      <div className={rowClass}>
-        <label className={chipFileClass}>
-          Галерея
-          <input
-            className={hiddenFileInputClass}
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              props.onPickFile(event.target.files?.[0], 'gallery')
-              event.target.value = ''
-            }}
-          />
-        </label>
-        <label className={chipFileClass}>
-          Камера
-          <input
-            className={hiddenFileInputClass}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(event) => {
-              props.onPickFile(event.target.files?.[0], 'camera')
-              event.target.value = ''
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          className={chipAccentClass(props.flipped)}
-          aria-pressed={props.flipped}
-          onClick={props.onFlip}
-        >
-          Отражение
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" className={chipNeutralClass} onClick={props.onReset}>
-          Сброс
-        </button>
-        <button
-          type="button"
-          className={chipAccentClass(props.locked)}
-          aria-pressed={props.locked}
-          onClick={props.onToggleLock}
-        >
-          Фиксация
-        </button>
-      </div>
     </div>
   )
 }

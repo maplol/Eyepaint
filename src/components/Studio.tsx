@@ -929,7 +929,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
               onReorderLayers={(fromId, toId) => {
                 setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
                 setActiveLayerId(fromId)
-                showToast('Порядок слоёв обновлён')
               }}
               onStackAction={(id, action: LayerStackAction) => {
                 setLayers((prev) => applyLayerStackAction(prev, id, action))
@@ -964,6 +963,23 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 })
                 if (activeLayerId === id) setActiveLayerId('primary')
               }}
+              ready={ready}
+              capturing={capturing}
+              onCapture={() => void handleCapture()}
+              onPickFile={(file) => applyPickedFile(file)}
+              flipped={flipped}
+              onFlip={() =>
+                setLayers((prev) =>
+                  prev.map((layer) =>
+                    layer.id === activeLayerId
+                      ? { ...layer, flipped: !layer.flipped }
+                      : layer,
+                  ),
+                )
+              }
+              locked={locked}
+              onToggleLock={() => setLocked((value) => !value)}
+              onReset={reset}
             />
           )}
 
@@ -1066,23 +1082,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     remoteTorch={remoteTorch}
                     onToggleFreeze={toggleRemoteFreeze}
                     onToggleTorch={toggleRemoteTorch}
-                    ready={ready}
-                    capturing={capturing}
-                    onCapture={() => void handleCapture()}
-                    onPickFile={(file) => applyPickedFile(file)}
-                    flipped={flipped}
-                    onFlip={() =>
-                      setLayers((prev) =>
-                        prev.map((layer) =>
-                          layer.id === activeLayerId
-                            ? { ...layer, flipped: !layer.flipped }
-                            : layer,
-                        ),
-                      )
-                    }
-                    locked={locked}
-                    onToggleLock={() => setLocked((value) => !value)}
-                    onReset={reset}
                     galleryEnabled={flags.sessionGallery}
                     autoSessionShot={autoSessionShot}
                     onAutoSessionShot={setAutoSessionShot}
