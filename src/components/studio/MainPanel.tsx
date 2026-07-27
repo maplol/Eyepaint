@@ -66,6 +66,8 @@ type MainPanelProps = {
   onLayerOpacity: (id: string, opacity: number) => void
   onLayerVisible: (id: string) => void
   onRemoveLayer: (id: string) => void
+  activeLayerId: string
+  onSelectLayer: (id: string) => void
   galleryEnabled: boolean
   autoSessionShot: boolean
   onAutoSessionShot: (value: boolean) => void
@@ -340,48 +342,67 @@ export function MainPanel(props: MainPanelProps) {
       {props.layersEnabled && props.layers.length > 0 && (
         <div className={panelCardClass}>
           <p className={sectionTitleClass}>Слои референса</p>
-          {props.layers.map((layer) => (
-            <div
-              key={layer.id}
-              className="grid gap-1.5 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-2.5 py-2"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
-                  {layer.name}
-                </span>
-                <div className="flex gap-1.5">
+          <p className={mutedTextClass}>Выбери слой — палитра и фильтр цветов работают по нему</p>
+          {props.layers.map((layer) => {
+            const isActive = props.activeLayerId === layer.id
+            return (
+              <div
+                key={layer.id}
+                className={cn(
+                  'grid gap-1.5 rounded-xl border px-2.5 py-2',
+                  isActive
+                    ? 'border-accent/45 bg-accent/10'
+                    : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)]',
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    className={`${chipAccentClass(layer.visible)} ${toggleChipClass}`}
-                    aria-pressed={layer.visible}
-                    onClick={() => props.onLayerVisible(layer.id)}
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => props.onSelectLayer(layer.id)}
+                    aria-pressed={isActive}
                   >
-                    <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
+                    <span className="block truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
+                      {layer.name}
+                    </span>
+                    <span className="block text-[0.68rem] text-[var(--fg-faint)]">
+                      {isActive ? 'Цвета · активный' : 'Нажми, чтобы править цвета'}
+                    </span>
                   </button>
-                  {layer.kind === 'aux' && (
+                  <div className="flex gap-1.5">
                     <button
                       type="button"
-                      className={`${chipNeutralClass} w-10 shrink-0`}
-                      onClick={() => props.onRemoveLayer(layer.id)}
-                      aria-label={`Удалить ${layer.name}`}
+                      className={`${chipAccentClass(layer.visible)} ${toggleChipClass}`}
+                      aria-pressed={layer.visible}
+                      onClick={() => props.onLayerVisible(layer.id)}
                     >
-                      ×
+                      <StableLabel active={layer.visible} on="Вкл" off="Выкл" />
                     </button>
-                  )}
+                    {layer.kind === 'aux' && (
+                      <button
+                        type="button"
+                        className={`${chipNeutralClass} w-10 shrink-0`}
+                        onClick={() => props.onRemoveLayer(layer.id)}
+                        aria-label={`Удалить ${layer.name}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <input
+                  className={rangeInputClass}
+                  type="range"
+                  min={0.05}
+                  max={1}
+                  step={0.01}
+                  value={layer.opacity}
+                  onChange={(event) => props.onLayerOpacity(layer.id, Number(event.target.value))}
+                  aria-label={`Прозрачность ${layer.name}`}
+                />
               </div>
-              <input
-                className={rangeInputClass}
-                type="range"
-                min={0.05}
-                max={1}
-                step={0.01}
-                value={layer.opacity}
-                onChange={(event) => props.onLayerOpacity(layer.id, Number(event.target.value))}
-                aria-label={`Прозрачность ${layer.name}`}
-              />
-            </div>
-          ))}
+            )
+          })}
           <p className={`text-center ${mutedTextClass}`}>
             Галерея/камера добавят вспомогательный слой, если основной занят
           </p>

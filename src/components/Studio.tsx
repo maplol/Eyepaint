@@ -218,6 +218,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [autoSessionShot, setAutoSessionShot] = useState(true)
   const [shots, setShots] = useState<SessionShot[]>(() => loadSessionShots())
   const [layers, setLayers] = useState<RefLayer[]>(() => [createPrimaryLayer(imageUrl)])
+  const [activeLayerId, setActiveLayerId] = useState('primary')
   const [locked, setLocked] = useState(false)
   const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
@@ -244,9 +245,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [brush, setBrush] = useState<BrushMaskSettings>(() => ({ ...DEFAULT_BRUSH_MASK }))
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(() => loadSavedPalettes())
   const paletteRef = useRef(palette)
-  const imageUrlRef = useRef(imageUrl)
+  const colorSourceRef = useRef(imageUrl)
   const precisionRef = useRef(colorPrecision)
   paletteRef.current = palette
+
+  const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[0] ?? null
+  const colorSourceUrl = activeLayer?.url ?? imageUrl
+  const activeLayerName = activeLayer?.name ?? 'Основной'
 
   const [poses, setPoses] = useState<SavedPose[]>(() => loadPoses())
 
@@ -267,9 +272,12 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
 
-  const displayUrl = filteredUrl ?? imageUrl
-  const framed = colorMode === 'mask'
+  const displayUrl = filteredUrl ?? colorSourceUrl
+  const framed = colorMode === 'mask' && activeLayerId === (activeLayer?.id ?? 'primary')
   const showToast = (message: string) => setToast(message)
+
+  const layerDisplayUrl = (layerId: string, fallbackUrl: string) =>
+    layerId === activeLayerId && filteredUrl ? filteredUrl : fallbackUrl
 
   useEffect(() => {
     saveFlags(flags)
@@ -322,13 +330,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
   useEffect(() => {
     let cancelled = false
-    const imageChanged = imageUrlRef.current !== imageUrl
+    const sourceChanged = colorSourceRef.current !== colorSourceUrl
     const precisionChanged = precisionRef.current !== colorPrecision
-    imageUrlRef.current = imageUrl
+    colorSourceRef.current = colorSourceUrl
     precisionRef.current = colorPrecision
     saveColorPrecision(colorPrecision)
 
-    if (imageChanged) {
+    if (sourceChanged) {
       setSelectedColorIds([])
       setColorMode('off')
       setPickMode(false)
@@ -339,23 +347,23 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       })
     }
 
-    if (imageChanged || precisionChanged) {
+    if (sourceChanged || precisionChanged) {
       const nextTolerance = PRECISION_PROFILES[colorPrecision].defaultTolerance
       setMatchTolerance(nextTolerance)
       saveMatchTolerance(nextTolerance)
     }
 
     setPaletteLoading(true)
-    const picks = imageChanged
+    const picks = sourceChanged
       ? []
       : paletteRef.current.filter((item) => item.source === 'pick')
 
-    void extractPalette(imageUrl, colorPrecision, picks)
+    void extractPalette(colorSourceUrl, colorPrecision, picks)
       .then((colors) => {
         if (cancelled) return
         setPalette(colors)
         setSelectedColorIds((prev) =>
-          imageChanged ? [] : prev.filter((id) => colors.some((c) => c.id === id)),
+          sourceChanged ? [] : prev.filter((id) => colors.some((c) => c.id === id)),
         )
       })
       .catch(() => {
@@ -368,7 +376,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     return () => {
       cancelled = true
     }
-  }, [imageUrl, colorPrecision])
+  }, [colorSourceUrl, colorPrecision])
 
   useEffect(() => {
     saveMatchTolerance(matchTolerance)
@@ -401,7 +409,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
     const mode = colorMode === 'mask' ? 'mask' : 'gray'
     setFilterBusy(true)
-    void renderFilteredReference(imageUrl, selectedColors, mode, matchTolerance, brushOpts)
+    void renderFilteredReference(colorSourceUrl, selectedColors, mode, matchTolerance, brushOpts)
       .then((url) => {
         if (cancelled) {
           URL.revokeObjectURL(url)
@@ -423,7 +431,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       cancelled = true
     }
   }, [
-    imageUrl,
+    colorSourceUrl,
     palette,
     selectedColorIds,
     colorMode,
@@ -441,13 +449,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       return
     }
     let cancelled = false
-    void estimateSelectionCoverage(imageUrl, selectedColors, matchTolerance).then((value) => {
+    void estimateSelectionCoverage(colorSourceUrl, selectedColors, matchTolerance).then((value) => {
       if (!cancelled) setSelectionCoverage(value)
     })
     return () => {
       cancelled = true
     }
-  }, [imageUrl, palette, selectedColorIds, matchTolerance])
+  }, [colorSourceUrl, palette, selectedColorIds, matchTolerance])
 
   const selectedSet = useMemo(() => new Set(selectedColorIds), [selectedColorIds])
   const visiblePalette = useMemo(
@@ -478,7 +486,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
     void (async () => {
       try {
-        const rgb = await sampleColorAtImagePoint(imageUrl, normX, normY)
+        const rgb = await sampleColorAtImagePoint(colorSourceUrl, normX, normY)
         const picked = createPickedColor(rgb, paletteRef.current)
         setPalette((prev) =>
           prev.some((item) => item.id === picked.id) ? prev : [picked, ...prev],
@@ -570,13 +578,22 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       const aux = createAuxLayer(url, nextAuxName(layers), layers)
       if (aux) {
         setLayers((prev) => [...prev, aux])
-        showToast(`Добавлен ${aux.name}`)
+        setActiveLayerId(aux.id)
+        showToast(`${aux.name} · цвета по этому слою`)
         return
       }
     }
     onChangeImage(file)
+    setActiveLayerId('primary')
     reset()
     setLocked(false)
+  }
+
+  const selectLayer = (id: string) => {
+    if (id === activeLayerId) return
+    setActiveLayerId(id)
+    const layer = layers.find((item) => item.id === id)
+    showToast(layer ? `Цвета: ${layer.name}` : 'Слой выбран')
   }
 
   const handleSavePose = () => {
@@ -721,28 +738,39 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             className={cn(
               'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
               framed &&
+                activeLayerId === 'primary' &&
                 'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
-              (pickMode || brush.editing) &&
+              activeLayerId === 'primary' &&
+                (pickMode || brush.editing) &&
                 'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
             )}
             style={{
               opacity: opacity * primaryOpacity,
               transform: buildOverlayCssTransform(transform, flipped),
-              pointerEvents: pickMode || brush.editing ? 'auto' : locked ? 'none' : 'auto',
+              pointerEvents:
+                activeLayerId === 'primary' && (pickMode || brush.editing)
+                  ? 'auto'
+                  : locked
+                    ? 'none'
+                    : activeLayerId === 'primary'
+                      ? 'auto'
+                      : 'none',
             }}
-            onClick={handleOverlayPick}
+            onClick={activeLayerId === 'primary' ? handleOverlayPick : undefined}
             onPointerDown={(event) => {
-              if (pickMode || brush.editing) event.stopPropagation()
+              if (activeLayerId === 'primary' && (pickMode || brush.editing)) {
+                event.stopPropagation()
+              }
             }}
           >
             <img
-              ref={overlayImageRef}
-              src={displayUrl}
+              ref={activeLayerId === 'primary' ? overlayImageRef : undefined}
+              src={layerDisplayUrl('primary', imageUrl)}
               alt="Референс для срисовывания"
               draggable={false}
               className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
             />
-            {flags.brushMask && (
+            {flags.brushMask && activeLayerId === 'primary' && (
               <MaskPainter
                 settings={brush}
                 onChange={(dataUrl) =>
@@ -759,31 +787,61 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
         )}
 
         {flags.multiLayers &&
-          auxLayers.map((layer, index) => (
-            <div
-              key={layer.id}
-              className="pointer-events-none absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]"
-              style={{
-                opacity: opacity * layer.opacity,
-                transform: buildOverlayCssTransform(
-                  {
-                    ...transform,
-                    x: transform.x + (index + 1) * 8,
-                    y: transform.y + (index + 1) * 8,
-                  },
-                  flipped,
-                ),
-                zIndex: 2 + index,
-              }}
-            >
-              <img
-                src={layer.url}
-                alt={layer.name}
-                draggable={false}
-                className="h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
-              />
-            </div>
-          ))}
+          auxLayers.map((layer, index) => {
+            const isActive = activeLayerId === layer.id
+            return (
+              <div
+                key={layer.id}
+                className={cn(
+                  'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]',
+                  isActive &&
+                    framed &&
+                    'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
+                  isActive &&
+                    (pickMode || brush.editing) &&
+                    'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
+                )}
+                style={{
+                  opacity: opacity * layer.opacity,
+                  transform: buildOverlayCssTransform(
+                    {
+                      ...transform,
+                      x: transform.x + (index + 1) * 8,
+                      y: transform.y + (index + 1) * 8,
+                    },
+                    flipped,
+                  ),
+                  zIndex: 2 + index,
+                  pointerEvents: isActive && (pickMode || brush.editing) ? 'auto' : 'none',
+                }}
+                onClick={isActive ? handleOverlayPick : undefined}
+                onPointerDown={(event) => {
+                  if (isActive && (pickMode || brush.editing)) event.stopPropagation()
+                }}
+              >
+                <img
+                  ref={isActive ? overlayImageRef : undefined}
+                  src={layerDisplayUrl(layer.id, layer.url)}
+                  alt={layer.name}
+                  draggable={false}
+                  className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+                />
+                {flags.brushMask && isActive && (
+                  <MaskPainter
+                    settings={brush}
+                    onChange={(dataUrl) =>
+                      setBrush((prev) => ({
+                        ...prev,
+                        dataUrl,
+                        enabled: true,
+                      }))
+                    }
+                    className="absolute inset-0 h-full w-full"
+                  />
+                )}
+              </div>
+            )
+          })}
 
         <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
 
@@ -795,15 +853,22 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             pos={loupePos}
             stageRef={stageRef}
             sourceVideoRef={videoRef}
-            displayUrl={displayUrl}
+            displayUrl={layerDisplayUrl('primary', imageUrl)}
             transform={transform}
             flipped={flipped}
             opacity={opacity}
             primaryVisible={primaryVisible}
             primaryOpacity={primaryOpacity}
-            framed={framed}
+            framed={framed && activeLayerId === 'primary'}
             calcFilter={calcModeFilter(calcMode)}
-            auxLayers={flags.multiLayers ? auxLayers : []}
+            auxLayers={
+              flags.multiLayers
+                ? auxLayers.map((layer) => ({
+                    ...layer,
+                    url: layerDisplayUrl(layer.id, layer.url),
+                  }))
+                : []
+            }
           />
         )}
 
@@ -989,6 +1054,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     onReset={reset}
                     layersEnabled={flags.multiLayers}
                     layers={layers}
+                    activeLayerId={activeLayerId}
+                    onSelectLayer={selectLayer}
                     onLayerOpacity={(id, value) =>
                       setLayers((prev) =>
                         prev.map((layer) =>
@@ -1009,6 +1076,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                         if (target?.kind === 'aux') revokeAuxUrls([target])
                         return prev.filter((layer) => layer.id !== id)
                       })
+                      if (activeLayerId === id) setActiveLayerId('primary')
                     }}
                     galleryEnabled={flags.sessionGallery}
                     autoSessionShot={autoSessionShot}
@@ -1120,6 +1188,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                       setSavedPalettes(next)
                       saveSavedPalettes(next)
                     }}
+                    activeLayerName={flags.multiLayers ? activeLayerName : undefined}
                   />
                 )}
                 {tab === 'poses' && (
