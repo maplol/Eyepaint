@@ -22,6 +22,7 @@ import {
   cameraClass,
   cn,
   dockClass,
+  dockShellClass,
   glassButtonClass,
   sectionTitleClass,
   statusBaseClass,
@@ -919,40 +920,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       )}
 
       {!uiHidden && (
-        <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
-          {settingsOpen ? (
-            <div className="flex items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-3">
-              <p className={sectionTitleClass}>Настройки</p>
-              <button
-                type="button"
-                className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
-                onClick={() => setSettingsOpen(false)}
-              >
-                К студии
-              </button>
-            </div>
-          ) : (
-            <div
-              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-[var(--glass-border-soft)] px-2 py-2 backdrop-blur-md"
-              style={{ backgroundImage: 'var(--tab-strip-bg)' }}
-              role="tablist"
-              aria-label="Панели студии"
-            >
-              {TABS.map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  className={cn(tabBaseClass, tab === id && tabActiveClass)}
-                  onClick={() => setTab(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
+        <div className={dockShellClass}>
           {!settingsOpen && flags.multiLayers && layers.length > 0 && (
             <LayersPanel
               layers={layers}
@@ -997,6 +965,40 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 if (activeLayerId === id) setActiveLayerId('primary')
               }}
             />
+          )}
+
+          <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
+          {settingsOpen ? (
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-3">
+              <p className={sectionTitleClass}>Настройки</p>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
+                onClick={() => setSettingsOpen(false)}
+              >
+                К студии
+              </button>
+            </div>
+          ) : (
+            <div
+              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-[var(--glass-border-soft)] px-2 py-2 backdrop-blur-md"
+              style={{ backgroundImage: 'var(--tab-strip-bg)' }}
+              role="tablist"
+              aria-label="Панели студии"
+            >
+              {TABS.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  className={cn(tabBaseClass, tab === id && tabActiveClass)}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
 
           <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
@@ -1236,6 +1238,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             )}
           </div>
         </aside>
+        </div>
       )}
 
       {!uiHidden && (

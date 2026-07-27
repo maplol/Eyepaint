@@ -53,8 +53,15 @@ export const poseStatValueClass =
 export const glassButtonClass =
   'inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3.5 text-sm font-semibold text-[var(--fg-strong)] shadow-[var(--shadow-glass)] backdrop-blur-md'
 
+/** Outer shell: dock + optional layers sheet stacked above it */
+export const dockShellClass =
+  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(72dvh,640px)] flex-col gap-2 animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
+
 export const dockClass =
-  'absolute inset-x-3 bottom-[calc(var(--safe-bottom)+0.7rem)] z-[3] flex max-h-[min(58dvh,520px)] flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.45s_ease_0.04s_both] md:inset-x-auto md:right-4 md:bottom-[calc(var(--safe-bottom)+1rem)] md:w-[min(380px,calc(100%-2rem))] min-[960px]:max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-5.75rem)] min-[960px]:w-[min(360px,30vw)]'
+  'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
+
+export const layersSheetClass =
+  'flex max-h-[min(42dvh,320px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
 
 export const tabBaseClass =
   'min-h-9 rounded-xl px-1 py-1.5 text-[0.75rem] font-semibold text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-strong)] min-[960px]:text-[0.8rem]'

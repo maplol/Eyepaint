@@ -22,7 +22,7 @@ test.describe('Colors & layers', () => {
     await page.getByRole('button', { name: 'Кожа' }).click()
   })
 
-  test('блок слоёв вне вкладок: выбор, порядок, скрытие', async ({ page }) => {
+  test('экран слоёв над доком: выбор, порядок, закрытие', async ({ page }) => {
     await openStudioTab(page, 'Основное')
 
     const galleryInStudio = page
@@ -32,16 +32,17 @@ test.describe('Colors & layers', () => {
       .locator('input[type="file"]')
     await galleryInStudio.setInputFiles('e2e/fixtures/reference.png')
 
-    const layersBlock = page.getByRole('region', { name: 'Блок слоёв' })
+    // Добавление aux открывает лист слоёв
+    const layersSheet = page.getByRole('region', { name: 'Блок слоёв' })
     const layersList = page.getByRole('list', { name: 'Слои референса' })
-    await expect(layersBlock).toBeVisible({ timeout: 10_000 })
+    await expect(layersSheet).toBeVisible({ timeout: 10_000 })
     await expect(layersList).toBeVisible()
     await expect(layersList.getByText(/Активен ·/)).toBeVisible()
 
-    // Слои остаются при смене вкладки
+    // Док и вкладки живут отдельно — слои остаются при смене вкладки
     await openStudioTab(page, 'Цвета')
-    await expect(layersBlock).toBeVisible()
-    await expect(layersList).toBeVisible()
+    await expect(layersSheet).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Цвета' })).toBeVisible()
 
     await layersList.getByRole('button', { name: /^Основной/ }).click()
     await expect(layersList.getByText(/Активен ·/).first()).toBeVisible()
@@ -51,10 +52,11 @@ test.describe('Colors & layers', () => {
     await page.getByRole('menuitem', { name: 'На передний план' }).click()
     await expect(layersList.getByText(/передний/)).toBeVisible()
 
-    await layersBlock.getByRole('button', { name: 'Свернуть' }).click()
+    await layersSheet.getByRole('button', { name: 'Закрыть' }).click()
     await expect(layersList).toHaveCount(0)
-    await expect(layersBlock.getByText(/Активен:/)).toBeVisible()
-    await layersBlock.getByRole('button', { name: 'Развернуть' }).click()
+    await expect(page.getByRole('button', { name: /Слои ·/ })).toBeVisible()
+
+    await page.getByRole('button', { name: /Слои ·/ }).click()
     await expect(layersList).toBeVisible()
   })
 })
