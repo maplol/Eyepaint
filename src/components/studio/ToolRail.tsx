@@ -10,6 +10,9 @@ import {
 type Props = {
   activeTool: StudioToolId | null
   layersSheetOpen: boolean
+  guidesOn?: boolean
+  calcOn?: boolean
+  loupeOn?: boolean
   onSelect: (tool: StudioToolId) => void
 }
 
@@ -29,14 +32,27 @@ const TOOLS: {
   { id: 'layers', label: 'Слои', title: 'Слои и фото', Icon: IconLayers },
 ]
 
-export function ToolRail({ activeTool, layersSheetOpen, onSelect }: Props) {
+export function ToolRail({
+  activeTool,
+  layersSheetOpen,
+  guidesOn = false,
+  calcOn = false,
+  loupeOn = false,
+  onSelect,
+}: Props) {
   return (
     <aside className={toolRailClass} role="toolbar" aria-label="Инструменты">
       {TOOLS.map((tool) => {
         const active =
           tool.id === 'layers'
             ? activeTool === 'layers' || layersSheetOpen
-            : activeTool === tool.id
+            : tool.id === 'guides'
+              ? guidesOn || activeTool === 'guides'
+              : tool.id === 'calc'
+                ? calcOn || activeTool === 'calc'
+                : tool.id === 'loupe'
+                  ? loupeOn || activeTool === 'loupe'
+                  : activeTool === tool.id
         return (
           <button
             key={tool.id}

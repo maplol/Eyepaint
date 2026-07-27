@@ -297,6 +297,7 @@ export function Studio({
   const [capturing, setCapturing] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [activeTool, setActiveTool] = useState<StudioToolId | null>(null)
+  const [toolPanelOpen, setToolPanelOpen] = useState(false)
   const [layersSheetOpen, setLayersSheetOpen] = useState(loadLayersSheetOpen)
   const desktopLayout = useDesktopStudioLayout()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -915,9 +916,13 @@ export function Studio({
       : 'Камера: нет'
 
   const showToolInspector =
-    settingsOpen || (activeTool !== null && activeTool !== 'layers')
+    settingsOpen || (toolPanelOpen && activeTool !== null && activeTool !== 'layers')
 
-  const deactivateOneTool = (tool: StudioToolId | null) => {
+  const loupeMode = activeTool === 'loupe' && loupe.enabled
+  const blockLayerGestures = loupeMode || pickMode || brush.editing
+
+  /** Exclusive modes die when switching tools; sticky overlays stay until their rail toggle. */
+  const deactivateExclusive = (tool: StudioToolId | null) => {
     if (!tool) return
     if (tool === 'eyedropper') {
       setPickMode(false)
@@ -927,6 +932,10 @@ export function Studio({
       setLoupe((prev) => (prev.enabled ? { ...prev, enabled: false } : prev))
       setLoupeVisible(false)
     }
+  }
+
+  const deactivateSticky = (tool: StudioToolId | null) => {
+    if (!tool) return
     if (tool === 'calc') {
       setCalcMode((prev) => (prev.enabled ? { ...prev, enabled: false } : prev))
     }
@@ -935,10 +944,16 @@ export function Studio({
     }
   }
 
+  const deactivateOneTool = (tool: StudioToolId | null) => {
+    deactivateExclusive(tool)
+    deactivateSticky(tool)
+  }
+
   const handleSelectTool = (tool: StudioToolId) => {
     setSettingsOpen(false)
     if (tool === 'layers') {
-      if (activeTool && activeTool !== 'layers') deactivateOneTool(activeTool)
+      deactivateExclusive(activeTool)
+      setToolPanelOpen(false)
       setLayersSheetOpen((prev) => {
         const next = !prev
         setActiveTool(next ? 'layers' : null)
@@ -946,15 +961,35 @@ export function Studio({
       })
       return
     }
+
+    const stickyOn =
+      (tool === 'guides' && guides.kind !== 'none') || (tool === 'calc' && calcMode.enabled)
+
+    // Sticky: повторный клик при открытой панели = выкл; иначе — снова открыть панель
+    if (stickyOn) {
+      if (activeTool === tool && toolPanelOpen) {
+        deactivateSticky(tool)
+        setActiveTool(null)
+        setToolPanelOpen(false)
+        return
+      }
+      deactivateExclusive(activeTool)
+      setActiveTool(tool)
+      setToolPanelOpen(true)
+      return
+    }
+
+    // Exclusive / обычные: повторный клик = выкл
     if (activeTool === tool) {
       deactivateOneTool(tool)
       setActiveTool(null)
+      setToolPanelOpen(false)
       return
     }
-    // Другой айтем: гасим прошлый, включаем новый
-    if (activeTool) deactivateOneTool(activeTool)
+
+    deactivateExclusive(activeTool)
     setActiveTool(tool)
-    // Слои на мобилке не авто-сворачиваем — как колонка на ПК
+    setToolPanelOpen(true)
 
     if (tool === 'eyedropper') {
       setPickMode(true)
@@ -962,6 +997,8 @@ export function Studio({
     }
     if (tool === 'loupe') {
       setLoupe((prev) => ({ ...prev, enabled: true }))
+      setLoupeVisible(true)
+      setLoupePos({ x: 50, y: 50 })
     }
     if (tool === 'calc') {
       setCalcMode((prev) => ({ ...prev, enabled: true }))
@@ -1265,10 +1302,7 @@ export function Studio({
           className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
           onClick={() => {
             if (settingsOpen) setSettingsOpen(false)
-            else {
-              deactivateOneTool(activeTool)
-              setActiveTool(null)
-            }
+            else setToolPanelOpen(false)
           }}
         >
           {settingsOpen ? 'К студии' : 'Закрыть'}
@@ -1291,23 +1325,47 @@ export function Studio({
         ref={stageRef}
         className={cn(
           atmosphere === 'light' ? stageLight : stageBase,
-          getStageCursorClass(locked || pickMode || brush.editing, dragMode),
+          getStageCursorClass(locked || blockLayerGestures, dragMode),
+          loupeMode && 'touch-none cursor-crosshair',
         )}
         onPointerDown={(event) => {
           handleStagePointerMove(event)
-          if (!pickMode && !brush.editing) handlers.onPointerDown(event)
+          if (loupeMode) {
+            event.currentTarget.setPointerCapture(event.pointerId)
+            event.preventDefault()
+            return
+          }
+          if (!blockLayerGestures) handlers.onPointerDown(event)
         }}
         onPointerMove={(event) => {
           handleStagePointerMove(event)
-          if (!pickMode && !brush.editing) handlers.onPointerMove(event)
+          if (loupeMode) {
+            event.preventDefault()
+            return
+          }
+          if (!blockLayerGestures) handlers.onPointerMove(event)
         }}
         onPointerUp={(event) => {
-          if (!pickMode && !brush.editing) handlers.onPointerUp(event)
+          if (loupeMode) {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId)
+            }
+            return
+          }
+          if (!blockLayerGestures) handlers.onPointerUp(event)
         }}
         onPointerCancel={(event) => {
-          if (!pickMode && !brush.editing) handlers.onPointerCancel(event)
+          if (loupeMode) {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId)
+            }
+            return
+          }
+          if (!blockLayerGestures) handlers.onPointerCancel(event)
         }}
-        onPointerLeave={() => setLoupeVisible(false)}
+        onPointerLeave={() => {
+          if (!loupeMode) setLoupeVisible(false)
+        }}
       >
         <video
           ref={videoRef}
@@ -1362,13 +1420,15 @@ export function Studio({
                 transform: buildOverlayCssTransform(layer.transform, layer.flipped),
                 zIndex: 2 + index,
                 pointerEvents:
-                  isActive && (pickMode || brush.editing)
-                    ? 'auto'
-                    : locked
-                      ? 'none'
-                      : isActive
-                        ? 'auto'
-                        : 'none',
+                  loupeMode
+                    ? 'none'
+                    : isActive && (pickMode || brush.editing)
+                      ? 'auto'
+                      : locked
+                        ? 'none'
+                        : isActive
+                          ? 'auto'
+                          : 'none',
               }}
               onClick={isActive ? handleOverlayPick : undefined}
               onPointerDown={(event) => {
@@ -1493,8 +1553,9 @@ export function Studio({
                 setSettingsOpen((value) => {
                   const next = !value
                   if (next) {
-                    deactivateOneTool(activeTool)
+                    setToolPanelOpen(false)
                     setActiveTool(null)
+                    deactivateExclusive(activeTool)
                     if (!desktopLayout) setLayersSheetOpen(false)
                   }
                   return next
@@ -1535,6 +1596,9 @@ export function Studio({
             <ToolRail
               activeTool={activeTool}
               layersSheetOpen={layersSheetOpen}
+              guidesOn={guides.kind !== 'none'}
+              calcOn={calcMode.enabled}
+              loupeOn={loupeMode}
               onSelect={handleSelectTool}
             />
           )}

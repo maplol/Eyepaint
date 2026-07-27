@@ -92,7 +92,7 @@ export const dockClass = cn(
 
 /** Compact vertical tool rail — centered */
 export const toolRailClass = cn(
-  'absolute left-2 top-1/2 z-[5] flex w-11 max-h-[min(68vh,30rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto overscroll-contain rounded-2xl p-1.5 animate-[rise-in_0.35s_ease_both] eyepaint-scroll sm:left-3 min-[960px]:w-12',
+  'absolute left-2 top-1/2 z-[5] flex w-11 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl p-1.5 animate-[rise-in_0.35s_ease_both] sm:left-3 min-[960px]:w-12',
   glassSurfaceClass,
 )
 
