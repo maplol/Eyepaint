@@ -11,6 +11,7 @@ import {
 import { GuideOverlay } from './GuideOverlay'
 import { Toast } from './Toast'
 import { ColorsPanel } from './studio/ColorsPanel'
+import { LayersPanel } from './studio/LayersPanel'
 import { LoupeOverlay } from './studio/LoupeOverlay'
 import { MainPanel } from './studio/MainPanel'
 import { MaskPainter } from './studio/MaskPainter'
@@ -952,6 +953,52 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             </div>
           )}
 
+          {!settingsOpen && flags.multiLayers && layers.length > 0 && (
+            <LayersPanel
+              layers={layers}
+              activeLayerId={activeLayerId}
+              onSelectLayer={selectLayer}
+              onReorderLayers={(fromId, toId) => {
+                setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
+                setActiveLayerId(fromId)
+                showToast('Порядок слоёв обновлён')
+              }}
+              onStackAction={(id, action: LayerStackAction) => {
+                setLayers((prev) => applyLayerStackAction(prev, id, action))
+                setActiveLayerId(id)
+                const labels: Record<LayerStackAction, string> = {
+                  front: 'на передний план',
+                  forward: 'ближе',
+                  backward: 'дальше',
+                  back: 'на задний план',
+                }
+                showToast(`Слой ${labels[action]}`)
+              }}
+              onLayerOpacity={(id, value) =>
+                setLayers((prev) =>
+                  prev.map((layer) =>
+                    layer.id === id ? { ...layer, opacity: value } : layer,
+                  ),
+                )
+              }
+              onLayerVisible={(id) =>
+                setLayers((prev) =>
+                  prev.map((layer) =>
+                    layer.id === id ? { ...layer, visible: !layer.visible } : layer,
+                  ),
+                )
+              }
+              onRemoveLayer={(id) => {
+                setLayers((prev) => {
+                  const target = prev.find((layer) => layer.id === id)
+                  if (target?.kind === 'aux') revokeAuxUrls([target])
+                  return prev.filter((layer) => layer.id !== id)
+                })
+                if (activeLayerId === id) setActiveLayerId('primary')
+              }}
+            />
+          )}
+
           <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
             {settingsOpen ? (
               <SettingsPanel
@@ -1034,48 +1081,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     locked={locked}
                     onToggleLock={() => setLocked((value) => !value)}
                     onReset={reset}
-                    layersEnabled={flags.multiLayers}
-                    layers={layers}
-                    activeLayerId={activeLayerId}
-                    onSelectLayer={selectLayer}
-                    onReorderLayers={(fromId, toId) => {
-                      setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
-                      setActiveLayerId(fromId)
-                      showToast('Порядок слоёв обновлён')
-                    }}
-                    onStackAction={(id, action: LayerStackAction) => {
-                      setLayers((prev) => applyLayerStackAction(prev, id, action))
-                      setActiveLayerId(id)
-                      const labels: Record<LayerStackAction, string> = {
-                        front: 'на передний план',
-                        forward: 'ближе',
-                        backward: 'дальше',
-                        back: 'на задний план',
-                      }
-                      showToast(`Слой ${labels[action]}`)
-                    }}
-                    onLayerOpacity={(id, value) =>
-                      setLayers((prev) =>
-                        prev.map((layer) =>
-                          layer.id === id ? { ...layer, opacity: value } : layer,
-                        ),
-                      )
-                    }
-                    onLayerVisible={(id) =>
-                      setLayers((prev) =>
-                        prev.map((layer) =>
-                          layer.id === id ? { ...layer, visible: !layer.visible } : layer,
-                        ),
-                      )
-                    }
-                    onRemoveLayer={(id) => {
-                      setLayers((prev) => {
-                        const target = prev.find((layer) => layer.id === id)
-                        if (target?.kind === 'aux') revokeAuxUrls([target])
-                        return prev.filter((layer) => layer.id !== id)
-                      })
-                      if (activeLayerId === id) setActiveLayerId('primary')
-                    }}
                     galleryEnabled={flags.sessionGallery}
                     autoSessionShot={autoSessionShot}
                     onAutoSessionShot={setAutoSessionShot}

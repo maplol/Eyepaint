@@ -11,9 +11,7 @@ import {
   LOUPE_SIZE_MIN,
   LOUPE_ZOOM_OPTIONS,
 } from '../../lib/studioTools'
-import type { LayerStackAction, RefLayer } from '../../lib/layers'
 import type { SessionShot } from '../../lib/sessionGallery'
-import { LayersPanel } from './LayersPanel'
 import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
 import { StableLabel } from './StableLabel'
 import {
@@ -62,15 +60,6 @@ type MainPanelProps = {
   locked: boolean
   onToggleLock: () => void
   onReset: () => void
-  layersEnabled: boolean
-  layers: RefLayer[]
-  onLayerOpacity: (id: string, opacity: number) => void
-  onLayerVisible: (id: string) => void
-  onRemoveLayer: (id: string) => void
-  activeLayerId: string
-  onSelectLayer: (id: string) => void
-  onReorderLayers: (fromId: string, toId: string) => void
-  onStackAction: (id: string, action: LayerStackAction) => void
   galleryEnabled: boolean
   autoSessionShot: boolean
   onAutoSessionShot: (value: boolean) => void
@@ -341,19 +330,6 @@ export function MainPanel(props: MainPanelProps) {
           </>
         )}
       </div>
-
-      {props.layersEnabled && props.layers.length > 0 && (
-        <LayersPanel
-          layers={props.layers}
-          activeLayerId={props.activeLayerId}
-          onSelectLayer={props.onSelectLayer}
-          onLayerOpacity={props.onLayerOpacity}
-          onLayerVisible={props.onLayerVisible}
-          onRemoveLayer={props.onRemoveLayer}
-          onReorderLayers={props.onReorderLayers}
-          onStackAction={props.onStackAction}
-        />
-      )}
 
       {props.usingPhoneCam && (
         <div className="grid grid-cols-2 gap-2">
