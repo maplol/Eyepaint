@@ -56,6 +56,13 @@ test.describe('Studio smoke', () => {
     await expect(page.getByRole('tab', { name: 'Основное' })).toBeVisible()
   })
 
+  test('настройки: вкладка Проект и сохранение', async ({ page }) => {
+    await page.getByRole('button', { name: 'Настройки' }).click()
+    await page.getByRole('button', { name: 'Проект' }).click()
+    await expect(page.getByRole('button', { name: 'Сохранить проект в файл' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Очистить автосейв' })).toBeVisible()
+  })
+
   test('назад на Welcome', async ({ page }) => {
     await page.getByRole('button', { name: 'Назад' }).click()
     await expect(page.getByRole('button', { name: 'Телефон как камера' })).toBeVisible()

@@ -1,16 +1,29 @@
 import { LESSONS, type LessonCard } from '../lib/lessons'
 import { loadFlags } from '../lib/flags'
+import { PROJECT_ACCEPT, formatAutosaveTime, type AutosaveMeta } from '../lib/projectSession'
 
 type WelcomeProps = {
   onPickImage: (file: File) => void
   onStartCameraRoom: () => void
   onStartLesson?: (lesson: LessonCard) => void
+  onOpenProjectFile?: (file: File) => void
+  onContinueSession?: () => void
+  autosaveMeta?: AutosaveMeta | null
+  projectBusy?: boolean
 }
 
 const ctaBase =
   'inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full px-5 py-3.5 font-bold tracking-[0.01em] transition-[transform,background] duration-150 active:scale-[0.98]'
 
-export function Welcome({ onPickImage, onStartCameraRoom, onStartLesson }: WelcomeProps) {
+export function Welcome({
+  onPickImage,
+  onStartCameraRoom,
+  onStartLesson,
+  onOpenProjectFile,
+  onContinueSession,
+  autosaveMeta,
+  projectBusy,
+}: WelcomeProps) {
   const handleFile = (file: File | undefined) => {
     if (file) onPickImage(file)
   }
@@ -41,8 +54,22 @@ export function Welcome({ onPickImage, onStartCameraRoom, onStartLesson }: Welco
           </p>
 
           <div className="mt-6 grid gap-2.5">
+            {autosaveMeta && onContinueSession && (
+              <button
+                type="button"
+                className={`${ctaBase} bg-accent text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.22)]`}
+                disabled={projectBusy}
+                onClick={onContinueSession}
+              >
+                Продолжить сессию
+                <span className="ml-2 text-[0.78rem] font-semibold opacity-80">
+                  · {formatAutosaveTime(autosaveMeta.savedAt)}
+                </span>
+              </button>
+            )}
+
             <label
-              className={`${ctaBase} bg-accent text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.22)]`}
+              className={`${ctaBase} ${autosaveMeta ? 'border border-white/25 bg-white/10 text-paper backdrop-blur-md' : 'bg-accent text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.22)]'}`}
             >
               <input
                 type="file"
@@ -71,6 +98,24 @@ export function Welcome({ onPickImage, onStartCameraRoom, onStartLesson }: Welco
               />
               Из галереи
             </label>
+
+            {onOpenProjectFile && (
+              <label
+                className={`${ctaBase} border border-white/25 bg-white/10 text-paper backdrop-blur-md`}
+              >
+                <input
+                  type="file"
+                  accept={PROJECT_ACCEPT}
+                  className="pointer-events-none absolute h-px w-px opacity-0"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) onOpenProjectFile(file)
+                    event.target.value = ''
+                  }}
+                />
+                Открыть проект
+              </label>
+            )}
 
             <button
               type="button"

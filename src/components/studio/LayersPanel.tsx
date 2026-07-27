@@ -17,6 +17,7 @@ import {
   mutedTextClass,
   rangeInputClass,
   rowClass,
+  scrollAreaClass,
   sectionTitleClass,
   toggleChipClass,
 } from './studioUi'
@@ -338,7 +339,10 @@ export function LayersPanel(props: LayersPanelProps) {
 
       <ul
         ref={listRef}
-        className="grid min-h-0 flex-1 gap-1.5 overflow-auto overscroll-contain px-3 py-2 [-webkit-overflow-scrolling:touch]"
+        className={cn(
+          'grid min-h-0 flex-1 gap-1.5 overflow-auto overscroll-contain px-3 py-2 [-webkit-overflow-scrolling:touch]',
+          scrollAreaClass,
+        )}
         aria-label="Слои референса"
       >
         {displayLayers.map((layer) => {

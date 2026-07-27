@@ -24,6 +24,7 @@ import {
   dockClass,
   dockShellClass,
   glassButtonClass,
+  scrollAreaClass,
   sectionTitleClass,
   statusBaseClass,
   statusNoteClass,
@@ -71,6 +72,15 @@ import {
   type LayerStackAction,
   type RefLayer,
 } from '../lib/layers'
+import {
+  buildProjectSnapshot,
+  clearAutosave,
+  downloadProjectSnapshot,
+  formatAutosaveTime,
+  writeAutosave,
+  type AutosaveMeta,
+  type HydratedProject,
+} from '../lib/projectSession'
 import {
   createSavedPalette,
   loadSavedPalettes,
@@ -125,10 +135,12 @@ type StudioProps = {
     opacity: number
     calcStrength?: number
   } | null
+  projectBoot?: HydratedProject | null
+  onAutosaveWritten?: (meta: AutosaveMeta | null) => void
 }
 
 type StudioTab = 'main' | 'project' | 'colors' | 'poses'
-type SettingsSection = 'link' | 'keys' | 'flags'
+type SettingsSection = 'link' | 'keys' | 'flags' | 'project'
 
 const TABS: Array<[StudioTab, string]> = [
   ['main', 'Основное'],
@@ -161,7 +173,14 @@ const stageBase =
 const stageLight =
   'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#d8e0e4_0%,#b7c2c8_72%)]'
 
-export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioProps) {
+export function Studio({
+  imageUrl,
+  onChangeImage,
+  onExit,
+  lessonBoot,
+  projectBoot,
+  onAutosaveWritten,
+}: StudioProps) {
   const [roomEnabled, setRoomEnabled] = useState(false)
   const [roomCode, setRoomCode] = useState(() => loadHostRoomCode() ?? createRoomCode())
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
@@ -207,19 +226,33 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     setRemoteTorch(false)
   }, [usingPhoneCam])
 
-  const [flags, setFlags] = useState<FeatureFlags>(() => loadFlags())
-  const [atmosphere, setAtmosphere] = useState<StudioAtmosphere>(() => loadAtmosphere())
-  const [opacity, setOpacity] = useState(() => lessonBoot?.opacity ?? 0.45)
-  const [calcMode, setCalcMode] = useState<CalcModeSettings>(() => ({
-    ...DEFAULT_CALC_MODE,
-    enabled: Boolean(lessonBoot?.calcStrength),
-    strength: lessonBoot?.calcStrength ?? DEFAULT_CALC_MODE.strength,
-  }))
-  const [guides, setGuides] = useState<GuideSettings>(() => ({
-    ...DEFAULT_GUIDES,
-    kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
-  }))
-  const [loupe, setLoupe] = useState<LoupeSettings>(() => ({ ...DEFAULT_LOUPE }))
+  const [flags, setFlags] = useState<FeatureFlags>(() => projectBoot?.flags ?? loadFlags())
+  const [atmosphere, setAtmosphere] = useState<StudioAtmosphere>(
+    () => projectBoot?.atmosphere ?? loadAtmosphere(),
+  )
+  const [opacity, setOpacity] = useState(
+    () => projectBoot?.opacity ?? lessonBoot?.opacity ?? 0.45,
+  )
+  const [calcMode, setCalcMode] = useState<CalcModeSettings>(() =>
+    projectBoot?.calcMode
+      ? { ...projectBoot.calcMode }
+      : {
+          ...DEFAULT_CALC_MODE,
+          enabled: Boolean(lessonBoot?.calcStrength),
+          strength: lessonBoot?.calcStrength ?? DEFAULT_CALC_MODE.strength,
+        },
+  )
+  const [guides, setGuides] = useState<GuideSettings>(() =>
+    projectBoot?.guides
+      ? { ...projectBoot.guides }
+      : {
+          ...DEFAULT_GUIDES,
+          kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
+        },
+  )
+  const [loupe, setLoupe] = useState<LoupeSettings>(() =>
+    projectBoot?.loupe ? { ...projectBoot.loupe } : { ...DEFAULT_LOUPE },
+  )
   const [loupePos, setLoupePos] = useState({ x: 50, y: 50 })
   const [loupeVisible, setLoupeVisible] = useState(false)
   const [sessionMins, setSessionMins] = useState<null | 25 | 45 | 90>(null)
@@ -227,9 +260,18 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [timerNow, setTimerNow] = useState(() => Date.now())
   const [autoSessionShot, setAutoSessionShot] = useState(true)
   const [shots, setShots] = useState<SessionShot[]>(() => loadSessionShots())
-  const [layers, setLayers] = useState<RefLayer[]>(() => [createPrimaryLayer(imageUrl)])
-  const [activeLayerId, setActiveLayerId] = useState('primary')
-  const [locked, setLocked] = useState(false)
+  const [layers, setLayers] = useState<RefLayer[]>(() =>
+    projectBoot?.layers?.length
+      ? projectBoot.layers.map((layer) => ({
+          ...layer,
+          transform: { ...layer.transform },
+        }))
+      : [createPrimaryLayer(imageUrl)],
+  )
+  const [activeLayerId, setActiveLayerId] = useState(
+    () => projectBoot?.activeLayerId ?? 'primary',
+  )
+  const [locked, setLocked] = useState(() => projectBoot?.locked ?? false)
   const [uiHidden, setUiHidden] = useState(false)
   const [flash, setFlash] = useState(false)
   const [capturing, setCapturing] = useState(false)
@@ -237,21 +279,36 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [tab, setTab] = useState<StudioTab>('main')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('link')
+  const [savingProject, setSavingProject] = useState(false)
+  const [autosaveLabel, setAutosaveLabel] = useState<string | null>(() =>
+    projectBoot ? formatAutosaveTime(projectBoot.savedAt) : null,
+  )
 
   const [palette, setPalette] = useState<PaletteColor[]>([])
   const [paletteLoading, setPaletteLoading] = useState(false)
-  const [selectedColorIds, setSelectedColorIds] = useState<string[]>([])
-  const [colorMode, setColorMode] = useState<ColorFilterMode>('off')
+  const [selectedColorIds, setSelectedColorIds] = useState<string[]>(
+    () => projectBoot?.selectedColorIds ?? [],
+  )
+  const [colorMode, setColorMode] = useState<ColorFilterMode>(
+    () => projectBoot?.colorMode ?? 'off',
+  )
   const [filteredUrl, setFilteredUrl] = useState<string | null>(null)
   const [filterBusy, setFilterBusy] = useState(false)
-  const [colorPrecision, setColorPrecision] = useState<ColorPrecision>(() => loadColorPrecision())
+  const [colorPrecision, setColorPrecision] = useState<ColorPrecision>(
+    () => projectBoot?.colorPrecision ?? loadColorPrecision(),
+  )
   const [matchTolerance, setMatchTolerance] = useState(() =>
+    projectBoot?.matchTolerance ??
     loadMatchTolerance(PRECISION_PROFILES[loadColorPrecision()].defaultTolerance),
   )
   const [pickMode, setPickMode] = useState(false)
-  const [paletteSort, setPaletteSort] = useState<'dominance' | 'hue'>('dominance')
+  const [paletteSort, setPaletteSort] = useState<'dominance' | 'hue'>(
+    () => projectBoot?.paletteSort ?? 'dominance',
+  )
   const [selectionCoverage, setSelectionCoverage] = useState<number | null>(null)
-  const [brush, setBrush] = useState<BrushMaskSettings>(() => ({ ...DEFAULT_BRUSH_MASK }))
+  const [brush, setBrush] = useState<BrushMaskSettings>(() =>
+    projectBoot?.brush ? { ...projectBoot.brush, editing: false } : { ...DEFAULT_BRUSH_MASK },
+  )
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(() => loadSavedPalettes())
   const paletteRef = useRef(palette)
   const colorSourceRef = useRef(imageUrl)
@@ -262,7 +319,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const colorSourceUrl = activeLayer?.url ?? imageUrl
   const activeLayerName = activeLayer?.name ?? 'Основной'
 
-  const [poses, setPoses] = useState<SavedPose[]>(() => loadPoses())
+  const [poses, setPoses] = useState<SavedPose[]>(() => projectBoot?.poses ?? loadPoses())
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const overlayImageRef = useRef<HTMLImageElement | null>(null)
@@ -296,6 +353,130 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
   const layerDisplayUrl = (layerId: string, fallbackUrl: string) =>
     layerId === activeLayerId && filteredUrl ? filteredUrl : fallbackUrl
+
+  useEffect(() => {
+    if (!projectBoot?.hotkeys) return
+    setHotkeys({ ...projectBoot.hotkeys })
+  }, [projectBoot, setHotkeys])
+
+  useEffect(() => {
+    if (!projectBoot) return
+    savePoses(projectBoot.poses)
+    saveFlags(projectBoot.flags)
+  }, [projectBoot])
+
+  const collectSnapshotInput = () => ({
+    layers,
+    activeLayerId,
+    opacity,
+    calcMode,
+    guides,
+    loupe,
+    atmosphere,
+    locked,
+    selectedColorIds,
+    colorMode,
+    colorPrecision,
+    matchTolerance,
+    paletteSort,
+    brush,
+    poses,
+    flags,
+    hotkeys,
+    primaryFallbackUrl: imageUrl,
+  })
+
+  const handleSaveProjectFile = () => {
+    setSavingProject(true)
+    void buildProjectSnapshot(collectSnapshotInput())
+      .then((snapshot) => {
+        downloadProjectSnapshot(snapshot)
+        showToast('Проект сохранён в файл')
+      })
+      .catch(() => showToast('Не удалось сохранить проект'))
+      .finally(() => setSavingProject(false))
+  }
+
+  const handleClearAutosave = () => {
+    void clearAutosave().then(() => {
+      setAutosaveLabel(null)
+      onAutosaveWritten?.(null)
+      showToast('Автосейв очищен')
+    })
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void buildProjectSnapshot(collectSnapshotInput())
+        .then(async (snapshot) => {
+          if (cancelled) return
+          await writeAutosave(snapshot)
+          if (cancelled) return
+          const meta: AutosaveMeta = {
+            savedAt: snapshot.savedAt,
+            layerCount: snapshot.layers.length,
+          }
+          setAutosaveLabel(formatAutosaveTime(snapshot.savedAt))
+          onAutosaveWritten?.(meta)
+        })
+        .catch(() => undefined)
+    }, 1800)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- snapshot on meaningful studio edits
+  }, [
+    layers,
+    activeLayerId,
+    opacity,
+    calcMode,
+    guides,
+    loupe,
+    atmosphere,
+    locked,
+    selectedColorIds,
+    colorMode,
+    colorPrecision,
+    matchTolerance,
+    paletteSort,
+    brush,
+    poses,
+    flags,
+    hotkeys,
+    imageUrl,
+  ])
+
+  useEffect(() => {
+    const onUnload = () => {
+      void buildProjectSnapshot(collectSnapshotInput())
+        .then((snapshot) => writeAutosave(snapshot))
+        .catch(() => undefined)
+    }
+    window.addEventListener('pagehide', onUnload)
+    return () => window.removeEventListener('pagehide', onUnload)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    layers,
+    activeLayerId,
+    opacity,
+    calcMode,
+    guides,
+    loupe,
+    atmosphere,
+    locked,
+    selectedColorIds,
+    colorMode,
+    colorPrecision,
+    matchTolerance,
+    paletteSort,
+    brush,
+    poses,
+    flags,
+    hotkeys,
+    imageUrl,
+  ])
 
   useEffect(() => {
     saveFlags(flags)
@@ -1017,7 +1198,12 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
+          <div
+            className={cn(
+              'min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]',
+              scrollAreaClass,
+            )}
+          >
             {settingsOpen ? (
               <SettingsPanel
                 section={settingsSection}
@@ -1057,6 +1243,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 onHotkeysResetToast={() => showToast('Клавиши сброшены')}
                 flags={flags}
                 onFlags={setFlags}
+                onSaveProject={handleSaveProjectFile}
+                onClearAutosave={handleClearAutosave}
+                savingProject={savingProject}
+                autosaveLabel={autosaveLabel}
               />
             ) : (
               <>

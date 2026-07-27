@@ -17,7 +17,7 @@ import {
   tipClass,
 } from './studioUi'
 
-type SettingsSection = 'link' | 'keys' | 'flags'
+type SettingsSection = 'link' | 'keys' | 'flags' | 'project'
 
 type SettingsPanelProps = {
   section: SettingsSection
@@ -41,6 +41,10 @@ type SettingsPanelProps = {
   onHotkeysResetToast: () => void
   flags: FeatureFlags
   onFlags: Dispatch<SetStateAction<FeatureFlags>>
+  onSaveProject: () => void
+  onClearAutosave: () => void
+  savingProject: boolean
+  autosaveLabel: string | null
 }
 
 const FLAG_LABELS: Array<[keyof FeatureFlags, string]> = [
@@ -54,12 +58,13 @@ const FLAG_LABELS: Array<[keyof FeatureFlags, string]> = [
 export function SettingsPanel(props: SettingsPanelProps) {
   return (
     <div className={panelClass}>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {(
           [
             ['link', 'Связь'],
             ['keys', 'Клавиши'],
             ['flags', 'Флаги'],
+            ['project', 'Проект'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -214,6 +219,32 @@ export function SettingsPanel(props: SettingsPanelProps) {
               </label>
             ))}
           </div>
+        </div>
+      )}
+
+      {props.section === 'project' && (
+        <div className={panelClass}>
+          <p className={sectionTitleClass}>Проект и сессия</p>
+          <p className={tipClass}>
+            Сохрани файл `.eyepaint.json` со слоями и настройками. Автосейв в браузере
+            переживает перезагрузку.
+          </p>
+          {props.autosaveLabel && (
+            <p className="rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2 text-[0.78rem] text-[var(--fg-muted)]">
+              Автосейв: {props.autosaveLabel}
+            </p>
+          )}
+          <button
+            type="button"
+            className={poseSaveClass}
+            disabled={props.savingProject}
+            onClick={props.onSaveProject}
+          >
+            {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
+          </button>
+          <button type="button" className={chipNeutralClass} onClick={props.onClearAutosave}>
+            Очистить автосейв
+          </button>
         </div>
       )}
     </div>
