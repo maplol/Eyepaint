@@ -1,0 +1,122 @@
+.welcome {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: end;
+  min-height: 100dvh;
+  padding:
+    calc(var(--safe-top) + 2rem)
+    1.4rem
+    calc(var(--safe-bottom) + 2rem);
+  overflow: hidden;
+  color: var(--paper);
+}
+
+.welcome__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 80% 55% at 70% 18%, rgba(240, 160, 90, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 12% 78%, rgba(125, 206, 160, 0.12), transparent 50%),
+    linear-gradient(165deg, #1a221e 0%, #0b0f0e 48%, #121816 100%);
+  animation: drift 18s ease-in-out infinite alternate;
+}
+
+.welcome__grain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(243, 239, 230, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 239, 230, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 75%);
+}
+
+.welcome__brand {
+  max-width: 28rem;
+  animation: rise-in 0.7s ease both;
+}
+
+.welcome__mark {
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 14vw, 5.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  color: var(--paper);
+  text-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.welcome__title {
+  margin-top: 1.35rem;
+  max-width: 16ch;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4.8vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: rgba(243, 239, 230, 0.92);
+  animation: rise-in 0.75s ease 0.08s both;
+}
+
+.welcome__lead {
+  margin-top: 0.85rem;
+  max-width: 32ch;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(216, 224, 220, 0.72);
+  animation: rise-in 0.75s ease 0.16s both;
+}
+
+.welcome__actions {
+  margin-top: 2.4rem;
+  animation: rise-in 0.8s ease 0.24s both;
+}
+
+.welcome__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.9rem 1.45rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ember) 0%, var(--ember-deep) 100%);
+  color: #1a1008;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 16px 40px rgba(212, 120, 46, 0.28);
+  animation: pulse-glow 2.8s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.welcome__cta input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome__cta:active {
+  transform: scale(0.98);
+}
+
+.welcome__hint {
+  margin-top: 0.9rem;
+  font-size: 0.86rem;
+  color: rgba(216, 224, 220, 0.55);
+}
+
+@media (min-width: 768px) {
+  .welcome {
+    align-content: center;
+    padding-left: clamp(2rem, 8vw, 7rem);
+  }
+
+  .welcome__brand {
+    max-width: 34rem;
+  }
+}
