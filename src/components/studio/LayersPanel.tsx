@@ -74,10 +74,24 @@ type MenuAnchor = {
   left: number
 }
 
+type DragGhost = {
+  id: string
+  width: number
+  height: number
+  grabX: number
+  grabY: number
+  pointerX: number
+  pointerY: number
+  name: string
+  hint: string
+  active: boolean
+}
+
 export function LayersPanel(props: LayersPanelProps) {
   const menuRootId = useId()
   const [open, setOpen] = useState(loadLayersOpen)
   const [dragId, setDragId] = useState<string | null>(null)
+  const [ghost, setGhost] = useState<DragGhost | null>(null)
   const [menu, setMenu] = useState<MenuAnchor | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLUListElement | null>(null)
@@ -107,6 +121,18 @@ export function LayersPanel(props: LayersPanelProps) {
 
   useEffect(() => {
     dragIdRef.current = dragId
+  }, [dragId])
+
+  useEffect(() => {
+    if (!dragId) return
+    const prevUserSelect = document.body.style.userSelect
+    const prevCursor = document.body.style.cursor
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'grabbing'
+    return () => {
+      document.body.style.userSelect = prevUserSelect
+      document.body.style.cursor = prevCursor
+    }
   }, [dragId])
 
   useEffect(() => {
@@ -155,7 +181,7 @@ export function LayersPanel(props: LayersPanelProps) {
       const rect = node.getBoundingClientRect()
       const mid = rect.top + rect.height / 2
       const dist = Math.abs(clientY - mid)
-      if (clientY >= rect.top && clientY <= rect.bottom && dist < bestDist) {
+      if (clientY >= rect.top - 8 && clientY <= rect.bottom + 8 && dist < bestDist) {
         bestDist = dist
         bestId = layer.id
       }
@@ -165,19 +191,51 @@ export function LayersPanel(props: LayersPanelProps) {
 
   const onHandlePointerDown = (
     event: ReactPointerEvent<HTMLButtonElement>,
-    layerId: string,
+    layer: RefLayer,
   ) => {
     if (!canReorder) return
     event.preventDefault()
     event.stopPropagation()
     setMenu(null)
-    setDragId(layerId)
-    dragIdRef.current = layerId
+
+    const row = itemRefs.current.get(layer.id)
+    if (!row) return
+    const rect = row.getBoundingClientRect()
+    const isActive = props.activeLayerId === layer.id
+    const stackHint = layerStackLabel(props.layers, layer.id)
+
+    const nextGhost: DragGhost = {
+      id: layer.id,
+      width: rect.width,
+      height: rect.height,
+      grabX: event.clientX - rect.left,
+      grabY: event.clientY - rect.top,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      name: layer.name,
+      hint: isActive
+        ? `Активен · ${stackHint || 'редактирование'}`
+        : `Нажми · ${stackHint || 'выбрать'}`,
+      active: isActive,
+    }
+
+    setDragId(layer.id)
+    dragIdRef.current = layer.id
+    setGhost(nextGhost)
     event.currentTarget.setPointerCapture(event.pointerId)
 
     const onMove = (moveEvent: PointerEvent) => {
       const current = dragIdRef.current
       if (!current) return
+      setGhost((prev) =>
+        prev
+          ? {
+              ...prev,
+              pointerX: moveEvent.clientX,
+              pointerY: moveEvent.clientY,
+            }
+          : prev,
+      )
       const targetId = findDropTarget(moveEvent.clientY, current)
       if (targetId && targetId !== current) {
         onReorderRef.current(current, targetId)
@@ -195,6 +253,7 @@ export function LayersPanel(props: LayersPanelProps) {
       event.currentTarget.removeEventListener('pointercancel', onUp)
       setDragId(null)
       dragIdRef.current = null
+      setGhost(null)
     }
 
     event.currentTarget.addEventListener('pointermove', onMove)
@@ -268,6 +327,21 @@ export function LayersPanel(props: LayersPanelProps) {
           const stackHint = layerStackLabel(props.layers, layer.id)
           const menuOpen = menu?.id === layer.id
 
+          if (isDragging && ghost) {
+            return (
+              <li
+                key={layer.id}
+                ref={(node) => {
+                  if (node) itemRefs.current.set(layer.id, node)
+                  else itemRefs.current.delete(layer.id)
+                }}
+                className="rounded-xl border border-dashed border-accent/45 bg-accent/10"
+                style={{ height: ghost.height }}
+                aria-hidden="true"
+              />
+            )
+          }
+
           return (
             <li
               key={layer.id}
@@ -276,11 +350,10 @@ export function LayersPanel(props: LayersPanelProps) {
                 else itemRefs.current.delete(layer.id)
               }}
               className={cn(
-                'grid gap-1.5 rounded-xl border px-2 py-2 transition-[border-color,background-color,opacity,transform]',
+                'grid gap-1.5 rounded-xl border px-2 py-2 transition-[border-color,background-color,transform]',
                 isActive
                   ? 'border-accent/45 bg-accent/10'
                   : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill)]',
-                isDragging && 'opacity-70 ring-1 ring-accent/40',
               )}
               onContextMenu={(event) => {
                 if (!canReorder && layer.kind !== 'aux') return
@@ -296,7 +369,7 @@ export function LayersPanel(props: LayersPanelProps) {
                     className="grid h-9 w-8 shrink-0 touch-none cursor-grab place-items-center rounded-lg text-[var(--fg-faint)] active:cursor-grabbing"
                     aria-label={`Перетащить ${layer.name}`}
                     title="Перетащить"
-                    onPointerDown={(event) => onHandlePointerDown(event, layer.id)}
+                    onPointerDown={(event) => onHandlePointerDown(event, layer)}
                   >
                     <span
                       aria-hidden="true"
@@ -443,6 +516,43 @@ export function LayersPanel(props: LayersPanelProps) {
           </button>
         </div>
       </div>
+
+      {ghost &&
+        createPortal(
+          <div
+            className={cn(
+              'pointer-events-none fixed z-[90] grid gap-1.5 rounded-xl border px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.35)]',
+              ghost.active
+                ? 'border-accent/55 bg-[color-mix(in_srgb,var(--panel-inset-bg)_92%,var(--accent)_8%)]'
+                : 'border-[var(--glass-border)] bg-[var(--panel-inset-bg)]',
+            )}
+            style={{
+              width: ghost.width,
+              height: ghost.height,
+              left: ghost.pointerX - ghost.grabX,
+              top: ghost.pointerY - ghost.grabY,
+              transform: 'scale(1.04) rotate(1.25deg)',
+              willChange: 'left, top, transform',
+            }}
+            aria-hidden="true"
+          >
+            <div className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="grid h-9 w-8 shrink-0 place-items-center rounded-lg text-[var(--fg-faint)]"
+              >
+                ≡
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">
+                  {ghost.name}
+                </span>
+                <span className="block text-[0.68rem] text-[var(--fg-faint)]">{ghost.hint}</span>
+              </span>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {menu &&
         menuLayer &&
