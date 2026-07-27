@@ -119,20 +119,22 @@ export function ColorsPanel(props: ColorsPanelProps) {
         </div>
       </div>
 
-      {props.paletteLoading ? (
-        <p className={tipClass}>Разбираю цвета референса…</p>
-      ) : props.palette.length === 0 ? (
+      {props.palette.length === 0 && !props.paletteLoading ? (
         <p className={tipClass}>Не удалось вытащить палитру</p>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex min-h-7 items-center justify-between gap-2">
             <p className="text-[0.78rem] text-[var(--fg-muted)]">
-              {props.palette.length} цветов · выбрано {props.selectedColorIds.length}
-              {props.selectionCoverage != null ? ` · ~${props.selectionCoverage}% кадра` : ''}
+              {props.paletteLoading
+                ? 'Обновляю палитру…'
+                : `${props.palette.length} цветов · выбрано ${props.selectedColorIds.length}${
+                    props.selectionCoverage != null ? ` · ~${props.selectionCoverage}% кадра` : ''
+                  }`}
             </p>
             <button
               type="button"
-              className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-[0.72rem] font-semibold text-[var(--fg)]"
+              className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-[0.72rem] font-semibold text-[var(--fg)] disabled:opacity-50"
+              disabled={props.paletteLoading && props.palette.length === 0}
               onClick={props.onPaletteSort}
             >
               {props.paletteSort === 'hue' ? 'По тону' : 'По частоте'}
@@ -140,43 +142,64 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           <div
-            className="flex gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative flex min-h-11 gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Цвета референса"
+            aria-busy={props.paletteLoading}
           >
-            {props.visiblePalette.map((color) => {
-              const active = props.selectedSet.has(color.id)
-              return (
-                <button
-                  key={color.id}
-                  type="button"
-                  className={cn(
-                    'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]',
-                    active
-                      ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
-                      : 'border-white/35',
-                  )}
-                  style={{ background: color.hex }}
-                  aria-pressed={active}
-                  title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
-                  onClick={() => props.onToggleColor(color.id)}
-                >
-                  {color.source === 'pick' && (
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
-                  )}
-                </button>
-              )
-            })}
+            {props.paletteLoading && props.visiblePalette.length === 0
+              ? Array.from({ length: props.precisionProfile.maxColors }, (_, index) => (
+                  <span
+                    key={`sk-${index}`}
+                    className="h-10 w-10 flex-none animate-pulse rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill-mid)]"
+                  />
+                ))
+              : props.visiblePalette.map((color) => {
+                  const active = props.selectedSet.has(color.id)
+                  return (
+                    <button
+                      key={color.id}
+                      type="button"
+                      className={cn(
+                        'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-opacity',
+                        props.paletteLoading && 'opacity-55',
+                        active
+                          ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
+                          : 'border-white/35',
+                      )}
+                      style={{ background: color.hex }}
+                      aria-pressed={active}
+                      disabled={props.paletteLoading}
+                      title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
+                      onClick={() => props.onToggleColor(color.id)}
+                    >
+                      {color.source === 'pick' && (
+                        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
+                      )}
+                    </button>
+                  )
+                })}
+            {props.paletteLoading && props.visiblePalette.length > 0 && (
+              <div
+                className="pointer-events-none absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--ink-deep)_18%,transparent)]"
+                aria-hidden="true"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
-            <button type="button" className={chipNeutralClass} onClick={props.onSelectAll}>
+            <button
+              type="button"
+              className={chipNeutralClass}
+              disabled={props.paletteLoading || props.palette.length === 0}
+              onClick={props.onSelectAll}
+            >
               Все
             </button>
             <button
               type="button"
               className={chipNeutralClass}
-              disabled={props.selectedColorIds.length === 0}
+              disabled={props.paletteLoading || props.selectedColorIds.length === 0}
               onClick={props.onInvert}
             >
               Инверт
@@ -184,12 +207,17 @@ export function ColorsPanel(props: ColorsPanelProps) {
             <button
               type="button"
               className={chipNeutralClass}
-              disabled={props.selectedColorIds.length === 0}
+              disabled={props.paletteLoading || props.selectedColorIds.length === 0}
               onClick={props.onResetSelection}
             >
               Сброс
             </button>
-            <button type="button" className={chipAccentClass(props.pickMode)} onClick={props.onPickMode}>
+            <button
+              type="button"
+              className={chipAccentClass(props.pickMode)}
+              disabled={props.paletteLoading}
+              onClick={props.onPickMode}
+            >
               Пипетка
             </button>
           </div>
