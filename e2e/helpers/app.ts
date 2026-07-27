@@ -13,6 +13,7 @@ export async function prepareApp(page: Page, opts?: { onboardingDone?: boolean }
     try {
       if (done) localStorage.setItem('eyepaint-onboarding-done-v1', '1')
       else localStorage.removeItem('eyepaint-onboarding-done-v1')
+      localStorage.setItem('eyepaint-layers-panel-open-v1', '1')
     } catch {
       /* ignore */
     }
