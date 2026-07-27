@@ -15,11 +15,13 @@ import {
   chipAccentClass,
   chipNeutralClass,
   cn,
+  panelCardClass,
   panelClass,
   rangeInputClass,
   sliderLabelsClass,
   tipClass,
 } from './studioUi'
+import { StableLabel } from './StableLabel'
 
 type ColorsPanelProps = {
   precisionProfile: PrecisionProfile
@@ -76,7 +78,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
           onChange={(event) => props.onPrecision(Number(event.target.value) as ColorPrecision)}
           aria-label="Точность палитры"
         />
-        <p className="mt-1 text-[0.72rem] text-mist/55">{props.precisionProfile.hint}</p>
+        <p className="mt-1 text-[0.72rem] text-[var(--fg-faint)]">{props.precisionProfile.hint}</p>
       </div>
 
       <div>
@@ -94,13 +96,13 @@ export function ColorsPanel(props: ColorsPanelProps) {
           onChange={(event) => props.onTolerance(Number(event.target.value))}
           aria-label="Допуск совпадения цвета"
         />
-        <p className="mt-1 text-[0.72rem] text-mist/55">
+        <p className="mt-1 text-[0.72rem] text-[var(--fg-faint)]">
           Уже — меньше «расползания» на соседние цвета. Шире — захватывает ближние оттенки.
         </p>
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
-        <p className="text-sm font-bold text-paper">Пресеты</p>
+      <div className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5">
+        <p className="text-sm font-bold text-[var(--fg-strong)]">Пресеты</p>
         <div className="grid grid-cols-4 gap-2">
           {PALETTE_PRESETS.map((preset) => (
             <button
@@ -124,13 +126,13 @@ export function ColorsPanel(props: ColorsPanelProps) {
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[0.78rem] text-mist/70">
+            <p className="text-[0.78rem] text-[var(--fg-muted)]">
               {props.palette.length} цветов · выбрано {props.selectedColorIds.length}
               {props.selectionCoverage != null ? ` · ~${props.selectionCoverage}% кадра` : ''}
             </p>
             <button
               type="button"
-              className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.72rem] font-semibold text-mist/85"
+              className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-[0.72rem] font-semibold text-[var(--fg)]"
               onClick={props.onPaletteSort}
             >
               {props.paletteSort === 'hue' ? 'По тону' : 'По частоте'}
@@ -216,12 +218,13 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           {props.brushEnabled && (
-            <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+            <div className={panelCardClass}>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-paper">Кисть-маска</p>
+                <p className="text-sm font-bold text-[var(--fg-strong)]">Кисть-маска</p>
                 <button
                   type="button"
-                  className={chipAccentClass(props.brush.editing)}
+                  className={cn(chipAccentClass(props.brush.editing), 'min-w-[6.5rem]')}
+                  aria-pressed={props.brush.editing}
                   onClick={() =>
                     props.onBrush((prev) => ({
                       ...prev,
@@ -230,7 +233,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
                     }))
                   }
                 >
-                  {props.brush.editing ? 'Рисую…' : 'Рисовать'}
+                  <StableLabel active={props.brush.editing} on="Рисую…" off="Рисовать" />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -291,9 +294,9 @@ export function ColorsPanel(props: ColorsPanelProps) {
             </div>
           )}
 
-          <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+          <div className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-paper">Избранные палитры</p>
+              <p className="text-sm font-bold text-[var(--fg-strong)]">Избранные палитры</p>
               <button
                 type="button"
                 className={chipNeutralClass}
@@ -310,15 +313,15 @@ export function ColorsPanel(props: ColorsPanelProps) {
                 {props.savedPalettes.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/6 px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-2.5 py-2"
                   >
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left"
                       onClick={() => props.onApplySaved(item)}
                     >
-                      <p className="truncate text-[0.82rem] font-semibold text-paper">{item.name}</p>
-                      <p className="truncate text-[0.68rem] text-mist/55">
+                      <p className="truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">{item.name}</p>
+                      <p className="truncate text-[0.68rem] text-[var(--fg-faint)]">
                         {item.hexes.slice(0, 6).join(' · ')}
                       </p>
                     </button>
@@ -336,7 +339,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           {props.pickMode && (
-            <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-accent-soft">
+            <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
               Кликни по референсу на сцене — цвет добавится в палитру
             </p>
           )}

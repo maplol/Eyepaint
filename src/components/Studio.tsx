@@ -140,7 +140,7 @@ const formatSessionRemaining = (ms: number) => {
 }
 
 const rootClass =
-  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--mist)]'
+  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--fg)]'
 
 const stageBase =
   'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
@@ -276,6 +276,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
   useEffect(() => {
     saveAtmosphere(atmosphere)
+    document.documentElement.dataset.atmosphere = atmosphere
+    return () => {
+      delete document.documentElement.dataset.atmosphere
+    }
   }, [atmosphere])
 
   useEffect(() => {
@@ -793,7 +797,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             }}
             aria-hidden="true"
           >
-            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-accent-soft backdrop-blur-sm">
+            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-[var(--chip-accent-fg)] backdrop-blur-sm">
               Лупа 2×
             </span>
           </div>
@@ -817,15 +821,18 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       </div>
 
       {!uiHidden && (
-        <header className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-[linear-gradient(to_bottom,rgba(20,26,29,0.55),transparent)] px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4">
+        <header
+          className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
+          style={{ background: 'var(--header-fade)' }}
+        >
           <button type="button" className={glassButtonClass} onClick={onExit}>
             Назад
           </button>
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-paper/90">
+            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[var(--fg-strong)]">
               EYEPAINT
             </p>
-            <p className="truncate text-[0.68rem] text-mist/60">{cameraLabel}</p>
+            <p className="truncate text-[0.68rem] text-[var(--fg-muted)]">{cameraLabel}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 justify-self-end">
             {roomEnabled && (
@@ -833,8 +840,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 className={cn(
                   'hidden rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold sm:inline-flex',
                   usingPhoneCam
-                    ? 'border-accent/50 bg-accent/20 text-accent-soft'
-                    : 'border-white/20 bg-white/10 text-mist/80',
+                    ? 'border-accent/50 bg-accent/20 text-[var(--chip-accent-fg)]'
+                    : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-muted)]',
                 )}
               >
                 {usingPhoneCam ? 'Телефон' : 'Жду…'}
@@ -845,8 +852,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
               className={cn(
                 'grid h-10 w-10 place-items-center rounded-full border backdrop-blur-md',
                 settingsOpen
-                  ? 'border-accent/55 bg-accent/20 text-accent-soft'
-                  : 'border-white/25 bg-white/12 text-paper',
+                  ? 'border-accent/55 bg-accent/20 text-[var(--chip-accent-fg)]'
+                  : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
               )}
               aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
               title={settingsOpen ? 'К студии' : 'Настройки'}
@@ -870,11 +877,11 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       {!uiHidden && (
         <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
           {settingsOpen ? (
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-3">
               <p className={sectionTitleClass}>Настройки</p>
               <button
                 type="button"
-                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.78rem] font-semibold text-paper"
+                className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
                 onClick={() => setSettingsOpen(false)}
               >
                 К студии
@@ -882,7 +889,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             </div>
           ) : (
             <div
-              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-white/10 bg-[linear-gradient(180deg,rgba(28,36,40,0.94)_0%,rgba(28,36,40,0.82)_100%)] px-2 py-2 backdrop-blur-md"
+              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-[var(--glass-border-soft)] px-2 py-2 backdrop-blur-md"
+              style={{ backgroundImage: 'var(--tab-strip-bg)' }}
               role="tablist"
               aria-label="Панели студии"
             >
@@ -1155,7 +1163,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
       {!uiHidden && (
         <div
-          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-white/15 bg-ink-deep/60 px-3 py-2 text-[0.78rem] text-mist/80 backdrop-blur-md min-[960px]:block"
+          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-3 py-2 text-[0.78rem] text-[var(--fg-muted)] backdrop-blur-md min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}
@@ -1169,7 +1177,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       {uiHidden && (
         <button
           type="button"
-          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-white/10 bg-white/5 active:bg-white/15"
+          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] active:bg-[var(--glass-fill-mid)]"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
         />
