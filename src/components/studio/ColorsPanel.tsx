@@ -15,11 +15,13 @@ import {
   chipAccentClass,
   chipNeutralClass,
   cn,
+  panelCardClass,
   panelClass,
   rangeInputClass,
   sliderLabelsClass,
   tipClass,
 } from './studioUi'
+import { StableLabel } from './StableLabel'
 
 type ColorsPanelProps = {
   precisionProfile: PrecisionProfile
@@ -54,11 +56,17 @@ type ColorsPanelProps = {
   onSavePalette: () => void
   onApplySaved: (palette: SavedPalette) => void
   onDeleteSaved: (id: string) => void
+  activeLayerName?: string
 }
 
 export function ColorsPanel(props: ColorsPanelProps) {
   return (
     <div className={panelClass}>
+      {props.activeLayerName && (
+        <p className="rounded-xl border border-accent/30 bg-accent/12 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
+          Цвета для слоя: <strong>{props.activeLayerName}</strong>
+        </p>
+      )}
       <div>
         <div className={sliderLabelsClass}>
           <span>Точность палитры</span>
@@ -76,7 +84,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
           onChange={(event) => props.onPrecision(Number(event.target.value) as ColorPrecision)}
           aria-label="Точность палитры"
         />
-        <p className="mt-1 text-[0.72rem] text-mist/55">{props.precisionProfile.hint}</p>
+        <p className="mt-1 text-[0.72rem] text-[var(--fg-faint)]">{props.precisionProfile.hint}</p>
       </div>
 
       <div>
@@ -94,13 +102,13 @@ export function ColorsPanel(props: ColorsPanelProps) {
           onChange={(event) => props.onTolerance(Number(event.target.value))}
           aria-label="Допуск совпадения цвета"
         />
-        <p className="mt-1 text-[0.72rem] text-mist/55">
+        <p className="mt-1 text-[0.72rem] text-[var(--fg-faint)]">
           Уже — меньше «расползания» на соседние цвета. Шире — захватывает ближние оттенки.
         </p>
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
-        <p className="text-sm font-bold text-paper">Пресеты</p>
+      <div className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5">
+        <p className="text-sm font-bold text-[var(--fg-strong)]">Пресеты</p>
         <div className="grid grid-cols-4 gap-2">
           {PALETTE_PRESETS.map((preset) => (
             <button
@@ -117,20 +125,22 @@ export function ColorsPanel(props: ColorsPanelProps) {
         </div>
       </div>
 
-      {props.paletteLoading ? (
-        <p className={tipClass}>Разбираю цвета референса…</p>
-      ) : props.palette.length === 0 ? (
+      {props.palette.length === 0 && !props.paletteLoading ? (
         <p className={tipClass}>Не удалось вытащить палитру</p>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[0.78rem] text-mist/70">
-              {props.palette.length} цветов · выбрано {props.selectedColorIds.length}
-              {props.selectionCoverage != null ? ` · ~${props.selectionCoverage}% кадра` : ''}
+          <div className="flex min-h-7 items-center justify-between gap-2">
+            <p className="text-[0.78rem] text-[var(--fg-muted)]">
+              {props.paletteLoading
+                ? 'Обновляю палитру…'
+                : `${props.palette.length} цветов · выбрано ${props.selectedColorIds.length}${
+                    props.selectionCoverage != null ? ` · ~${props.selectionCoverage}% кадра` : ''
+                  }`}
             </p>
             <button
               type="button"
-              className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.72rem] font-semibold text-mist/85"
+              className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-[0.72rem] font-semibold text-[var(--fg)] disabled:opacity-50"
+              disabled={props.paletteLoading && props.palette.length === 0}
               onClick={props.onPaletteSort}
             >
               {props.paletteSort === 'hue' ? 'По тону' : 'По частоте'}
@@ -138,43 +148,64 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           <div
-            className="flex gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative flex min-h-11 gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Цвета референса"
+            aria-busy={props.paletteLoading}
           >
-            {props.visiblePalette.map((color) => {
-              const active = props.selectedSet.has(color.id)
-              return (
-                <button
-                  key={color.id}
-                  type="button"
-                  className={cn(
-                    'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)]',
-                    active
-                      ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
-                      : 'border-white/35',
-                  )}
-                  style={{ background: color.hex }}
-                  aria-pressed={active}
-                  title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
-                  onClick={() => props.onToggleColor(color.id)}
-                >
-                  {color.source === 'pick' && (
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
-                  )}
-                </button>
-              )
-            })}
+            {props.paletteLoading && props.visiblePalette.length === 0
+              ? Array.from({ length: props.precisionProfile.maxColors }, (_, index) => (
+                  <span
+                    key={`sk-${index}`}
+                    className="h-10 w-10 flex-none animate-pulse rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill-mid)]"
+                  />
+                ))
+              : props.visiblePalette.map((color) => {
+                  const active = props.selectedSet.has(color.id)
+                  return (
+                    <button
+                      key={color.id}
+                      type="button"
+                      className={cn(
+                        'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-opacity',
+                        props.paletteLoading && 'opacity-55',
+                        active
+                          ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
+                          : 'border-white/35',
+                      )}
+                      style={{ background: color.hex }}
+                      aria-pressed={active}
+                      disabled={props.paletteLoading}
+                      title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
+                      onClick={() => props.onToggleColor(color.id)}
+                    >
+                      {color.source === 'pick' && (
+                        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
+                      )}
+                    </button>
+                  )
+                })}
+            {props.paletteLoading && props.visiblePalette.length > 0 && (
+              <div
+                className="pointer-events-none absolute inset-0 rounded-xl bg-[color-mix(in_srgb,var(--ink-deep)_18%,transparent)]"
+                aria-hidden="true"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
-            <button type="button" className={chipNeutralClass} onClick={props.onSelectAll}>
+            <button
+              type="button"
+              className={chipNeutralClass}
+              disabled={props.paletteLoading || props.palette.length === 0}
+              onClick={props.onSelectAll}
+            >
               Все
             </button>
             <button
               type="button"
               className={chipNeutralClass}
-              disabled={props.selectedColorIds.length === 0}
+              disabled={props.paletteLoading || props.selectedColorIds.length === 0}
               onClick={props.onInvert}
             >
               Инверт
@@ -182,12 +213,17 @@ export function ColorsPanel(props: ColorsPanelProps) {
             <button
               type="button"
               className={chipNeutralClass}
-              disabled={props.selectedColorIds.length === 0}
+              disabled={props.paletteLoading || props.selectedColorIds.length === 0}
               onClick={props.onResetSelection}
             >
               Сброс
             </button>
-            <button type="button" className={chipAccentClass(props.pickMode)} onClick={props.onPickMode}>
+            <button
+              type="button"
+              className={chipAccentClass(props.pickMode)}
+              disabled={props.paletteLoading}
+              onClick={props.onPickMode}
+            >
               Пипетка
             </button>
           </div>
@@ -216,12 +252,13 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           {props.brushEnabled && (
-            <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+            <div className={panelCardClass}>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-paper">Кисть-маска</p>
+                <p className="text-sm font-bold text-[var(--fg-strong)]">Кисть-маска</p>
                 <button
                   type="button"
-                  className={chipAccentClass(props.brush.editing)}
+                  className={cn(chipAccentClass(props.brush.editing), 'min-w-[6.5rem]')}
+                  aria-pressed={props.brush.editing}
                   onClick={() =>
                     props.onBrush((prev) => ({
                       ...prev,
@@ -230,7 +267,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
                     }))
                   }
                 >
-                  {props.brush.editing ? 'Рисую…' : 'Рисовать'}
+                  <StableLabel active={props.brush.editing} on="Рисую…" off="Рисовать" />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -291,9 +328,9 @@ export function ColorsPanel(props: ColorsPanelProps) {
             </div>
           )}
 
-          <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/7 px-3 py-2.5">
+          <div className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-paper">Избранные палитры</p>
+              <p className="text-sm font-bold text-[var(--fg-strong)]">Избранные палитры</p>
               <button
                 type="button"
                 className={chipNeutralClass}
@@ -310,15 +347,15 @@ export function ColorsPanel(props: ColorsPanelProps) {
                 {props.savedPalettes.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/6 px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-2.5 py-2"
                   >
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left"
                       onClick={() => props.onApplySaved(item)}
                     >
-                      <p className="truncate text-[0.82rem] font-semibold text-paper">{item.name}</p>
-                      <p className="truncate text-[0.68rem] text-mist/55">
+                      <p className="truncate text-[0.82rem] font-semibold text-[var(--fg-strong)]">{item.name}</p>
+                      <p className="truncate text-[0.68rem] text-[var(--fg-faint)]">
                         {item.hexes.slice(0, 6).join(' · ')}
                       </p>
                     </button>
@@ -336,7 +373,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
           </div>
 
           {props.pickMode && (
-            <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-accent-soft">
+            <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
               Кликни по референсу на сцене — цвет добавится в палитру
             </p>
           )}

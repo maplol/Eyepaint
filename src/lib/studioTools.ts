@@ -32,8 +32,34 @@ export const DEFAULT_GUIDES: GuideSettings = {
 }
 
 export const GUIDE_LABELS: Record<GuideKind, string> = {
-  none: 'Выкл',
-  thirds: 'Сетка 3×3',
+  none: 'Нет',
+  thirds: '3×3',
   face: 'Лицо',
-  figure: 'Фигура',
+  figure: 'Рост',
 }
+
+export const GUIDE_TITLES: Record<GuideKind, string> = {
+  none: 'Без направляющих',
+  thirds: 'Сетка 3×3',
+  face: 'Оси лица',
+  figure: 'Пропорции фигуры',
+}
+
+export type LoupeSettings = {
+  enabled: boolean
+  /** Diameter in CSS pixels */
+  size: number
+  /** Magnification factor */
+  zoom: number
+}
+
+export const DEFAULT_LOUPE: LoupeSettings = {
+  enabled: false,
+  size: 160,
+  zoom: 2,
+}
+
+export const LOUPE_ZOOM_OPTIONS = [1.5, 2, 2.5, 3] as const
+export const LOUPE_SIZE_MIN = 100
+export const LOUPE_SIZE_MAX = 260
+

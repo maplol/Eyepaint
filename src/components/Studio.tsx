@@ -3,12 +3,16 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
 } from 'react'
 import { GuideOverlay } from './GuideOverlay'
 import { Toast } from './Toast'
 import { ColorsPanel } from './studio/ColorsPanel'
+import { LayersPanel } from './studio/LayersPanel'
+import { LoupeOverlay } from './studio/LoupeOverlay'
 import { MainPanel } from './studio/MainPanel'
 import { MaskPainter } from './studio/MaskPainter'
 import { PosesPanel } from './studio/PosesPanel'
@@ -27,8 +31,10 @@ import {
 } from './studio/studioUi'
 import { useCamera } from '../hooks/useCamera'
 import {
+  DEFAULT_TRANSFORM,
   buildOverlayCssTransform,
   useOverlayTransform,
+  type OverlayTransform,
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
@@ -52,12 +58,16 @@ import {
 } from '../lib/colors'
 import { loadFlags, saveFlags, type FeatureFlags } from '../lib/flags'
 import {
+  applyLayerStackAction,
   canAddAux,
   createAuxLayer,
   createPrimaryLayer,
   nextAuxName,
+  patchLayerTransform,
+  reorderLayersInDisplayOrder,
   revokeAuxUrls,
   syncPrimaryUrl,
+  type LayerStackAction,
   type RefLayer,
 } from '../lib/layers'
 import {
@@ -96,10 +106,12 @@ import {
 import {
   DEFAULT_CALC_MODE,
   DEFAULT_GUIDES,
+  DEFAULT_LOUPE,
   calcModeFilter,
   type CalcModeSettings,
   type GuideKind,
   type GuideSettings,
+  type LoupeSettings,
 } from '../lib/studioTools'
 import { loadAtmosphere, saveAtmosphere, type StudioAtmosphere } from '../lib/theme'
 
@@ -140,7 +152,7 @@ const formatSessionRemaining = (ms: number) => {
 }
 
 const rootClass =
-  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--mist)]'
+  'relative h-dvh w-full overflow-hidden touch-none select-none bg-[var(--ink-deep)] font-[family-name:var(--font-body)] text-[var(--fg)]'
 
 const stageBase =
   'absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_42%,#2a343a_0%,#141a1d_72%)]'
@@ -206,7 +218,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     ...DEFAULT_GUIDES,
     kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
   }))
-  const [loupeOn, setLoupeOn] = useState(false)
+  const [loupe, setLoupe] = useState<LoupeSettings>(() => ({ ...DEFAULT_LOUPE }))
   const [loupePos, setLoupePos] = useState({ x: 50, y: 50 })
   const [loupeVisible, setLoupeVisible] = useState(false)
   const [sessionMins, setSessionMins] = useState<null | 25 | 45 | 90>(null)
@@ -215,8 +227,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [autoSessionShot, setAutoSessionShot] = useState(true)
   const [shots, setShots] = useState<SessionShot[]>(() => loadSessionShots())
   const [layers, setLayers] = useState<RefLayer[]>(() => [createPrimaryLayer(imageUrl)])
+  const [activeLayerId, setActiveLayerId] = useState('primary')
   const [locked, setLocked] = useState(false)
-  const [flipped, setFlipped] = useState(false)
   const [uiHidden, setUiHidden] = useState(false)
   const [flash, setFlash] = useState(false)
   const [capturing, setCapturing] = useState(false)
@@ -241,9 +253,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   const [brush, setBrush] = useState<BrushMaskSettings>(() => ({ ...DEFAULT_BRUSH_MASK }))
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>(() => loadSavedPalettes())
   const paletteRef = useRef(palette)
-  const imageUrlRef = useRef(imageUrl)
+  const colorSourceRef = useRef(imageUrl)
   const precisionRef = useRef(colorPrecision)
   paletteRef.current = palette
+
+  const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[0] ?? null
+  const colorSourceUrl = activeLayer?.url ?? imageUrl
+  const activeLayerName = activeLayer?.name ?? 'Основной'
 
   const [poses, setPoses] = useState<SavedPose[]>(() => loadPoses())
 
@@ -257,18 +273,28 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     setListeningFor,
     formatHotkey,
   } = useStudioHotkeys(true)
-  const { transform, setTransform, reset, handlers, onWheel } = useOverlayTransform(
+  const transform = activeLayer?.transform ?? DEFAULT_TRANSFORM
+  const flipped = activeLayer?.flipped ?? false
+
+  const setTransform: Dispatch<SetStateAction<OverlayTransform>> = (update) => {
+    setLayers((prev) => patchLayerTransform(prev, activeLayerId, update))
+  }
+
+  const { reset, handlers, onWheel } = useOverlayTransform(
     locked || brush.editing,
     dragMode,
+    transform,
+    setTransform,
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
-  const loupeOnRef = useRef(loupeOn)
-  loupeOnRef.current = loupeOn
 
-  const displayUrl = filteredUrl ?? imageUrl
+  const displayUrl = filteredUrl ?? colorSourceUrl
   const framed = colorMode === 'mask'
   const showToast = (message: string) => setToast(message)
+
+  const layerDisplayUrl = (layerId: string, fallbackUrl: string) =>
+    layerId === activeLayerId && filteredUrl ? filteredUrl : fallbackUrl
 
   useEffect(() => {
     saveFlags(flags)
@@ -276,6 +302,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
   useEffect(() => {
     saveAtmosphere(atmosphere)
+    document.documentElement.dataset.atmosphere = atmosphere
+    return () => {
+      delete document.documentElement.dataset.atmosphere
+    }
   }, [atmosphere])
 
   useEffect(() => {
@@ -317,13 +347,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
   useEffect(() => {
     let cancelled = false
-    const imageChanged = imageUrlRef.current !== imageUrl
+    const sourceChanged = colorSourceRef.current !== colorSourceUrl
     const precisionChanged = precisionRef.current !== colorPrecision
-    imageUrlRef.current = imageUrl
+    colorSourceRef.current = colorSourceUrl
     precisionRef.current = colorPrecision
     saveColorPrecision(colorPrecision)
 
-    if (imageChanged) {
+    if (sourceChanged) {
       setSelectedColorIds([])
       setColorMode('off')
       setPickMode(false)
@@ -334,23 +364,23 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       })
     }
 
-    if (imageChanged || precisionChanged) {
+    if (sourceChanged || precisionChanged) {
       const nextTolerance = PRECISION_PROFILES[colorPrecision].defaultTolerance
       setMatchTolerance(nextTolerance)
       saveMatchTolerance(nextTolerance)
     }
 
     setPaletteLoading(true)
-    const picks = imageChanged
+    const picks = sourceChanged
       ? []
       : paletteRef.current.filter((item) => item.source === 'pick')
 
-    void extractPalette(imageUrl, colorPrecision, picks)
+    void extractPalette(colorSourceUrl, colorPrecision, picks)
       .then((colors) => {
         if (cancelled) return
         setPalette(colors)
         setSelectedColorIds((prev) =>
-          imageChanged ? [] : prev.filter((id) => colors.some((c) => c.id === id)),
+          sourceChanged ? [] : prev.filter((id) => colors.some((c) => c.id === id)),
         )
       })
       .catch(() => {
@@ -363,7 +393,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     return () => {
       cancelled = true
     }
-  }, [imageUrl, colorPrecision])
+  }, [colorSourceUrl, colorPrecision])
 
   useEffect(() => {
     saveMatchTolerance(matchTolerance)
@@ -396,7 +426,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
     const mode = colorMode === 'mask' ? 'mask' : 'gray'
     setFilterBusy(true)
-    void renderFilteredReference(imageUrl, selectedColors, mode, matchTolerance, brushOpts)
+    void renderFilteredReference(colorSourceUrl, selectedColors, mode, matchTolerance, brushOpts)
       .then((url) => {
         if (cancelled) {
           URL.revokeObjectURL(url)
@@ -418,7 +448,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       cancelled = true
     }
   }, [
-    imageUrl,
+    colorSourceUrl,
     palette,
     selectedColorIds,
     colorMode,
@@ -436,13 +466,13 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       return
     }
     let cancelled = false
-    void estimateSelectionCoverage(imageUrl, selectedColors, matchTolerance).then((value) => {
+    void estimateSelectionCoverage(colorSourceUrl, selectedColors, matchTolerance).then((value) => {
       if (!cancelled) setSelectionCoverage(value)
     })
     return () => {
       cancelled = true
     }
-  }, [imageUrl, palette, selectedColorIds, matchTolerance])
+  }, [colorSourceUrl, palette, selectedColorIds, matchTolerance])
 
   const selectedSet = useMemo(() => new Set(selectedColorIds), [selectedColorIds])
   const visiblePalette = useMemo(
@@ -450,7 +480,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     [palette, paletteSort],
   )
   const precisionProfile = PRECISION_PROFILES[colorPrecision]
-  const auxLayers = layers.filter((layer) => layer.kind === 'aux' && layer.visible)
+  const visibleLayers = layers.filter((layer) => layer.visible)
 
   useEffect(() => {
     if (selectedColorIds.length === 0 && !brush.dataUrl) {
@@ -473,7 +503,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
     void (async () => {
       try {
-        const rgb = await sampleColorAtImagePoint(imageUrl, normX, normY)
+        const rgb = await sampleColorAtImagePoint(colorSourceUrl, normX, normY)
         const picked = createPickedColor(rgb, paletteRef.current)
         setPalette((prev) =>
           prev.some((item) => item.id === picked.id) ? prev : [picked, ...prev],
@@ -565,13 +595,32 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       const aux = createAuxLayer(url, nextAuxName(layers), layers)
       if (aux) {
         setLayers((prev) => [...prev, aux])
-        showToast(`Добавлен ${aux.name}`)
+        setActiveLayerId(aux.id)
+        showToast(`${aux.name} · двигай и крась этот слой`)
         return
       }
     }
     onChangeImage(file)
-    reset()
+    setActiveLayerId('primary')
+    setLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === 'primary'
+          ? {
+              ...layer,
+              transform: { ...DEFAULT_TRANSFORM },
+              flipped: false,
+            }
+          : layer,
+      ),
+    )
     setLocked(false)
+  }
+
+  const selectLayer = (id: string) => {
+    if (id === activeLayerId) return
+    setActiveLayerId(id)
+    const layer = layers.find((item) => item.id === id)
+    showToast(layer ? `Активен: ${layer.name} · двигай его` : 'Слой выбран')
   }
 
   const handleSavePose = () => {
@@ -596,19 +645,28 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   }
 
   const handleApplyPose = (pose: SavedPose) => {
-    setTransform({ ...pose.transform })
-    setFlipped(pose.flipped)
-    setOpacity(pose.opacity)
+    setLayers((prev) =>
+      prev.map((layer) =>
+        layer.id === activeLayerId
+          ? {
+              ...layer,
+              transform: { ...pose.transform },
+              flipped: pose.flipped,
+              opacity: pose.opacity,
+            }
+          : layer,
+      ),
+    )
     if (pose.selectedColorIds?.length) {
       setSelectedColorIds(
         pose.selectedColorIds.filter((id) => palette.some((color) => color.id === id)),
       )
     }
-    showToast(`Вернули: ${pose.name}`)
+    showToast(`Вернули на слой: ${pose.name}`)
   }
 
   const handleStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!loupeOn) return
+    if (!loupe.enabled) return
     const rect = event.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
     const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100))
@@ -651,9 +709,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     : ready
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
-
-  const primaryOpacity = layers.find((layer) => layer.kind === 'primary')?.opacity ?? 1
-  const primaryVisible = layers.find((layer) => layer.kind === 'primary')?.visible ?? true
 
   return (
     <div className={rootClass} data-atmosphere={atmosphere}>
@@ -711,92 +766,85 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
           </div>
         )}
 
-        {primaryVisible && (
-          <div
-            className={cn(
-              'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
-              framed &&
-                'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
-              (pickMode || brush.editing) &&
-                'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
-            )}
-            style={{
-              opacity: opacity * primaryOpacity,
-              transform: buildOverlayCssTransform(transform, flipped),
-              pointerEvents: pickMode || brush.editing ? 'auto' : locked ? 'none' : 'auto',
-            }}
-            onClick={handleOverlayPick}
-            onPointerDown={(event) => {
-              if (pickMode || brush.editing) event.stopPropagation()
-            }}
-          >
-            <img
-              ref={overlayImageRef}
-              src={displayUrl}
-              alt="Референс для срисовывания"
-              draggable={false}
-              className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
-            />
-            {flags.brushMask && (
-              <MaskPainter
-                settings={brush}
-                onChange={(dataUrl) =>
-                  setBrush((prev) => ({
-                    ...prev,
-                    dataUrl,
-                    enabled: true,
-                  }))
-                }
-                className="absolute inset-0 h-full w-full"
-              />
-            )}
-          </div>
-        )}
-
-        {flags.multiLayers &&
-          auxLayers.map((layer, index) => (
+        {visibleLayers.map((layer, index) => {
+          const isActive = activeLayerId === layer.id
+          const isPrimary = layer.kind === 'primary'
+          const layerUrl = isPrimary ? imageUrl : layer.url
+          return (
             <div
               key={layer.id}
-              className="pointer-events-none absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]"
+              className={cn(
+                'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
+                isActive &&
+                  framed &&
+                  'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
+                isActive &&
+                  (pickMode || brush.editing) &&
+                  'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
+              )}
               style={{
                 opacity: opacity * layer.opacity,
-                transform: buildOverlayCssTransform(
-                  {
-                    ...transform,
-                    x: transform.x + (index + 1) * 8,
-                    y: transform.y + (index + 1) * 8,
-                  },
-                  flipped,
-                ),
+                transform: buildOverlayCssTransform(layer.transform, layer.flipped),
                 zIndex: 2 + index,
+                pointerEvents:
+                  isActive && (pickMode || brush.editing)
+                    ? 'auto'
+                    : locked
+                      ? 'none'
+                      : isActive
+                        ? 'auto'
+                        : 'none',
+              }}
+              onClick={isActive ? handleOverlayPick : undefined}
+              onPointerDown={(event) => {
+                if (isActive && (pickMode || brush.editing)) {
+                  event.stopPropagation()
+                }
               }}
             >
               <img
-                src={layer.url}
-                alt={layer.name}
+                ref={isActive ? overlayImageRef : undefined}
+                src={layerDisplayUrl(layer.id, layerUrl)}
+                alt={isPrimary ? 'Референс для срисовывания' : layer.name}
                 draggable={false}
-                className="h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+                className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
               />
+              {flags.brushMask && isPrimary && isActive && (
+                <MaskPainter
+                  settings={brush}
+                  onChange={(dataUrl) =>
+                    setBrush((prev) => ({
+                      ...prev,
+                      dataUrl,
+                      enabled: true,
+                    }))
+                  }
+                  className="absolute inset-0 h-full w-full"
+                />
+              )}
             </div>
-          ))}
+          )
+        })}
 
         <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
 
-        {loupeOn && loupeVisible && (
-          <div
-            className="pointer-events-none absolute z-[4] grid h-40 w-40 -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-2 border-accent-soft shadow-lg"
-            style={{
-              left: `${loupePos.x}%`,
-              top: `${loupePos.y}%`,
-              background:
-                'radial-gradient(circle, rgba(255,217,189,0.16) 0%, rgba(255,217,189,0.08) 48%, rgba(20,26,29,0.22) 100%)',
-            }}
-            aria-hidden="true"
-          >
-            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-accent-soft backdrop-blur-sm">
-              Лупа 2×
-            </span>
-          </div>
+        {loupe.enabled && loupeVisible && (
+          <LoupeOverlay
+            visible
+            size={loupe.size}
+            zoom={loupe.zoom}
+            pos={loupePos}
+            stageRef={stageRef}
+            sourceVideoRef={videoRef}
+            layers={visibleLayers.map((layer) => ({
+              ...layer,
+              url: layerDisplayUrl(layer.id, layer.kind === 'primary' ? imageUrl : layer.url),
+            }))}
+            activeLayerId={activeLayerId}
+            opacity={opacity}
+            framedActive={framed}
+            calcFilter={calcModeFilter(calcMode)}
+          />
         )}
 
         {!locked && (
@@ -817,15 +865,18 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       </div>
 
       {!uiHidden && (
-        <header className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-[linear-gradient(to_bottom,rgba(20,26,29,0.55),transparent)] px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4">
+        <header
+          className="absolute inset-x-0 top-0 z-[4] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
+          style={{ background: 'var(--header-fade)' }}
+        >
           <button type="button" className={glassButtonClass} onClick={onExit}>
             Назад
           </button>
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-paper/90">
+            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[var(--fg-strong)]">
               EYEPAINT
             </p>
-            <p className="truncate text-[0.68rem] text-mist/60">{cameraLabel}</p>
+            <p className="truncate text-[0.68rem] text-[var(--fg-muted)]">{cameraLabel}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 justify-self-end">
             {roomEnabled && (
@@ -833,8 +884,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 className={cn(
                   'hidden rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold sm:inline-flex',
                   usingPhoneCam
-                    ? 'border-accent/50 bg-accent/20 text-accent-soft'
-                    : 'border-white/20 bg-white/10 text-mist/80',
+                    ? 'border-accent/50 bg-accent/20 text-[var(--chip-accent-fg)]'
+                    : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-muted)]',
                 )}
               >
                 {usingPhoneCam ? 'Телефон' : 'Жду…'}
@@ -845,8 +896,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
               className={cn(
                 'grid h-10 w-10 place-items-center rounded-full border backdrop-blur-md',
                 settingsOpen
-                  ? 'border-accent/55 bg-accent/20 text-accent-soft'
-                  : 'border-white/25 bg-white/12 text-paper',
+                  ? 'border-accent/55 bg-accent/20 text-[var(--chip-accent-fg)]'
+                  : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
               )}
               aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
               title={settingsOpen ? 'К студии' : 'Настройки'}
@@ -870,11 +921,11 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       {!uiHidden && (
         <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
           {settingsOpen ? (
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-3">
               <p className={sectionTitleClass}>Настройки</p>
               <button
                 type="button"
-                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[0.78rem] font-semibold text-paper"
+                className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
                 onClick={() => setSettingsOpen(false)}
               >
                 К студии
@@ -882,7 +933,8 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
             </div>
           ) : (
             <div
-              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-white/10 bg-[linear-gradient(180deg,rgba(28,36,40,0.94)_0%,rgba(28,36,40,0.82)_100%)] px-2 py-2 backdrop-blur-md"
+              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-[var(--glass-border-soft)] px-2 py-2 backdrop-blur-md"
+              style={{ backgroundImage: 'var(--tab-strip-bg)' }}
               role="tablist"
               aria-label="Панели студии"
             >
@@ -899,6 +951,52 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                 </button>
               ))}
             </div>
+          )}
+
+          {!settingsOpen && flags.multiLayers && layers.length > 0 && (
+            <LayersPanel
+              layers={layers}
+              activeLayerId={activeLayerId}
+              onSelectLayer={selectLayer}
+              onReorderLayers={(fromId, toId) => {
+                setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
+                setActiveLayerId(fromId)
+                showToast('Порядок слоёв обновлён')
+              }}
+              onStackAction={(id, action: LayerStackAction) => {
+                setLayers((prev) => applyLayerStackAction(prev, id, action))
+                setActiveLayerId(id)
+                const labels: Record<LayerStackAction, string> = {
+                  front: 'на передний план',
+                  forward: 'ближе',
+                  backward: 'дальше',
+                  back: 'на задний план',
+                }
+                showToast(`Слой ${labels[action]}`)
+              }}
+              onLayerOpacity={(id, value) =>
+                setLayers((prev) =>
+                  prev.map((layer) =>
+                    layer.id === id ? { ...layer, opacity: value } : layer,
+                  ),
+                )
+              }
+              onLayerVisible={(id) =>
+                setLayers((prev) =>
+                  prev.map((layer) =>
+                    layer.id === id ? { ...layer, visible: !layer.visible } : layer,
+                  ),
+                )
+              }
+              onRemoveLayer={(id) => {
+                setLayers((prev) => {
+                  const target = prev.find((layer) => layer.id === id)
+                  if (target?.kind === 'aux') revokeAuxUrls([target])
+                  return prev.filter((layer) => layer.id !== id)
+                })
+                if (activeLayerId === id) setActiveLayerId('primary')
+              }}
+            />
           )}
 
           <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]">
@@ -952,9 +1050,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     onCalcMode={setCalcMode}
                     guides={guides}
                     onGuides={setGuides}
-                    loupeOn={loupeOn}
+                    loupe={loupe}
+                    onLoupeChange={setLoupe}
                     onLoupeToggle={() => {
-                      setLoupeOn((value) => !value)
+                      setLoupe((prev) => ({ ...prev, enabled: !prev.enabled }))
                       setLoupeVisible(false)
                     }}
                     sessionMins={sessionMins}
@@ -970,33 +1069,18 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     onCapture={() => void handleCapture()}
                     onPickFile={(file) => applyPickedFile(file)}
                     flipped={flipped}
-                    onFlip={() => setFlipped((value) => !value)}
+                    onFlip={() =>
+                      setLayers((prev) =>
+                        prev.map((layer) =>
+                          layer.id === activeLayerId
+                            ? { ...layer, flipped: !layer.flipped }
+                            : layer,
+                        ),
+                      )
+                    }
                     locked={locked}
                     onToggleLock={() => setLocked((value) => !value)}
                     onReset={reset}
-                    layersEnabled={flags.multiLayers}
-                    layers={layers}
-                    onLayerOpacity={(id, value) =>
-                      setLayers((prev) =>
-                        prev.map((layer) =>
-                          layer.id === id ? { ...layer, opacity: value } : layer,
-                        ),
-                      )
-                    }
-                    onLayerVisible={(id) =>
-                      setLayers((prev) =>
-                        prev.map((layer) =>
-                          layer.id === id ? { ...layer, visible: !layer.visible } : layer,
-                        ),
-                      )
-                    }
-                    onRemoveLayer={(id) => {
-                      setLayers((prev) => {
-                        const target = prev.find((layer) => layer.id === id)
-                        if (target?.kind === 'aux') revokeAuxUrls([target])
-                        return prev.filter((layer) => layer.id !== id)
-                      })
-                    }}
                     galleryEnabled={flags.sessionGallery}
                     autoSessionShot={autoSessionShot}
                     onAutoSessionShot={setAutoSessionShot}
@@ -1107,6 +1191,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                       setSavedPalettes(next)
                       saveSavedPalettes(next)
                     }}
+                    activeLayerName={flags.multiLayers ? activeLayerName : undefined}
                   />
                 )}
                 {tab === 'poses' && (
@@ -1155,7 +1240,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
       {!uiHidden && (
         <div
-          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-white/15 bg-ink-deep/60 px-3 py-2 text-[0.78rem] text-mist/80 backdrop-blur-md min-[960px]:block"
+          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-3 py-2 text-[0.78rem] text-[var(--fg-muted)] backdrop-blur-md min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}
@@ -1169,7 +1254,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
       {uiHidden && (
         <button
           type="button"
-          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-white/10 bg-white/5 active:bg-white/15"
+          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] active:bg-[var(--glass-fill-mid)]"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
         />

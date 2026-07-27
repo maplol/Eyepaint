@@ -98,7 +98,7 @@ export function PosesPanel(props: PosesPanelProps) {
             <span>Сохранённые · {props.poses.length}</span>
             <button
               type="button"
-              className="text-[0.78rem] font-semibold text-[#ef8b8b]"
+              className="text-[0.78rem] font-semibold text-[var(--danger)]"
               onClick={props.onClear}
             >
               Очистить всё
@@ -110,7 +110,7 @@ export function PosesPanel(props: PosesPanelProps) {
               return (
                 <li
                   key={pose.id}
-                  className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-white/8 p-[0.7rem]"
+                  className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-[var(--glass-fill)] p-[0.7rem]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -118,10 +118,10 @@ export function PosesPanel(props: PosesPanelProps) {
                         <img
                           src={pose.thumbnail}
                           alt=""
-                          className="h-12 w-12 flex-none rounded-xl border border-white/15 object-cover"
+                          className="h-12 w-12 flex-none rounded-xl border border-[var(--glass-border)] object-cover"
                         />
                       ) : (
-                        <span className="grid h-12 w-12 flex-none place-items-center rounded-xl border border-white/15 bg-white/8 text-[0.68rem] text-mist/50">
+                        <span className="grid h-12 w-12 flex-none place-items-center rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[0.68rem] text-[var(--fg-faint)]">
                           —
                         </span>
                       )}
@@ -131,7 +131,7 @@ export function PosesPanel(props: PosesPanelProps) {
                     </div>
                     <button
                       type="button"
-                      className="min-h-[1.9rem] shrink-0 rounded-full border border-[rgba(239,139,139,0.35)] bg-[rgba(239,139,139,0.12)] px-[0.65rem] py-1 text-[0.75rem] font-semibold text-[#ffb4b4]"
+                      className="min-h-[1.9rem] shrink-0 rounded-full border border-[rgba(239,139,139,0.35)] bg-[rgba(239,139,139,0.12)] px-[0.65rem] py-1 text-[0.75rem] font-semibold text-[var(--danger-soft)]"
                       onClick={() => props.onDelete(pose.id)}
                     >
                       Удалить
@@ -147,7 +147,7 @@ export function PosesPanel(props: PosesPanelProps) {
                   </div>
                   <button
                     type="button"
-                    className="min-h-[2.35rem] rounded-[12px] border border-[var(--line)] bg-white/12 text-[0.86rem] font-bold text-[var(--paper)]"
+                    className="min-h-[2.35rem] rounded-[12px] border border-[var(--line)] bg-[var(--glass-fill-mid)] text-[0.86rem] font-bold text-[var(--fg-strong)]"
                     onClick={() => props.onApply(pose)}
                   >
                     Применить
