@@ -8,7 +8,7 @@ import {
   type ColorFilterMode,
   type PaletteColor,
 } from '../lib/colors'
-import { createPose, loadPoses, savePoses, type SavedPose } from '../lib/poses'
+import { createPose, formatPoseStats, loadPoses, savePoses, type SavedPose } from '../lib/poses'
 import './Studio.css'
 
 type StudioProps = {
@@ -186,7 +186,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   }
 
   const handleSavePose = () => {
-    const next = [createPose(transform, flipped, poses.length + 1), ...poses].slice(0, 12)
+    const next = [createPose(transform, flipped, opacity, poses), ...poses].slice(0, 24)
     setPoses(next)
     savePoses(next)
     showToast('Позиция сохранена')
@@ -195,6 +195,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const handleApplyPose = (pose: SavedPose) => {
     setTransform({ ...pose.transform })
     setFlipped(pose.flipped)
+    setOpacity(pose.opacity)
     showToast(`Вернули: ${pose.name}`)
   }
 
@@ -202,6 +203,13 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     const next = poses.filter((pose) => pose.id !== id)
     setPoses(next)
     savePoses(next)
+    showToast('Поза удалена')
+  }
+
+  const handleClearPoses = () => {
+    setPoses([])
+    savePoses([])
+    showToast('Список поз очищен')
   }
 
   return (
@@ -444,38 +452,98 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
 
           {tab === 'poses' && (
             <div className="studio__panel">
+              <div className="studio__pose-now">
+                <p className="studio__pose-now-title">Сейчас</p>
+                <div className="studio__pose-stats">
+                  {Object.entries(
+                    formatPoseStats({ transform, flipped, opacity }),
+                  ).map(([key, value]) => (
+                    <div key={key} className="studio__pose-stat">
+                      <span>
+                        {key === 'scale'
+                          ? 'Масштаб'
+                          : key === 'rotation'
+                            ? 'Поворот'
+                            : key === 'opacity'
+                              ? 'Прозр.'
+                              : key === 'flipped'
+                                ? 'Отражение'
+                                : key.toUpperCase()}
+                      </span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <button type="button" className="studio__pose-save" onClick={handleSavePose}>
-                Сохранить текущую позицию
+                + Сохранить в список
               </button>
 
               {poses.length === 0 ? (
-                <p className="studio__tip">Пока пусто — сохрани позу после подгонки</p>
+                <p className="studio__tip">Список пуст — сохрани несколько позиций и возвращай их</p>
               ) : (
-                <ul className="studio__pose-list">
-                  {poses.map((pose) => (
-                    <li key={pose.id} className="studio__pose-item">
-                      <button
-                        type="button"
-                        className="studio__pose-apply"
-                        onClick={() => handleApplyPose(pose)}
-                      >
-                        <span>{pose.name}</span>
-                        <small>
-                          ×{pose.transform.scale.toFixed(2)} · {Math.round(pose.transform.rotation)}°
-                          {pose.flipped ? ' · отражено' : ''}
-                        </small>
-                      </button>
-                      <button
-                        type="button"
-                        className="studio__pose-delete"
-                        aria-label={`Удалить ${pose.name}`}
-                        onClick={() => handleDeletePose(pose.id)}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div className="studio__pose-head">
+                    <span>Сохранённые · {poses.length}</span>
+                    <button type="button" className="studio__pose-clear" onClick={handleClearPoses}>
+                      Очистить всё
+                    </button>
+                  </div>
+                  <ul className="studio__pose-list">
+                    {poses.map((pose) => {
+                      const stats = formatPoseStats(pose)
+                      return (
+                        <li key={pose.id} className="studio__pose-card">
+                          <div className="studio__pose-card-top">
+                            <p className="studio__pose-name">{pose.name}</p>
+                            <button
+                              type="button"
+                              className="studio__pose-delete"
+                              aria-label={`Удалить ${pose.name}`}
+                              onClick={() => handleDeletePose(pose.id)}
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                          <div className="studio__pose-stats">
+                            <div className="studio__pose-stat">
+                              <span>Масштаб</span>
+                              <strong>{stats.scale}</strong>
+                            </div>
+                            <div className="studio__pose-stat">
+                              <span>Поворот</span>
+                              <strong>{stats.rotation}</strong>
+                            </div>
+                            <div className="studio__pose-stat">
+                              <span>X</span>
+                              <strong>{stats.x}</strong>
+                            </div>
+                            <div className="studio__pose-stat">
+                              <span>Y</span>
+                              <strong>{stats.y}</strong>
+                            </div>
+                            <div className="studio__pose-stat">
+                              <span>Прозр.</span>
+                              <strong>{stats.opacity}</strong>
+                            </div>
+                            <div className="studio__pose-stat">
+                              <span>Отражение</span>
+                              <strong>{stats.flipped}</strong>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="studio__pose-apply"
+                            onClick={() => handleApplyPose(pose)}
+                          >
+                            Применить
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
               )}
             </div>
           )}
