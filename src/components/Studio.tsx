@@ -25,7 +25,6 @@ import {
   cn,
   dockClass,
   dockShellClass,
-  glassButtonClass,
   glassIconButtonClass,
   layersColumnClass,
   scrollAreaClass,
