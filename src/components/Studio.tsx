@@ -935,7 +935,6 @@ export function Studio({
       return
     }
     setActiveTool(tool)
-    if (!desktopLayout) setLayersSheetOpen(false)
     if (tool === 'eyedropper') {
       setPickMode(true)
       setBrush((prev) => ({ ...prev, editing: false }))
