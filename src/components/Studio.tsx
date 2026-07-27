@@ -68,6 +68,7 @@ import {
   canAddAux,
   createAuxLayer,
   createPrimaryLayer,
+  MAX_LAYERS,
   nextAuxName,
   patchLayerTransform,
   reorderLayersInDisplayOrder,
@@ -795,7 +796,11 @@ export function Studio({
 
   const applyPickedFile = (file: File | undefined) => {
     if (!file) return
-    if (flags.multiLayers && canAddAux(layers)) {
+    if (flags.multiLayers) {
+      if (!canAddAux(layers)) {
+        showToast(`Лимит ${MAX_LAYERS} слоёв — удали лишние`)
+        return
+      }
       const url = URL.createObjectURL(file)
       const aux = createAuxLayer(url, nextAuxName(layers), layers)
       if (aux) {
@@ -804,6 +809,9 @@ export function Studio({
         showToast(`${aux.name} · двигай и крась этот слой`)
         return
       }
+      URL.revokeObjectURL(url)
+      showToast(`Лимит ${MAX_LAYERS} слоёв — удали лишние`)
+      return
     }
     onChangeImage(file)
     setActiveLayerId('primary')

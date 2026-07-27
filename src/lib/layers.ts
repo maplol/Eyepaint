@@ -16,7 +16,8 @@ export type RefLayer = {
   kind: 'primary' | 'aux'
 }
 
-const MAX_LAYERS = 3
+/** Soft ceiling — без жёсткого UX-лимита в 3; страхует от OOM */
+export const MAX_LAYERS = 48
 
 export function createPrimaryLayer(url: string): RefLayer {
   return {
@@ -33,7 +34,7 @@ export function createPrimaryLayer(url: string): RefLayer {
 
 export function createAuxLayer(url: string, name: string, existing: RefLayer[]): RefLayer | null {
   if (existing.length >= MAX_LAYERS) return null
-  const offset = existing.length * 28
+  const offset = (existing.length % 12) * 24
   return {
     id: `aux-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     url,
