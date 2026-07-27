@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 import {
   cn,
   toolRailBtnActiveClass,
@@ -17,7 +17,7 @@ const TOOLS: {
   id: StudioToolId
   label: string
   title: string
-  Icon: () => JSX.Element
+  Icon: () => ReactElement
 }[] = [
   { id: 'hand', label: 'Рука', title: 'Прозрачность, сессия, атмосфера', Icon: IconHand },
   { id: 'eyedropper', label: 'Пипетка', title: 'Цвета и пипетка с холста', Icon: IconEyedropper },
