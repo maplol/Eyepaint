@@ -33,10 +33,17 @@ test.describe('Colors & layers', () => {
     await galleryInStudio.setInputFiles('e2e/fixtures/reference.png')
 
     await expect(page.getByText('Слои референса')).toBeVisible()
-    await expect(page.getByText(/Активен · двигай/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('list', { name: 'Слои референса' })).toBeVisible()
+    await expect(page.getByText(/Активен ·/)).toBeVisible({ timeout: 10_000 })
 
     // Переключить на основной и обратно
     await page.getByRole('button', { name: /Основной/ }).click()
-    await expect(page.getByText(/Активен · двигай/).first()).toBeVisible()
+    await expect(page.getByText(/Активен ·/).first()).toBeVisible()
+
+    // Контекстное меню порядка
+    await page.getByRole('button', { name: 'Меню слоя Основной' }).click()
+    await expect(page.getByRole('menuitem', { name: 'На передний план' })).toBeVisible()
+    await page.getByRole('menuitem', { name: 'На передний план' }).click()
+    await expect(page.getByText(/передний|Активен/)).toBeVisible()
   })
 })
