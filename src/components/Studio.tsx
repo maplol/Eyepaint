@@ -924,24 +924,37 @@ export function Studio({
       }
       // Mobile: only layers sheet OR tool panel
       setActiveTool(null)
+      setPickMode(false)
       setLayersSheetOpen((prev) => !prev)
       return
     }
     if (activeTool === tool) {
       setActiveTool(null)
-      if (tool === 'eyedropper') setPickMode(false)
+      if (tool === 'eyedropper') {
+        setPickMode(false)
+        setBrush((prev) => ({ ...prev, editing: false }))
+      }
       return
     }
     setActiveTool(tool)
     if (!desktopLayout) setLayersSheetOpen(false)
+
+    // Сразу активируем режим инструмента — без второго клика «Вкл»
     if (tool === 'eyedropper') {
       setPickMode(true)
       setBrush((prev) => ({ ...prev, editing: false }))
     } else {
       setPickMode(false)
+      setBrush((prev) => (prev.editing ? { ...prev, editing: false } : prev))
     }
     if (tool === 'loupe') {
       setLoupe((prev) => ({ ...prev, enabled: true }))
+    }
+    if (tool === 'calc') {
+      setCalcMode((prev) => ({ ...prev, enabled: true }))
+    }
+    if (tool === 'guides') {
+      setGuides((prev) => (prev.kind === 'none' ? { ...prev, kind: 'thirds' } : prev))
     }
   }
 

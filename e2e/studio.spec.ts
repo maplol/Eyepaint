@@ -22,12 +22,11 @@ test.describe('Studio smoke', () => {
 
   test('калька, гиды, лупа и атмосфера', async ({ page }) => {
     await openStudioTool(page, 'Калька')
-    await page.getByRole('button', { name: 'Выкл' }).first().click()
     await expect(page.getByText('Сила')).toBeVisible()
 
     await openStudioTool(page, 'Гиды')
-    await page.getByRole('button', { name: '3×3' }).click()
     await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await page.getByRole('button', { name: 'Лицо' }).click()
 
     await openStudioTool(page, 'Лупа')
     await expect(page.getByText('Размер')).toBeVisible()
