@@ -40,6 +40,27 @@ test.describe('Studio smoke', () => {
     await expect(page.locator('html')).toHaveAttribute('data-atmosphere', 'dark')
   })
 
+  test('гиды sticky: Закрыть не гасит, повторный клик гасит', async ({ page }) => {
+    const rail = page.getByRole('toolbar', { name: 'Инструменты' })
+    const guidesBtn = rail.getByRole('button', { name: 'Гиды' })
+
+    await openStudioTool(page, 'Гиды')
+    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
+
+    await page.getByRole('button', { name: 'Закрыть' }).click()
+    await expect(page.getByLabel('Настройки инструмента')).toHaveCount(0)
+    await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
+
+    await guidesBtn.click()
+    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
+
+    await guidesBtn.click()
+    await expect(page.getByLabel('Настройки инструмента')).toHaveCount(0)
+    await expect(guidesBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
   test('сессия и снимок прогресса не ломают UI', async ({ page }) => {
     await openStudioTool(page, 'Рука')
     await page.getByRole('button', { name: '25 мин' }).click()
