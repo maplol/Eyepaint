@@ -15,6 +15,7 @@ import {
   layerRowClass,
   layersColumnPanelClass,
   layersSheetClass,
+  layersSheetCompactClass,
   mutedTextClass,
   rangeInputClass,
   rowClass,
@@ -44,6 +45,9 @@ function saveLayersOpen(open: boolean) {
 
 type LayersPanelProps = {
   variant?: 'sheet' | 'column'
+  /** На мобилке: только шапка, когда рядом открыта панель инструмента */
+  compact?: boolean
+  onRequestExpand?: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
   layers: RefLayer[]
@@ -93,6 +97,7 @@ type DragGhost = {
 
 export function LayersPanel(props: LayersPanelProps) {
   const variant = props.variant ?? 'sheet'
+  const compact = Boolean(props.compact) && variant === 'sheet'
   const menuRootId = useId()
   const [internalOpen, setInternalOpen] = useState(loadLayersOpen)
   const controlled = props.open !== undefined
@@ -322,22 +327,42 @@ export function LayersPanel(props: LayersPanelProps) {
   return (
     <section
       id="eyepaint-layers-sheet"
-      className={variant === 'column' ? layersColumnPanelClass : layersSheetClass}
+      className={
+        variant === 'column'
+          ? layersColumnPanelClass
+          : compact
+            ? layersSheetCompactClass
+            : layersSheetClass
+      }
       aria-label="Блок слоёв"
       aria-modal="false"
+      data-compact={compact ? 'true' : undefined}
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-[var(--glass-border-soft)] px-3 py-2">
         <div className="min-w-0 flex-1">
-          <p className={sectionTitleClass}>Слои</p>
+          <p className={sectionTitleClass}>Слои{compact ? ` · ${props.layers.length}` : ''}</p>
           <p className={cn(mutedTextClass, 'truncate')}>
-            {activeLayer
-              ? `${activeLayer.name} · ≡ порядок`
-              : variant === 'column'
-                ? 'Активный слой'
-                : 'Список слоёв'}
+            {compact
+              ? activeLayer
+                ? activeLayer.name
+                : 'Свернуто'
+              : activeLayer
+                ? `${activeLayer.name} · ≡ порядок`
+                : variant === 'column'
+                  ? 'Активный слой'
+                  : 'Список слоёв'}
           </p>
         </div>
-        {variant === 'sheet' && (
+        {variant === 'sheet' && compact && (
+          <button
+            type="button"
+            className="rounded-full border border-accent/45 bg-accent/18 px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--chip-accent-fg)]"
+            onClick={() => props.onRequestExpand?.()}
+          >
+            Развернуть
+          </button>
+        )}
+        {variant === 'sheet' && !compact && (
           <button
             type="button"
             className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
@@ -352,6 +377,8 @@ export function LayersPanel(props: LayersPanelProps) {
         )}
       </div>
 
+      {!compact && (
+      <>
       <ul
         ref={listRef}
         className={cn(
@@ -581,6 +608,8 @@ export function LayersPanel(props: LayersPanelProps) {
           </button>
         </div>
       </div>
+      </>
+      )}
 
       {ghost &&
         createPortal(

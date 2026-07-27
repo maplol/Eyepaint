@@ -1011,6 +1011,12 @@ export function Studio({
   const layersPanel = (
     <LayersPanel
       variant={desktopLayout ? 'column' : 'sheet'}
+      compact={!desktopLayout && showToolInspector && !settingsOpen}
+      onRequestExpand={() => {
+        setToolPanelOpen(false)
+        setActiveTool('layers')
+        setLayersSheetOpen(true)
+      }}
       open={layersSheetOpen}
       onOpenChange={(next) => {
         setLayersSheetOpen(next)
@@ -1640,7 +1646,7 @@ export function Studio({
 
       {!uiHidden && desktopLayout && !showToolInspector && (
         <div
-          className="pointer-events-none absolute left-[4.75rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
+          className="pointer-events-none absolute left-[4.85rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}

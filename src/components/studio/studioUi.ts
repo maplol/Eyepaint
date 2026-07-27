@@ -81,18 +81,18 @@ export const STUDIO_TOOL_LABELS: Record<StudioToolId, string> = {
   layers: 'Слои',
 }
 
-/** Outer shell — mobile bottom stack */
+/** Outer shell — mobile bottom stack; overflow visible — тени glass не режутся */
 export const dockShellClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.75rem] right-3 z-[3] flex max-h-[min(54dvh,480px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[4.1rem]'
+  'absolute bottom-[calc(var(--safe-bottom)+0.35rem)] left-[3.85rem] right-2.5 z-[3] flex max-h-[min(58dvh,520px)] min-h-0 flex-col gap-2 overflow-x-visible overflow-y-auto overscroll-contain py-1 animate-[rise-in_0.45s_ease_0.04s_both] eyepaint-scroll min-[960px]:hidden sm:left-[4.2rem]'
 
 export const dockClass = cn(
-  'flex min-h-0 max-h-[min(50dvh,460px)] flex-1 flex-col overflow-hidden rounded-3xl',
+  'flex min-h-0 max-h-[min(42dvh,380px)] flex-1 flex-col overflow-hidden rounded-3xl',
   glassSurfaceClass,
 )
 
 /** Compact vertical tool rail — без скролла; ширина ≥ кнопка + padding */
 export const toolRailClass = cn(
-  'absolute left-2 top-1/2 z-[5] flex w-12 -translate-y-1/2 flex-col items-center gap-1 overflow-hidden overscroll-none rounded-2xl p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-[rise-in_0.35s_ease_both] sm:left-3 min-[960px]:w-[3.25rem]',
+  'absolute left-3 top-1/2 z-[5] flex w-12 -translate-y-1/2 flex-col items-center gap-1 overflow-hidden overscroll-none rounded-2xl p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-[rise-in_0.35s_ease_both] sm:left-3.5 min-[960px]:w-[3.25rem] eyepaint-glass-edge',
   glassSurfaceClass,
 )
 
@@ -104,13 +104,13 @@ export const toolRailBtnActiveClass =
 
 /** Left tool settings */
 export const toolInspectorClass = cn(
-  'absolute left-[3.75rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.35rem] min-[960px]:flex sm:left-[4.1rem]',
+  'absolute left-[3.85rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.45rem] min-[960px]:flex sm:left-[4.2rem]',
   glassSurfaceClass,
 )
 
 /** Right layers — raised (top-anchored) */
 export const layersColumnClass =
-  'absolute right-4 top-[calc(var(--safe-top)+4.35rem)] z-[3] hidden h-[min(52vh,480px)] w-[min(300px,26vw)] flex-col overflow-hidden min-[960px]:flex'
+  'absolute right-4 top-[calc(var(--safe-top)+4.35rem)] z-[3] hidden h-[min(52vh,480px)] w-[min(300px,26vw)] flex-col overflow-visible min-[960px]:flex'
 
 export const layersColumnPanelClass = cn(
   'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-3xl',
@@ -118,7 +118,13 @@ export const layersColumnPanelClass = cn(
 )
 
 export const layersSheetClass = cn(
-  'flex h-[min(50dvh,440px)] shrink-0 flex-col overflow-hidden rounded-3xl animate-[rise-in_0.28s_ease_both]',
+  'flex max-h-[min(50dvh,440px)] min-h-0 shrink-0 flex-col overflow-hidden rounded-3xl animate-[rise-in_0.28s_ease_both]',
+  glassSurfaceClass,
+)
+
+/** Слои в режиме «шапка», когда рядом открыта панель инструмента */
+export const layersSheetCompactClass = cn(
+  'flex h-auto shrink-0 flex-col overflow-hidden rounded-3xl animate-[rise-in_0.28s_ease_both]',
   glassSurfaceClass,
 )
 

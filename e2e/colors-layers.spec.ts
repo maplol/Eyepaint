@@ -21,7 +21,7 @@ test.describe('Colors & layers', () => {
     await panel.getByRole('button', { name: 'Кожа' }).click()
   })
 
-  test('слои: фото-блок, выбор, порядок, меню', async ({ page }) => {
+  test('слои: фото-блок, выбор, порядок, меню', async ({ page }, testInfo) => {
     const layersSheet = page.getByRole('region', { name: 'Блок слоёв' })
     if (!(await layersSheet.isVisible().catch(() => false))) {
       await openStudioTool(page, 'Слои')
@@ -56,9 +56,17 @@ test.describe('Colors & layers', () => {
     await page.getByRole('menuitem', { name: 'На передний план' }).click()
     await expect(layersList.getByText(/передний/)).toBeVisible()
 
-    // Смена инструмента не прячет слои (ПК и мобилка)
+    // Смена инструмента не прячет блок слоёв (на мобилке — компактная шапка)
     await openStudioTool(page, 'Пипетка')
-    await expect(layersList).toBeVisible()
+    await expect(page.getByLabel('Блок слоёв')).toBeVisible()
+    if (testInfo.project.name === 'mobile-chrome') {
+      await expect(page.getByRole('button', { name: 'Развернуть' })).toBeVisible()
+      await expect(layersList).toHaveCount(0)
+      await page.getByRole('button', { name: 'Развернуть' }).click()
+      await expect(layersList).toBeVisible()
+    } else {
+      await expect(layersList).toBeVisible()
+    }
 
     // Кнопка «Слои» сворачивает блок и на ПК, и на телефоне
     await openStudioTool(page, 'Слои')
