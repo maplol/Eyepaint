@@ -1590,10 +1590,20 @@ export function Studio({
       {uiHidden && (
         <button
           type="button"
-          className="absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] h-12 w-12 rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] active:bg-[var(--glass-fill-mid)]"
+          className="eyepaint-glass-chip absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-[6] grid h-12 w-12 place-items-center rounded-full text-[var(--fg-strong)]"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
-        />
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+          </svg>
+        </button>
       )}
     </div>
   )

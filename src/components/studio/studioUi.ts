@@ -51,15 +51,14 @@ export const poseStatValueClass =
   'text-[0.86rem] font-bold text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
 
 export const glassButtonClass =
-  'inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3.5 text-sm font-semibold text-[var(--fg-strong)] shadow-[var(--shadow-glass)] backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]'
+  'eyepaint-glass-chip inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3.5 text-sm font-semibold text-[var(--fg-strong)]'
 
 /** Round icon control (header: back / hide) */
 export const glassIconButtonClass =
-  'grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)] shadow-[var(--shadow-glass)] backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]'
+  'eyepaint-glass-chip grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--fg-strong)]'
 
-/** Shared frosted panel — solid fallback + blur (mobile Safari) */
-export const glassSurfaceClass =
-  'border border-[var(--glass-border)] bg-[var(--panel-solid)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.35] [-webkit-backdrop-filter:blur(22px)_saturate(1.35)]'
+/** Shared frosted panel — CSS class, работает без blur поверх video */
+export const glassSurfaceClass = 'eyepaint-glass'
 
 export type StudioToolId =
   | 'hand'
@@ -136,14 +135,14 @@ export const tabActiveClass = 'bg-[var(--glass-fill-strong)] text-[var(--fg-stro
 
 /** Camera/status toast — bottom, above chrome */
 export const statusBaseClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.85rem)] left-1/2 z-[20] w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-fill-strong)] px-4 py-3 text-center text-[0.92rem] text-[var(--fg)] shadow-[var(--shadow-glass)] backdrop-blur-[18px] backdrop-saturate-[1.2] animate-[rise-in_0.4s_ease_both] min-[960px]:bottom-[calc(var(--safe-bottom)+1.1rem)]'
+  'eyepaint-glass-chip absolute bottom-[calc(var(--safe-bottom)+0.85rem)] left-1/2 z-[20] w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl px-4 py-3 text-center text-[0.92rem] text-[var(--fg)] animate-[rise-in_0.4s_ease_both] min-[960px]:bottom-[calc(var(--safe-bottom)+1.1rem)]'
 
 export const statusNoteClass = 'mt-2 text-[0.86rem] text-[var(--fg-muted)]'
 
 export const cameraClass = 'absolute inset-0 h-full w-full bg-[#141a1d] object-cover'
 
 export const panelCardClass =
-  'grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5'
+  'grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--panel-inset-bg)] px-3 py-2.5'
 
 export const mutedTextClass = 'text-[0.72rem] text-[var(--fg-faint)]'
 
