@@ -1481,6 +1481,7 @@ export function Studio({
                 setSettingsOpen((value) => {
                   const next = !value
                   if (next) {
+                    deactivateOneTool(activeTool)
                     setActiveTool(null)
                     if (!desktopLayout) setLayersSheetOpen(false)
                   }
