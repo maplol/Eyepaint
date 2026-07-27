@@ -9,6 +9,7 @@ import {
 import { GuideOverlay } from './GuideOverlay'
 import { Toast } from './Toast'
 import { ColorsPanel } from './studio/ColorsPanel'
+import { LoupeOverlay } from './studio/LoupeOverlay'
 import { MainPanel } from './studio/MainPanel'
 import { MaskPainter } from './studio/MaskPainter'
 import { PosesPanel } from './studio/PosesPanel'
@@ -96,10 +97,12 @@ import {
 import {
   DEFAULT_CALC_MODE,
   DEFAULT_GUIDES,
+  DEFAULT_LOUPE,
   calcModeFilter,
   type CalcModeSettings,
   type GuideKind,
   type GuideSettings,
+  type LoupeSettings,
 } from '../lib/studioTools'
 import { loadAtmosphere, saveAtmosphere, type StudioAtmosphere } from '../lib/theme'
 
@@ -206,7 +209,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
     ...DEFAULT_GUIDES,
     kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
   }))
-  const [loupeOn, setLoupeOn] = useState(false)
+  const [loupe, setLoupe] = useState<LoupeSettings>(() => ({ ...DEFAULT_LOUPE }))
   const [loupePos, setLoupePos] = useState({ x: 50, y: 50 })
   const [loupeVisible, setLoupeVisible] = useState(false)
   const [sessionMins, setSessionMins] = useState<null | 25 | 45 | 90>(null)
@@ -263,8 +266,6 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
-  const loupeOnRef = useRef(loupeOn)
-  loupeOnRef.current = loupeOn
 
   const displayUrl = filteredUrl ?? imageUrl
   const framed = colorMode === 'mask'
@@ -612,7 +613,7 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
   }
 
   const handleStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!loupeOn) return
+    if (!loupe.enabled) return
     const rect = event.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
     const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100))
@@ -786,21 +787,24 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
 
         <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
 
-        {loupeOn && loupeVisible && (
-          <div
-            className="pointer-events-none absolute z-[4] grid h-40 w-40 -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-2 border-accent-soft shadow-lg"
-            style={{
-              left: `${loupePos.x}%`,
-              top: `${loupePos.y}%`,
-              background:
-                'radial-gradient(circle, rgba(255,217,189,0.16) 0%, rgba(255,217,189,0.08) 48%, rgba(20,26,29,0.22) 100%)',
-            }}
-            aria-hidden="true"
-          >
-            <span className="rounded-full border border-accent/35 bg-ink-deep/70 px-3 py-1 text-[0.78rem] font-bold text-[var(--chip-accent-fg)] backdrop-blur-sm">
-              Лупа 2×
-            </span>
-          </div>
+        {loupe.enabled && loupeVisible && (
+          <LoupeOverlay
+            visible
+            size={loupe.size}
+            zoom={loupe.zoom}
+            pos={loupePos}
+            stageRef={stageRef}
+            sourceVideoRef={videoRef}
+            displayUrl={displayUrl}
+            transform={transform}
+            flipped={flipped}
+            opacity={opacity}
+            primaryVisible={primaryVisible}
+            primaryOpacity={primaryOpacity}
+            framed={framed}
+            calcFilter={calcModeFilter(calcMode)}
+            auxLayers={flags.multiLayers ? auxLayers : []}
+          />
         )}
 
         {!locked && (
@@ -960,9 +964,10 @@ export function Studio({ imageUrl, onChangeImage, onExit, lessonBoot }: StudioPr
                     onCalcMode={setCalcMode}
                     guides={guides}
                     onGuides={setGuides}
-                    loupeOn={loupeOn}
+                    loupe={loupe}
+                    onLoupeChange={setLoupe}
                     onLoupeToggle={() => {
-                      setLoupeOn((value) => !value)
+                      setLoupe((prev) => ({ ...prev, enabled: !prev.enabled }))
                       setLoupeVisible(false)
                     }}
                     sessionMins={sessionMins}
