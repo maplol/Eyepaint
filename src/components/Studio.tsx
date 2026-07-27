@@ -13,7 +13,7 @@ import {
   type PaletteColor,
 } from '../lib/colors'
 import { createPose, formatPoseStats, loadPoses, savePoses, type SavedPose } from '../lib/poses'
-import { createRoomCode, normalizeRoomCode } from '../lib/rooms'
+import { createRoomCode, loadSavedRoomCode, normalizeRoomCode, saveRoomCode } from '../lib/rooms'
 import './Studio.css'
 
 type StudioProps = {
@@ -45,12 +45,16 @@ const STAT_LABELS: Record<string, string> = {
 
 export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
   const [roomEnabled, setRoomEnabled] = useState(false)
-  const [roomCode, setRoomCode] = useState(() => createRoomCode())
+  const [roomCode, setRoomCode] = useState(() => loadSavedRoomCode())
   const room = useRoomPeer({
     enabled: roomEnabled,
     role: 'host',
     code: roomCode,
   })
+
+  useEffect(() => {
+    saveRoomCode(roomCode)
+  }, [roomCode])
 
   const { videoRef, ready, error } = useCamera(true, room.remoteStream)
   const usingPhoneCam = Boolean(room.remoteStream)
@@ -646,17 +650,17 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
                     }}
                     aria-label="Код комнаты"
                   />
-                  <button
-                    type="button"
-                    className="studio__chip"
-                    onClick={() => {
-                      setRoomEnabled(false)
-                      setRoomCode(createRoomCode())
-                    }}
-                  >
-                    Новый
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  className="studio__chip"
+                  onClick={() => {
+                    setRoomEnabled(false)
+                    setRoomCode(createRoomCode())
+                  }}
+                >
+                  Новый код
+                </button>
 
                 {!roomEnabled ? (
                   <button
