@@ -258,6 +258,45 @@
   color: var(--paper);
 }
 
+.studio__steps {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: rgba(20, 26, 29, 0.28);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(231, 238, 240, 0.78);
+}
+
+.studio__steps strong {
+  color: #ffd9bd;
+}
+
+.studio__code-box {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(20, 26, 29, 0.42);
+  text-align: center;
+}
+
+.studio__code-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.studio__code-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--paper);
+}
+
 .studio__code-row {
   display: grid;
   gap: 0.5rem;

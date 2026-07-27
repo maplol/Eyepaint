@@ -1,4 +1,5 @@
-const ROOM_CODE_KEY = 'eyepaint-room-code-v1'
+const HOST_CODE_KEY = 'eyepaint-host-room-code-v1'
+const JOIN_CODE_KEY = 'eyepaint-join-room-code-v1'
 
 export function createRoomCode(length = 6) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -14,33 +15,52 @@ export function normalizeRoomCode(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
 }
 
-export function loadSavedRoomCode() {
-  try {
-    const raw = localStorage.getItem(ROOM_CODE_KEY)
-    const normalized = normalizeRoomCode(raw ?? '')
-    if (normalized.length >= 4) return normalized
-  } catch {
-    /* ignore */
-  }
-  const fresh = createRoomCode()
-  saveRoomCode(fresh)
-  return fresh
+export function roomTopicId(code: string) {
+  return `eyepaint-${normalizeRoomCode(code)}`
 }
 
-export function saveRoomCode(code: string) {
+function readCode(key: string) {
+  try {
+    const normalized = normalizeRoomCode(localStorage.getItem(key) ?? '')
+    return normalized.length >= 4 ? normalized : null
+  } catch {
+    return null
+  }
+}
+
+function writeCode(key: string, code: string) {
   const normalized = normalizeRoomCode(code)
   if (normalized.length < 4) return
   try {
-    localStorage.setItem(ROOM_CODE_KEY, normalized)
+    localStorage.setItem(key, normalized)
   } catch {
     /* ignore */
   }
 }
 
-export function hostPeerId(code: string) {
-  return `eyp-${normalizeRoomCode(code)}-h`
+/** Код, который ПК создал как хост комнаты */
+export function loadHostRoomCode() {
+  return readCode(HOST_CODE_KEY)
 }
 
-export function cameraPeerId(code: string) {
-  return `eyp-${normalizeRoomCode(code)}-c`
+export function saveHostRoomCode(code: string) {
+  writeCode(HOST_CODE_KEY, code)
+}
+
+/** Код, который телефон вводил для подключения */
+export function loadJoinRoomCode() {
+  return readCode(JOIN_CODE_KEY) ?? ''
+}
+
+export function saveJoinRoomCode(code: string) {
+  writeCode(JOIN_CODE_KEY, code)
+}
+
+export async function copyText(value: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+    return true
+  } catch {
+    return false
+  }
 }

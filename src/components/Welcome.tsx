@@ -59,7 +59,7 @@ export function Welcome({ onPickImage, onStartCameraRoom }: WelcomeProps) {
           </div>
 
           <p className="welcome__hint">
-            Мобилка — над листом. ПК — студия и референс. Связь через комнату во вкладке «Связь».
+            Порядок связи: ПК создаёт комнату (код) → телефон вводит этот код и стримит камеру.
           </p>
         </div>
       </div>
