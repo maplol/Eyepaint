@@ -51,9 +51,11 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
       ? 'Нажми «Начать трансляцию»'
       : room.status === 'connected'
         ? 'Стрим идёт на ПК'
-        : room.status === 'waiting' || room.status === 'connecting'
-          ? 'Жду ПК в этой комнате…'
-          : room.error || 'Ошибка связи'
+        : room.status === 'error'
+          ? room.error || 'Ошибка связи'
+          : room.status === 'waiting' || room.status === 'connecting'
+            ? 'Подключаюсь к ПК… оставь экран включённым'
+            : room.error || 'Готовлю связь…'
 
   return (
     <section className="camroom">
@@ -70,16 +72,21 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
         <span className="camroom__spacer" aria-hidden="true" />
       </header>
 
-      <div className="camroom__panel">
-        <p className="camroom__label">Код комнаты</p>
-        <input
-          className="camroom__code"
-          value={code}
-          maxLength={8}
-          spellCheck={false}
-          onChange={(event) => updateCode(event.target.value)}
-          aria-label="Код комнаты"
-        />
+      <div className="camroom__panel" translate="no">
+        <label className="camroom__field">
+          <span className="camroom__label">Код комнаты</span>
+          <input
+            className="camroom__code"
+            value={code}
+            maxLength={8}
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            onChange={(event) => updateCode(event.target.value)}
+            aria-label="Код комнаты"
+          />
+        </label>
+
         <button
           type="button"
           className="camroom__btn camroom__btn--block"
@@ -88,7 +95,9 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
           Новый код
         </button>
 
-        <p className="camroom__status">{error || statusText}</p>
+        <p className={`camroom__status ${room.status === 'error' || error ? 'is-error' : ''}`}>
+          {error || statusText}
+        </p>
 
         {!started ? (
           <button
@@ -110,8 +119,7 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
         )}
 
         <p className="camroom__hint">
-          На ПК: студия → «Связь» → тот же код. Телефон только камера, референс двигаешь на
-          компьютере. Код запоминается.
+          На ПК: студия → «Связь» → тот же код → «Ждать телефон». Код запоминается на устройстве.
         </p>
       </div>
     </section>

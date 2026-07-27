@@ -15,13 +15,20 @@ export function useCamera(enabled: boolean, externalStream: MediaStream | null =
   })
 
   useEffect(() => {
-    if (!enabled) return
-
     if (externalStream) {
       setState({ ready: true, error: null, stream: externalStream })
       return () => {
-        setState({ ready: false, error: null, stream: null })
+        setState((prev) =>
+          prev.stream === externalStream
+            ? { ready: false, error: null, stream: null }
+            : prev,
+        )
       }
+    }
+
+    if (!enabled) {
+      setState({ ready: false, error: null, stream: null })
+      return
     }
 
     let active = true

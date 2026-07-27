@@ -56,7 +56,7 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
     saveRoomCode(roomCode)
   }, [roomCode])
 
-  const { videoRef, ready, error } = useCamera(true, room.remoteStream)
+  const { videoRef, ready, error } = useCamera(!roomEnabled, roomEnabled ? room.remoteStream : null)
   const usingPhoneCam = Boolean(room.remoteStream)
 
   const [opacity, setOpacity] = useState(0.45)
@@ -242,13 +242,26 @@ export function Studio({ imageUrl, onChangeImage, onExit }: StudioProps) {
       <div ref={stageRef} className="studio__stage" {...handlers}>
         <video ref={videoRef} className="studio__camera" playsInline muted autoPlay />
 
-        {!ready && !error && <div className="studio__status">Открываю камеру…</div>}
-        {error && !usingPhoneCam && (
+        {!ready && !error && !roomEnabled && (
+          <div className="studio__status">Открываю камеру…</div>
+        )}
+        {roomEnabled && !usingPhoneCam && room.status !== 'error' && (
+          <div className="studio__status">
+            Жду телефон в комнате <strong>{roomCode}</strong>…
+          </div>
+        )}
+        {error && !roomEnabled && (
           <div className="studio__status studio__status--error">
             <p>{error}</p>
             <p className="studio__status-note">
               Можно подключить телефон во вкладке «Связь» или настроить референс заранее.
             </p>
+          </div>
+        )}
+        {roomEnabled && room.status === 'error' && (
+          <div className="studio__status studio__status--error">
+            <p>{room.error || 'Ошибка комнаты'}</p>
+            <p className="studio__status-note">Попробуй «Новый код» или перезапусти ожидание.</p>
           </div>
         )}
 
