@@ -922,11 +922,9 @@ export function Studio({
         setActiveTool((prev) => (prev === 'layers' ? null : 'layers'))
         return
       }
-      setLayersSheetOpen((prev) => {
-        const next = !prev
-        setActiveTool(next ? 'layers' : null)
-        return next
-      })
+      // Mobile: only layers sheet OR tool panel
+      setActiveTool(null)
+      setLayersSheetOpen((prev) => !prev)
       return
     }
     if (activeTool === tool) {
@@ -935,6 +933,7 @@ export function Studio({
       return
     }
     setActiveTool(tool)
+    if (!desktopLayout) setLayersSheetOpen(false)
     if (tool === 'eyedropper') {
       setPickMode(true)
       setBrush((prev) => ({ ...prev, editing: false }))
@@ -1453,7 +1452,16 @@ export function Studio({
               aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
               title={settingsOpen ? 'К студии' : 'Настройки'}
               aria-pressed={settingsOpen}
-              onClick={() => setSettingsOpen((value) => !value)}
+              onClick={() => {
+                setSettingsOpen((value) => {
+                  const next = !value
+                  if (next) {
+                    setActiveTool(null)
+                    if (!desktopLayout) setLayersSheetOpen(false)
+                  }
+                  return next
+                })
+              }}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                 <path
@@ -1485,7 +1493,10 @@ export function Studio({
 
           {desktopLayout && showToolInspector && (
             <aside
-              className={toolInspectorClass}
+              className={cn(
+                toolInspectorClass,
+                settingsOpen && 'max-h-[min(62vh,560px)] w-[min(320px,calc(100vw-22rem))]',
+              )}
               translate={settingsOpen ? 'no' : undefined}
               aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
             >
@@ -1498,7 +1509,7 @@ export function Studio({
               {!settingsOpen && flags.multiLayers && layers.length > 0 && layersPanel}
               {showToolInspector && (
                 <aside
-                  className={dockClass}
+                  className={cn(dockClass, settingsOpen && 'max-h-[min(58dvh,520px)]')}
                   translate={settingsOpen ? 'no' : undefined}
                   aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
                 >
@@ -1512,7 +1523,7 @@ export function Studio({
 
       {!uiHidden && desktopLayout && !showToolInspector && (
         <div
-          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-1/2 z-[3] hidden max-w-[min(28rem,calc(100%-26rem))] -translate-x-1/2 rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-3 py-2 text-center text-[0.78rem] text-[var(--fg-muted)] backdrop-blur-md min-[960px]:block"
+          className="pointer-events-none absolute left-[4.5rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}

@@ -74,19 +74,19 @@ export const STUDIO_TOOL_LABELS: Record<StudioToolId, string> = {
   layers: 'Слои',
 }
 
-/** Outer shell — mobile bottom stack (tool panel + layers sheet) */
+/** Outer shell — mobile bottom stack (one panel at a time) */
 export const dockShellClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.7rem)] left-[3.35rem] right-3 z-[3] flex max-h-[min(58dvh,520px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[3.75rem]'
+  'absolute bottom-[calc(var(--safe-bottom)+0.55rem)] left-[3.25rem] right-3 z-[3] flex max-h-[min(46dvh,420px)] min-h-0 flex-col gap-2 overflow-hidden animate-[rise-in_0.45s_ease_0.04s_both] min-[960px]:hidden sm:left-[3.6rem]'
 
 export const dockClass =
-  'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
+  'flex min-h-0 max-h-[min(46dvh,420px)] flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
 
 export const layersSheetClass =
-  'flex max-h-[min(56dvh,460px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
+  'flex max-h-[min(42dvh,380px)] shrink-0 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25] animate-[rise-in_0.28s_ease_both]'
 
-/** Photoshop-like vertical tool rail (left) */
+/** Compact vertical tool rail — centered, not full-height */
 export const toolRailClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.7rem)] left-2 top-[calc(var(--safe-top)+4.25rem)] z-[5] flex w-11 flex-col items-center gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] p-1.5 shadow-[var(--shadow-glass)] backdrop-blur-[18px] animate-[rise-in_0.35s_ease_both] eyepaint-scroll sm:left-3 min-[960px]:bottom-auto min-[960px]:top-1/2 min-[960px]:h-auto min-[960px]:max-h-[min(78vh,36rem)] min-[960px]:w-12 min-[960px]:-translate-y-1/2'
+  'absolute left-2 top-1/2 z-[5] flex w-11 max-h-[min(68vh,30rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] p-1.5 shadow-[var(--shadow-glass)] backdrop-blur-[18px] animate-[rise-in_0.35s_ease_both] eyepaint-scroll sm:left-3 min-[960px]:w-12'
 
 export const toolRailBtnClass =
   'grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-transparent text-[var(--fg-muted)] transition-colors hover:border-[var(--glass-border-soft)] hover:bg-[var(--glass-fill)] hover:text-[var(--fg-strong)] min-[960px]:h-10 min-[960px]:w-10'
@@ -94,16 +94,16 @@ export const toolRailBtnClass =
 export const toolRailBtnActiveClass =
   'border-accent/45 bg-accent/18 text-[var(--chip-accent-fg)] hover:border-accent/55 hover:bg-accent/22 hover:text-[var(--chip-accent-fg)]'
 
-/** Left tool settings inspector (desktop) */
+/** Left tool settings — compact floating card, not full column */
 export const toolInspectorClass =
-  'absolute left-[3.65rem] top-[calc(var(--safe-top)+4.25rem)] z-[4] hidden w-[min(340px,calc(100%-8.5rem))] max-h-[calc(100dvh-var(--safe-top)-var(--safe-bottom)-6.5rem)] flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.25rem] min-[960px]:flex sm:left-[4rem]'
+  'absolute left-[3.55rem] top-[calc(var(--safe-top)+4.35rem)] z-[4] hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.1rem] min-[960px]:flex sm:left-[3.9rem]'
 
-/** Right layers column (desktop) */
+/** Right layers — bottom-anchored card, not full height */
 export const layersColumnClass =
-  'absolute bottom-[calc(var(--safe-bottom)+1rem)] right-4 top-[calc(var(--safe-top)+4.25rem)] z-[3] hidden w-[min(360px,30vw)] flex-col overflow-hidden min-[960px]:flex'
+  'absolute bottom-[calc(var(--safe-bottom)+1rem)] right-4 z-[3] hidden w-[min(300px,26vw)] max-h-[min(42vh,400px)] flex-col overflow-hidden min-[960px]:flex'
 
 export const layersColumnPanelClass =
-  'flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
+  'flex max-h-[min(42vh,400px)] min-h-0 w-full flex-col overflow-hidden rounded-3xl border border-[var(--glass-border)] [background-image:var(--dock-bg)] shadow-[var(--shadow-glass)] backdrop-blur-[22px] backdrop-saturate-[1.25]'
 
 export const scrollAreaClass = 'eyepaint-scroll'
 
