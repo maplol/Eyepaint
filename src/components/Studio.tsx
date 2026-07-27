@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -18,18 +19,21 @@ import { MaskPainter } from './studio/MaskPainter'
 import { PosesPanel } from './studio/PosesPanel'
 import { ProjectPanel } from './studio/ProjectPanel'
 import { SettingsPanel } from './studio/SettingsPanel'
+import { ToolRail } from './studio/ToolRail'
 import {
   cameraClass,
   cn,
   dockClass,
   dockShellClass,
   glassButtonClass,
+  layersColumnClass,
   scrollAreaClass,
   sectionTitleClass,
   statusBaseClass,
   statusNoteClass,
-  tabActiveClass,
-  tabBaseClass,
+  STUDIO_TOOL_LABELS,
+  toolInspectorClass,
+  type StudioToolId,
 } from './studio/studioUi'
 import { useCamera } from '../hooks/useCamera'
 import {
@@ -139,15 +143,29 @@ type StudioProps = {
   onAutosaveWritten?: (meta: AutosaveMeta | null) => void
 }
 
-type StudioTab = 'main' | 'project' | 'colors' | 'poses'
 type SettingsSection = 'link' | 'keys' | 'flags' | 'project'
 
-const TABS: Array<[StudioTab, string]> = [
-  ['main', 'Основное'],
-  ['project', 'Проекция'],
-  ['colors', 'Цвета'],
-  ['poses', 'Позы'],
-]
+const LAYERS_OPEN_KEY = 'eyepaint-layers-sheet-open-v1'
+
+function loadLayersSheetOpen(): boolean {
+  try {
+    return localStorage.getItem(LAYERS_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function useDesktopStudioLayout() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia('(min-width: 960px)')
+      mql.addEventListener('change', onChange)
+      return () => mql.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(min-width: 960px)').matches,
+    () => true,
+  )
+}
 
 const getStageCursorClass = (locked: boolean, dragMode: string) => {
   if (locked) return 'cursor-default'
@@ -276,7 +294,9 @@ export function Studio({
   const [flash, setFlash] = useState(false)
   const [capturing, setCapturing] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [tab, setTab] = useState<StudioTab>('main')
+  const [activeTool, setActiveTool] = useState<StudioToolId | null>(null)
+  const [layersSheetOpen, setLayersSheetOpen] = useState(loadLayersSheetOpen)
+  const desktopLayout = useDesktopStudioLayout()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('link')
   const [savingProject, setSavingProject] = useState(false)
@@ -702,11 +722,11 @@ export function Studio({
   }
 
   useEffect(() => {
-    if (tab !== 'colors' && pickMode) setPickMode(false)
-    if (tab !== 'colors' && brush.editing) {
+    if (activeTool !== 'eyedropper' && pickMode) setPickMode(false)
+    if (activeTool !== 'eyedropper' && brush.editing) {
       setBrush((prev) => ({ ...prev, editing: false }))
     }
-  }, [tab, pickMode, brush.editing])
+  }, [activeTool, pickMode, brush.editing])
 
   const captureProgressFile = async () => {
     const stage = stageRef.current
@@ -891,6 +911,355 @@ export function Studio({
     : ready
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
+
+  const showToolInspector =
+    settingsOpen || (activeTool !== null && activeTool !== 'layers')
+
+  const handleSelectTool = (tool: StudioToolId) => {
+    setSettingsOpen(false)
+    if (tool === 'layers') {
+      if (desktopLayout) {
+        setActiveTool((prev) => (prev === 'layers' ? null : 'layers'))
+        return
+      }
+      setLayersSheetOpen((prev) => {
+        const next = !prev
+        setActiveTool(next ? 'layers' : null)
+        return next
+      })
+      return
+    }
+    if (activeTool === tool) {
+      setActiveTool(null)
+      if (tool === 'eyedropper') setPickMode(false)
+      return
+    }
+    setActiveTool(tool)
+    if (tool === 'eyedropper') {
+      setPickMode(true)
+      setBrush((prev) => ({ ...prev, editing: false }))
+    } else {
+      setPickMode(false)
+    }
+    if (tool === 'loupe') {
+      setLoupe((prev) => ({ ...prev, enabled: true }))
+    }
+  }
+
+  const layersPanel = (
+    <LayersPanel
+      variant={desktopLayout ? 'column' : 'sheet'}
+      open={layersSheetOpen}
+      onOpenChange={(next) => {
+        setLayersSheetOpen(next)
+        if (!next && activeTool === 'layers') setActiveTool(null)
+        if (next) setActiveTool('layers')
+      }}
+      layers={layers}
+      activeLayerId={activeLayerId}
+      onSelectLayer={selectLayer}
+      onReorderLayers={(fromId, toId) => {
+        setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
+        setActiveLayerId(fromId)
+      }}
+      onStackAction={(id, action: LayerStackAction) => {
+        setLayers((prev) => applyLayerStackAction(prev, id, action))
+        setActiveLayerId(id)
+        const labels: Record<LayerStackAction, string> = {
+          front: 'на передний план',
+          forward: 'ближе',
+          backward: 'дальше',
+          back: 'на задний план',
+        }
+        showToast(`Слой ${labels[action]}`)
+      }}
+      onLayerOpacity={(id, value) =>
+        setLayers((prev) =>
+          prev.map((layer) => (layer.id === id ? { ...layer, opacity: value } : layer)),
+        )
+      }
+      onLayerVisible={(id) =>
+        setLayers((prev) =>
+          prev.map((layer) =>
+            layer.id === id ? { ...layer, visible: !layer.visible } : layer,
+          ),
+        )
+      }
+      onRemoveLayer={(id) => {
+        setLayers((prev) => {
+          const target = prev.find((layer) => layer.id === id)
+          if (target?.kind === 'aux') revokeAuxUrls([target])
+          return prev.filter((layer) => layer.id !== id)
+        })
+        if (activeLayerId === id) setActiveLayerId('primary')
+      }}
+      ready={ready}
+      capturing={capturing}
+      onCapture={() => void handleCapture()}
+      onPickFile={(file) => applyPickedFile(file)}
+      flipped={flipped}
+      onFlip={() =>
+        setLayers((prev) =>
+          prev.map((layer) =>
+            layer.id === activeLayerId ? { ...layer, flipped: !layer.flipped } : layer,
+          ),
+        )
+      }
+      locked={locked}
+      onToggleLock={() => setLocked((value) => !value)}
+      onReset={reset}
+    />
+  )
+
+  const mainPanelProps = {
+    opacity,
+    onOpacity: setOpacity,
+    calcMode,
+    onCalcMode: setCalcMode,
+    guides,
+    onGuides: setGuides,
+    loupe,
+    onLoupeChange: setLoupe,
+    onLoupeToggle: () => {
+      setLoupe((prev) => ({ ...prev, enabled: !prev.enabled }))
+      setLoupeVisible(false)
+    },
+    sessionMins,
+    sessionRemainingLabel,
+    onStartSession: startSession,
+    usingPhoneCam,
+    remoteFrozen,
+    remoteTorch,
+    onToggleFreeze: toggleRemoteFreeze,
+    onToggleTorch: toggleRemoteTorch,
+    galleryEnabled: flags.sessionGallery,
+    autoSessionShot,
+    onAutoSessionShot: setAutoSessionShot,
+    shots,
+    onProgressShot: () => void pushShot('progress'),
+    onDownloadShot: (shot: SessionShot) =>
+      downloadDataUrl(shot.dataUrl, `eyepaint-${shot.kind}-${shot.createdAt}.jpg`),
+    onClearShots: () => {
+      setShots([])
+      saveSessionShots([])
+      showToast('Галерея очищена')
+    },
+    atmosphere,
+    atmosphereEnabled: flags.lightTheme,
+    onAtmosphere: setAtmosphere,
+  }
+
+  const toolPanelBody = settingsOpen ? (
+    <SettingsPanel
+      section={settingsSection}
+      onSection={setSettingsSection}
+      roomEnabled={roomEnabled}
+      roomCode={roomCode}
+      qrDataUrl={qrDataUrl}
+      roomJoinUrl={roomJoinUrl}
+      roomStatus={room.status}
+      roomError={room.error}
+      trackInfo={trackInfo}
+      onCopyCode={() => {
+        void copyText(roomCode).then((ok) =>
+          showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
+        )
+      }}
+      onNewCode={() => {
+        const next = createRoomCode()
+        setRoomCode(next)
+        saveHostRoomCode(next)
+        showToast('Новая комната')
+      }}
+      onDisableRoom={() => setRoomEnabled(false)}
+      onEnableRoom={() => {
+        if (!roomCode) {
+          const next = createRoomCode()
+          setRoomCode(next)
+          saveHostRoomCode(next)
+        }
+        setRoomEnabled(true)
+      }}
+      hotkeys={hotkeys}
+      listeningFor={listeningFor}
+      setListeningFor={setListeningFor}
+      formatHotkey={formatHotkey}
+      setHotkeys={setHotkeys}
+      onHotkeysResetToast={() => showToast('Клавиши сброшены')}
+      flags={flags}
+      onFlags={setFlags}
+      onSaveProject={handleSaveProjectFile}
+      onClearAutosave={handleClearAutosave}
+      savingProject={savingProject}
+      autosaveLabel={autosaveLabel}
+    />
+  ) : activeTool === 'hand' ? (
+    <MainPanel {...mainPanelProps} focus="hand" />
+  ) : activeTool === 'calc' ? (
+    <MainPanel {...mainPanelProps} focus="calc" />
+  ) : activeTool === 'guides' ? (
+    <MainPanel {...mainPanelProps} focus="guides" />
+  ) : activeTool === 'loupe' ? (
+    <MainPanel {...mainPanelProps} focus="loupe" />
+  ) : activeTool === 'perspective' ? (
+    <ProjectPanel transform={transform} setTransform={setTransform} />
+  ) : activeTool === 'eyedropper' ? (
+    <ColorsPanel
+      precisionProfile={precisionProfile}
+      colorPrecision={colorPrecision}
+      onPrecision={setColorPrecision}
+      matchTolerance={matchTolerance}
+      onTolerance={setMatchTolerance}
+      paletteLoading={paletteLoading}
+      palette={palette}
+      visiblePalette={visiblePalette}
+      selectedColorIds={selectedColorIds}
+      selectedSet={selectedSet}
+      selectionCoverage={selectionCoverage}
+      paletteSort={paletteSort}
+      onPaletteSort={() =>
+        setPaletteSort((value) => (value === 'hue' ? 'dominance' : 'hue'))
+      }
+      onToggleColor={(id) =>
+        setSelectedColorIds((prev) =>
+          prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+        )
+      }
+      onSelectAll={() => setSelectedColorIds(palette.map((c) => c.id))}
+      onInvert={() => {
+        const set = new Set(selectedColorIds)
+        setSelectedColorIds(palette.filter((c) => !set.has(c.id)).map((c) => c.id))
+      }}
+      onResetSelection={() => {
+        setSelectedColorIds([])
+        setColorMode('off')
+      }}
+      pickMode={pickMode}
+      onPickMode={() => {
+        setPickMode((value) => !value)
+        setBrush((prev) => ({ ...prev, editing: false }))
+        setActiveTool('eyedropper')
+      }}
+      colorMode={colorMode}
+      filterBusy={filterBusy}
+      onMaskMode={() => setColorMode((mode) => (mode === 'mask' ? 'gray' : 'mask'))}
+      onGrayMode={() => setColorMode('gray')}
+      brushEnabled={flags.brushMask}
+      brush={brush}
+      onBrush={setBrush}
+      onClearBrush={() =>
+        setBrush((prev) => ({
+          ...prev,
+          dataUrl: null,
+          editing: false,
+        }))
+      }
+      onPreset={(id: PalettePresetId) => {
+        const ids = matchPreset(palette, id)
+        setSelectedColorIds(ids)
+        if (ids.length === 0) showToast('Пресет ничего не нашёл')
+        else showToast(`Пресет · ${ids.length} цветов`)
+      }}
+      savedPalettes={savedPalettes}
+      onSavePalette={() => {
+        const hexes = palette
+          .filter((color) => selectedColorIds.includes(color.id))
+          .map((color) => color.hex)
+        if (hexes.length === 0) return
+        const next = [
+          createSavedPalette(`Палитра ${savedPalettes.length + 1}`, hexes, savedPalettes),
+          ...savedPalettes,
+        ].slice(0, 12)
+        setSavedPalettes(next)
+        saveSavedPalettes(next)
+        showToast('Палитра сохранена')
+      }}
+      onApplySaved={(item) => {
+        const ids = selectIdsByHexes(palette, item.hexes)
+        setSelectedColorIds(ids)
+        showToast(
+          ids.length > 0
+            ? `Применено: ${item.name}`
+            : 'Нет совпадений на этом референсе',
+        )
+      }}
+      onDeleteSaved={(id) => {
+        const next = savedPalettes.filter((item) => item.id !== id)
+        setSavedPalettes(next)
+        saveSavedPalettes(next)
+      }}
+      activeLayerName={flags.multiLayers ? activeLayerName : undefined}
+    />
+  ) : activeTool === 'poses' ? (
+    <PosesPanel
+      transform={transform}
+      flipped={flipped}
+      opacity={opacity}
+      poses={poses}
+      onSave={handleSavePose}
+      onApply={handleApplyPose}
+      onDelete={(id) => {
+        const next = poses.filter((item) => item.id !== id)
+        setPoses(next)
+        savePoses(next)
+        showToast('Поза удалена')
+      }}
+      onClear={() => {
+        setPoses([])
+        savePoses([])
+        showToast('Список поз очищен')
+      }}
+      onExport={() => {
+        downloadPosesJson(poses)
+        showToast('JSON экспортирован')
+      }}
+      onImportFile={(file) => {
+        if (!file) return
+        void file
+          .text()
+          .then((raw) => {
+            const imported = importPosesJson(raw)
+            const next = [...imported, ...poses].slice(0, 24)
+            setPoses(next)
+            savePoses(next)
+            showToast(`Импорт · ${imported.length}`)
+          })
+          .catch(() => showToast('Не удалось импортировать'))
+      }}
+    />
+  ) : null
+
+  const toolPanelChrome = (
+    <>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-2.5">
+        <p className={sectionTitleClass}>
+          {settingsOpen
+            ? 'Настройки'
+            : activeTool && activeTool !== 'layers'
+              ? STUDIO_TOOL_LABELS[activeTool]
+              : 'Инструмент'}
+        </p>
+        <button
+          type="button"
+          className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
+          onClick={() => {
+            if (settingsOpen) setSettingsOpen(false)
+            else setActiveTool(null)
+          }}
+        >
+          {settingsOpen ? 'К студии' : 'Закрыть'}
+        </button>
+      </div>
+      <div
+        className={cn(
+          'min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]',
+          scrollAreaClass,
+        )}
+      >
+        {toolPanelBody}
+      </div>
+    </>
+  )
 
   return (
     <div className={rootClass} data-atmosphere={atmosphere}>
@@ -1101,338 +1470,49 @@ export function Studio({
       )}
 
       {!uiHidden && (
-        <div className={dockShellClass}>
-          {!settingsOpen && flags.multiLayers && layers.length > 0 && (
-            <LayersPanel
-              layers={layers}
-              activeLayerId={activeLayerId}
-              onSelectLayer={selectLayer}
-              onReorderLayers={(fromId, toId) => {
-                setLayers((prev) => reorderLayersInDisplayOrder(prev, fromId, toId))
-                setActiveLayerId(fromId)
-              }}
-              onStackAction={(id, action: LayerStackAction) => {
-                setLayers((prev) => applyLayerStackAction(prev, id, action))
-                setActiveLayerId(id)
-                const labels: Record<LayerStackAction, string> = {
-                  front: 'на передний план',
-                  forward: 'ближе',
-                  backward: 'дальше',
-                  back: 'на задний план',
-                }
-                showToast(`Слой ${labels[action]}`)
-              }}
-              onLayerOpacity={(id, value) =>
-                setLayers((prev) =>
-                  prev.map((layer) =>
-                    layer.id === id ? { ...layer, opacity: value } : layer,
-                  ),
-                )
-              }
-              onLayerVisible={(id) =>
-                setLayers((prev) =>
-                  prev.map((layer) =>
-                    layer.id === id ? { ...layer, visible: !layer.visible } : layer,
-                  ),
-                )
-              }
-              onRemoveLayer={(id) => {
-                setLayers((prev) => {
-                  const target = prev.find((layer) => layer.id === id)
-                  if (target?.kind === 'aux') revokeAuxUrls([target])
-                  return prev.filter((layer) => layer.id !== id)
-                })
-                if (activeLayerId === id) setActiveLayerId('primary')
-              }}
-              ready={ready}
-              capturing={capturing}
-              onCapture={() => void handleCapture()}
-              onPickFile={(file) => applyPickedFile(file)}
-              flipped={flipped}
-              onFlip={() =>
-                setLayers((prev) =>
-                  prev.map((layer) =>
-                    layer.id === activeLayerId
-                      ? { ...layer, flipped: !layer.flipped }
-                      : layer,
-                  ),
-                )
-              }
-              locked={locked}
-              onToggleLock={() => setLocked((value) => !value)}
-              onReset={reset}
+        <>
+          {!settingsOpen && (
+            <ToolRail
+              activeTool={activeTool}
+              layersSheetOpen={layersSheetOpen}
+              onSelect={handleSelectTool}
             />
           )}
 
-          <aside className={dockClass} translate={settingsOpen ? 'no' : undefined}>
-          {settingsOpen ? (
-            <div className="flex items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-3">
-              <p className={sectionTitleClass}>Настройки</p>
-              <button
-                type="button"
-                className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
-                onClick={() => setSettingsOpen(false)}
-              >
-                К студии
-              </button>
-            </div>
-          ) : (
-            <div
-              className="sticky top-0 z-[2] grid grid-cols-4 gap-1 border-b border-[var(--glass-border-soft)] px-2 py-2 backdrop-blur-md"
-              style={{ backgroundImage: 'var(--tab-strip-bg)' }}
-              role="tablist"
-              aria-label="Панели студии"
-            >
-              {TABS.map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === id}
-                  className={cn(tabBaseClass, tab === id && tabActiveClass)}
-                  onClick={() => setTab(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          {desktopLayout && flags.multiLayers && layers.length > 0 && (
+            <div className={layersColumnClass}>{layersPanel}</div>
           )}
 
-          <div
-            className={cn(
-              'min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]',
-              scrollAreaClass,
-            )}
-          >
-            {settingsOpen ? (
-              <SettingsPanel
-                section={settingsSection}
-                onSection={setSettingsSection}
-                roomEnabled={roomEnabled}
-                roomCode={roomCode}
-                qrDataUrl={qrDataUrl}
-                roomJoinUrl={roomJoinUrl}
-                roomStatus={room.status}
-                roomError={room.error}
-                trackInfo={trackInfo}
-                onCopyCode={() => {
-                  void copyText(roomCode).then((ok) =>
-                    showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
-                  )
-                }}
-                onNewCode={() => {
-                  const next = createRoomCode()
-                  setRoomCode(next)
-                  saveHostRoomCode(next)
-                  showToast('Новая комната')
-                }}
-                onDisableRoom={() => setRoomEnabled(false)}
-                onEnableRoom={() => {
-                  if (!roomCode) {
-                    const next = createRoomCode()
-                    setRoomCode(next)
-                    saveHostRoomCode(next)
-                  }
-                  setRoomEnabled(true)
-                }}
-                hotkeys={hotkeys}
-                listeningFor={listeningFor}
-                setListeningFor={setListeningFor}
-                formatHotkey={formatHotkey}
-                setHotkeys={setHotkeys}
-                onHotkeysResetToast={() => showToast('Клавиши сброшены')}
-                flags={flags}
-                onFlags={setFlags}
-                onSaveProject={handleSaveProjectFile}
-                onClearAutosave={handleClearAutosave}
-                savingProject={savingProject}
-                autosaveLabel={autosaveLabel}
-              />
-            ) : (
-              <>
-                {tab === 'main' && (
-                  <MainPanel
-                    opacity={opacity}
-                    onOpacity={setOpacity}
-                    calcMode={calcMode}
-                    onCalcMode={setCalcMode}
-                    guides={guides}
-                    onGuides={setGuides}
-                    loupe={loupe}
-                    onLoupeChange={setLoupe}
-                    onLoupeToggle={() => {
-                      setLoupe((prev) => ({ ...prev, enabled: !prev.enabled }))
-                      setLoupeVisible(false)
-                    }}
-                    sessionMins={sessionMins}
-                    sessionRemainingLabel={sessionRemainingLabel}
-                    onStartSession={startSession}
-                    usingPhoneCam={usingPhoneCam}
-                    remoteFrozen={remoteFrozen}
-                    remoteTorch={remoteTorch}
-                    onToggleFreeze={toggleRemoteFreeze}
-                    onToggleTorch={toggleRemoteTorch}
-                    galleryEnabled={flags.sessionGallery}
-                    autoSessionShot={autoSessionShot}
-                    onAutoSessionShot={setAutoSessionShot}
-                    shots={shots}
-                    onProgressShot={() => void pushShot('progress')}
-                    onDownloadShot={(shot) =>
-                      downloadDataUrl(shot.dataUrl, `eyepaint-${shot.kind}-${shot.createdAt}.jpg`)
-                    }
-                    onClearShots={() => {
-                      setShots([])
-                      saveSessionShots([])
-                      showToast('Галерея очищена')
-                    }}
-                    atmosphere={atmosphere}
-                    atmosphereEnabled={flags.lightTheme}
-                    onAtmosphere={setAtmosphere}
-                  />
-                )}
-                {tab === 'project' && (
-                  <ProjectPanel transform={transform} setTransform={setTransform} />
-                )}
-                {tab === 'colors' && (
-                  <ColorsPanel
-                    precisionProfile={precisionProfile}
-                    colorPrecision={colorPrecision}
-                    onPrecision={setColorPrecision}
-                    matchTolerance={matchTolerance}
-                    onTolerance={setMatchTolerance}
-                    paletteLoading={paletteLoading}
-                    palette={palette}
-                    visiblePalette={visiblePalette}
-                    selectedColorIds={selectedColorIds}
-                    selectedSet={selectedSet}
-                    selectionCoverage={selectionCoverage}
-                    paletteSort={paletteSort}
-                    onPaletteSort={() =>
-                      setPaletteSort((value) => (value === 'hue' ? 'dominance' : 'hue'))
-                    }
-                    onToggleColor={(id) =>
-                      setSelectedColorIds((prev) =>
-                        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-                      )
-                    }
-                    onSelectAll={() => setSelectedColorIds(palette.map((c) => c.id))}
-                    onInvert={() => {
-                      const set = new Set(selectedColorIds)
-                      setSelectedColorIds(
-                        palette.filter((c) => !set.has(c.id)).map((c) => c.id),
-                      )
-                    }}
-                    onResetSelection={() => {
-                      setSelectedColorIds([])
-                      setColorMode('off')
-                    }}
-                    pickMode={pickMode}
-                    onPickMode={() => {
-                      setPickMode((value) => !value)
-                      setBrush((prev) => ({ ...prev, editing: false }))
-                      setTab('colors')
-                    }}
-                    colorMode={colorMode}
-                    filterBusy={filterBusy}
-                    onMaskMode={() =>
-                      setColorMode((mode) => (mode === 'mask' ? 'gray' : 'mask'))
-                    }
-                    onGrayMode={() => setColorMode('gray')}
-                    brushEnabled={flags.brushMask}
-                    brush={brush}
-                    onBrush={setBrush}
-                    onClearBrush={() =>
-                      setBrush((prev) => ({
-                        ...prev,
-                        dataUrl: null,
-                        editing: false,
-                      }))
-                    }
-                    onPreset={(id: PalettePresetId) => {
-                      const ids = matchPreset(palette, id)
-                      setSelectedColorIds(ids)
-                      if (ids.length === 0) showToast('Пресет ничего не нашёл')
-                      else showToast(`Пресет · ${ids.length} цветов`)
-                    }}
-                    savedPalettes={savedPalettes}
-                    onSavePalette={() => {
-                      const hexes = palette
-                        .filter((color) => selectedColorIds.includes(color.id))
-                        .map((color) => color.hex)
-                      if (hexes.length === 0) return
-                      const next = [
-                        createSavedPalette(`Палитра ${savedPalettes.length + 1}`, hexes, savedPalettes),
-                        ...savedPalettes,
-                      ].slice(0, 12)
-                      setSavedPalettes(next)
-                      saveSavedPalettes(next)
-                      showToast('Палитра сохранена')
-                    }}
-                    onApplySaved={(item) => {
-                      const ids = selectIdsByHexes(palette, item.hexes)
-                      setSelectedColorIds(ids)
-                      showToast(
-                        ids.length > 0
-                          ? `Применено: ${item.name}`
-                          : 'Нет совпадений на этом референсе',
-                      )
-                    }}
-                    onDeleteSaved={(id) => {
-                      const next = savedPalettes.filter((item) => item.id !== id)
-                      setSavedPalettes(next)
-                      saveSavedPalettes(next)
-                    }}
-                    activeLayerName={flags.multiLayers ? activeLayerName : undefined}
-                  />
-                )}
-                {tab === 'poses' && (
-                  <PosesPanel
-                    transform={transform}
-                    flipped={flipped}
-                    opacity={opacity}
-                    poses={poses}
-                    onSave={handleSavePose}
-                    onApply={handleApplyPose}
-                    onDelete={(id) => {
-                      const next = poses.filter((item) => item.id !== id)
-                      setPoses(next)
-                      savePoses(next)
-                      showToast('Поза удалена')
-                    }}
-                    onClear={() => {
-                      setPoses([])
-                      savePoses([])
-                      showToast('Список поз очищен')
-                    }}
-                    onExport={() => {
-                      downloadPosesJson(poses)
-                      showToast('JSON экспортирован')
-                    }}
-                    onImportFile={(file) => {
-                      if (!file) return
-                      void file
-                        .text()
-                        .then((raw) => {
-                          const imported = importPosesJson(raw)
-                          const next = [...imported, ...poses].slice(0, 24)
-                          setPoses(next)
-                          savePoses(next)
-                          showToast(`Импорт · ${imported.length}`)
-                        })
-                        .catch(() => showToast('Не удалось импортировать'))
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </aside>
-        </div>
+          {desktopLayout && showToolInspector && (
+            <aside
+              className={toolInspectorClass}
+              translate={settingsOpen ? 'no' : undefined}
+              aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
+            >
+              {toolPanelChrome}
+            </aside>
+          )}
+
+          {!desktopLayout && (
+            <div className={dockShellClass}>
+              {!settingsOpen && flags.multiLayers && layers.length > 0 && layersPanel}
+              {showToolInspector && (
+                <aside
+                  className={dockClass}
+                  translate={settingsOpen ? 'no' : undefined}
+                  aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
+                >
+                  {toolPanelChrome}
+                </aside>
+              )}
+            </div>
+          )}
+        </>
       )}
 
-      {!uiHidden && (
+      {!uiHidden && desktopLayout && !showToolInspector && (
         <div
-          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-4 z-[3] hidden max-w-[min(28rem,calc(100%-24rem))] rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-3 py-2 text-[0.78rem] text-[var(--fg-muted)] backdrop-blur-md min-[960px]:block"
+          className="absolute bottom-[calc(var(--safe-bottom)+1rem)] left-1/2 z-[3] hidden max-w-[min(28rem,calc(100%-26rem))] -translate-x-1/2 rounded-xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-3 py-2 text-center text-[0.78rem] text-[var(--fg-muted)] backdrop-blur-md min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}

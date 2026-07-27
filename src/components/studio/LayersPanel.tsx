@@ -13,6 +13,7 @@ import {
   cn,
   glassButtonClass,
   hiddenFileInputClass,
+  layersColumnPanelClass,
   layersSheetClass,
   mutedTextClass,
   rangeInputClass,
@@ -43,6 +44,9 @@ function saveLayersOpen(open: boolean) {
 }
 
 type LayersPanelProps = {
+  variant?: 'sheet' | 'column'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   layers: RefLayer[]
   activeLayerId: string
   onSelectLayer: (id: string) => void
@@ -89,8 +93,16 @@ type DragGhost = {
 }
 
 export function LayersPanel(props: LayersPanelProps) {
+  const variant = props.variant ?? 'sheet'
   const menuRootId = useId()
-  const [open, setOpen] = useState(loadLayersOpen)
+  const [internalOpen, setInternalOpen] = useState(loadLayersOpen)
+  const controlled = props.open !== undefined
+  const open = variant === 'column' ? true : controlled ? Boolean(props.open) : internalOpen
+  const setOpen = (next: boolean) => {
+    if (!controlled) setInternalOpen(next)
+    props.onOpenChange?.(next)
+    saveLayersOpen(next)
+  }
   const [dragId, setDragId] = useState<string | null>(null)
   const [ghost, setGhost] = useState<DragGhost | null>(null)
   const [menu, setMenu] = useState<MenuAnchor | null>(null)
@@ -122,13 +134,15 @@ export function LayersPanel(props: LayersPanelProps) {
   }
 
   useEffect(() => {
+    if (variant === 'column') return
     saveLayersOpen(open)
-  }, [open])
+  }, [open, variant])
 
   useEffect(() => {
+    if (variant === 'column') return
     if (props.layers.length > prevCountRef.current) setOpen(true)
     prevCountRef.current = props.layers.length
-  }, [props.layers.length])
+  }, [props.layers.length, variant])
 
   useEffect(() => {
     dragIdRef.current = dragId
@@ -284,7 +298,7 @@ export function LayersPanel(props: LayersPanelProps) {
 
   if (props.layers.length === 0) return null
 
-  if (!open) {
+  if (variant === 'sheet' && !open) {
     return (
       <div className="flex shrink-0 justify-end" aria-label="Блок слоёв">
         <button
@@ -311,7 +325,7 @@ export function LayersPanel(props: LayersPanelProps) {
   return (
     <section
       id="eyepaint-layers-sheet"
-      className={layersSheetClass}
+      className={variant === 'column' ? layersColumnPanelClass : layersSheetClass}
       aria-label="Блок слоёв"
       aria-modal="false"
     >
@@ -321,20 +335,24 @@ export function LayersPanel(props: LayersPanelProps) {
           <p className={cn(mutedTextClass, 'truncate')}>
             {activeLayer
               ? `Активен: ${activeLayer.name} · тяни ≡ для порядка`
-              : 'Экран над меню студии'}
+              : variant === 'column'
+                ? 'Колонка слоёв'
+                : 'Экран над меню студии'}
           </p>
         </div>
-        <button
-          type="button"
-          className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
-          aria-expanded={true}
-          onClick={() => {
-            setOpen(false)
-            setMenu(null)
-          }}
-        >
-          Закрыть
-        </button>
+        {variant === 'sheet' && (
+          <button
+            type="button"
+            className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
+            aria-expanded={true}
+            onClick={() => {
+              setOpen(false)
+              setMenu(null)
+            }}
+          >
+            Закрыть
+          </button>
+        )}
       </div>
 
       <ul
