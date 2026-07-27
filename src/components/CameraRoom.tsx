@@ -6,6 +6,12 @@ import {
   normalizeRoomCode,
   saveJoinRoomCode,
 } from '../lib/rooms'
+import {
+  loadVideoQuality,
+  QUALITY_PRESETS,
+  saveVideoQuality,
+  type VideoQuality,
+} from '../lib/videoQuality'
 import './CameraRoom.css'
 
 type CameraRoomProps = {
@@ -15,17 +21,23 @@ type CameraRoomProps = {
 export function CameraRoom({ onExit }: CameraRoomProps) {
   const [code, setCode] = useState(() => loadJoinRoomCode())
   const [started, setStarted] = useState(false)
-  const { videoRef, ready, error, stream } = useCamera(true)
+  const [quality, setQuality] = useState<VideoQuality>(() => loadVideoQuality())
+  const { videoRef, ready, error, stream } = useCamera(true, null, quality)
   const room = useRoomPeer({
     enabled: started && ready && code.length >= 4,
     role: 'camera',
     code,
     localStream: stream,
+    quality,
   })
 
   useEffect(() => {
     if (code.length >= 4) saveJoinRoomCode(code)
   }, [code])
+
+  useEffect(() => {
+    saveVideoQuality(quality)
+  }, [quality])
 
   useEffect(() => {
     if (!started) return
@@ -44,7 +56,7 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
     : !started
       ? 'Введи код с ПК и нажми «Подключиться»'
       : room.status === 'connected'
-        ? 'Стрим идёт на ПК'
+        ? `Стрим на ПК · ${QUALITY_PRESETS[quality].label}`
         : room.status === 'error'
           ? room.error || 'Ошибка связи'
           : 'Ищу комнату на ПК… оставь экран включённым'
@@ -70,7 +82,7 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             <strong>1.</strong> На ПК: студия → «Связь» → «Создать комнату»
           </p>
           <p>
-            <strong>2.</strong> Введи этот код здесь и подключись
+            <strong>2.</strong> Введи код здесь и подключись
           </p>
         </div>
 
@@ -92,6 +104,26 @@ export function CameraRoom({ onExit }: CameraRoomProps) {
             aria-label="Код с компьютера"
           />
         </label>
+
+        <div className="camroom__quality">
+          <span className="camroom__label">Качество стрима</span>
+          <div className="camroom__quality-grid">
+            {(Object.keys(QUALITY_PRESETS) as VideoQuality[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`camroom__quality-btn ${quality === id ? 'is-active' : ''}`}
+                disabled={started}
+                onClick={() => setQuality(id)}
+              >
+                {QUALITY_PRESETS[id].label}
+              </button>
+            ))}
+          </div>
+          <p className="camroom__quality-note">
+            Меняй до подключения. Выше качество = больше трафик и нагрузка.
+          </p>
+        </div>
 
         <p className={`camroom__status ${room.status === 'error' || error ? 'is-error' : ''}`}>
           {error || statusText}
