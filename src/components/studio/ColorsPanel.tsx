@@ -56,11 +56,17 @@ type ColorsPanelProps = {
   onSavePalette: () => void
   onApplySaved: (palette: SavedPalette) => void
   onDeleteSaved: (id: string) => void
+  activeLayerName?: string
 }
 
 export function ColorsPanel(props: ColorsPanelProps) {
   return (
     <div className={panelClass}>
+      {props.activeLayerName && (
+        <p className="rounded-xl border border-accent/30 bg-accent/12 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
+          Цвета для слоя: <strong>{props.activeLayerName}</strong>
+        </p>
+      )}
       <div>
         <div className={sliderLabelsClass}>
           <span>Точность палитры</span>
