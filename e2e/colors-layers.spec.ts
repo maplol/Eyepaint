@@ -32,18 +32,19 @@ test.describe('Colors & layers', () => {
       .locator('input[type="file"]')
     await galleryInStudio.setInputFiles('e2e/fixtures/reference.png')
 
+    const layersList = page.getByRole('list', { name: 'Слои референса' })
     await expect(page.getByText('Слои референса')).toBeVisible()
-    await expect(page.getByRole('list', { name: 'Слои референса' })).toBeVisible()
-    await expect(page.getByText(/Активен ·/)).toBeVisible({ timeout: 10_000 })
+    await expect(layersList).toBeVisible({ timeout: 10_000 })
+    await expect(layersList.getByText(/Активен ·/)).toBeVisible()
 
-    // Переключить на основной и обратно
-    await page.getByRole('button', { name: /Основной/ }).click()
-    await expect(page.getByText(/Активен ·/).first()).toBeVisible()
+    // Переключить на основной
+    await layersList.getByRole('button', { name: /^Основной/ }).click()
+    await expect(layersList.getByText(/Активен ·/).first()).toBeVisible()
 
-    // Контекстное меню порядка
+    // Меню порядка
     await page.getByRole('button', { name: 'Меню слоя Основной' }).click()
     await expect(page.getByRole('menuitem', { name: 'На передний план' })).toBeVisible()
     await page.getByRole('menuitem', { name: 'На передний план' }).click()
-    await expect(page.getByText(/передний|Активен/)).toBeVisible()
+    await expect(layersList.getByText(/передний/)).toBeVisible()
   })
 })
