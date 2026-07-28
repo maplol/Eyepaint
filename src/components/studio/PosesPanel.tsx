@@ -1,6 +1,9 @@
-import type { ChangeEvent, ReactNode } from 'react'
+import type { ChangeEvent } from 'react'
 import type { OverlayTransform } from '../../hooks/useOverlayTransform'
 import { formatPoseStats, type SavedPose } from '../../lib/poses'
+import { CornerAction, TrashIcon } from './CornerAction'
+import { HoverTooltip } from './HoverTooltip'
+import { PanelTabs } from './PanelTabs'
 import {
   chipFileClass,
   chipNeutralClass,
@@ -13,7 +16,6 @@ import {
   poseStatIconClass,
   poseStatsClass,
   poseStatValueClass,
-  sectionDividerClass,
   tipClass,
 } from './studioUi'
 
@@ -120,13 +122,12 @@ function PoseStatsGrid({ stats }: { stats: Record<string, string> }) {
         if (value == null) return null
         const label = STAT_LABELS[key] ?? key
         return (
-          <div key={key} className={poseStatClass} title={`${label}: ${value}`}>
-            <StatIcon id={key} />
-            <strong className={poseStatValueClass}>{value}</strong>
-            <span className="sr-only">
-              {label}: {value}
-            </span>
-          </div>
+          <HoverTooltip key={key} label={label}>
+            <div className={poseStatClass} aria-label={`${label}: ${value}`}>
+              <StatIcon id={key} />
+              <strong className={poseStatValueClass}>{value}</strong>
+            </div>
+          </HoverTooltip>
         )
       })}
     </div>
@@ -146,10 +147,6 @@ type PosesPanelProps = {
   onImportFile: (file: File | undefined) => void
 }
 
-function Section({ first, children }: { first?: boolean; children: ReactNode }) {
-  return <div className={first ? undefined : sectionDividerClass}>{children}</div>
-}
-
 export function PosesPanel(props: PosesPanelProps) {
   const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
     props.onImportFile(event.target.files?.[0])
@@ -162,102 +159,105 @@ export function PosesPanel(props: PosesPanelProps) {
     opacity: props.opacity,
   })
 
-  return (
-    <div className={cn(panelClass, 'gap-0')}>
-      <Section first>
-        <PoseStatsGrid stats={currentStats} />
-      </Section>
-
-      <Section>
-        <button type="button" className={poseSaveClass} onClick={props.onSave}>
-          + Сохранить в список
+  const currentTab = (
+    <div className="grid gap-3">
+      <PoseStatsGrid stats={currentStats} />
+      <button type="button" className={poseSaveClass} onClick={props.onSave}>
+        + Сохранить в список
+      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={chipNeutralClass}
+          disabled={props.poses.length === 0}
+          onClick={props.onExport}
+        >
+          Экспорт JSON
         </button>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className={chipNeutralClass}
-            disabled={props.poses.length === 0}
-            onClick={props.onExport}
-          >
-            Экспорт JSON
-          </button>
-          <label className={chipFileClass}>
-            Импорт JSON
-            <input
-              className={hiddenFileInputClass}
-              type="file"
-              accept="application/json,.json"
-              onChange={handleImport}
-            />
-          </label>
-        </div>
-      </Section>
+        <label className={chipFileClass}>
+          Импорт JSON
+          <input
+            className={hiddenFileInputClass}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImport}
+          />
+        </label>
+      </div>
+    </div>
+  )
 
-      <Section>
-        {props.poses.length === 0 ? (
-          <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
-        ) : (
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className={fieldLabelClass}>Сохранённые · {props.poses.length}</p>
-              <button
-                type="button"
-                className="inline-flex min-h-8 items-center justify-center rounded-full px-2.5 text-[0.78rem] font-semibold leading-none text-[var(--danger)]"
-                onClick={props.onClear}
-              >
-                Очистить всё
-              </button>
-            </div>
-            <ul className="grid list-none gap-2">
-              {props.poses.map((pose) => {
-                const stats = formatPoseStats(pose)
-                return (
-                  <li
-                    key={pose.id}
-                    className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] p-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        {pose.thumbnail ? (
-                          <img
-                            src={pose.thumbnail}
-                            alt=""
-                            className="h-11 w-11 flex-none rounded-xl border border-[var(--glass-border)] object-cover"
-                          />
-                        ) : (
-                          <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[0.68rem] text-[var(--fg-faint)]">
-                            —
-                          </span>
-                        )}
-                        <p className="truncate text-[0.9rem] font-bold text-[var(--fg-strong)]">
-                          {pose.name}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className={cn(
-                          'inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-danger/35 bg-danger/12 px-2.5 py-1 text-[0.75rem] font-semibold leading-none text-[var(--danger-soft)]',
-                        )}
-                        onClick={() => props.onDelete(pose.id)}
-                      >
-                        Удалить
-                      </button>
+  const listTab = (
+    <div className="relative grid gap-2 pb-11">
+      {props.poses.length === 0 ? (
+        <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
+      ) : (
+        <>
+          <p className={fieldLabelClass}>Сохранённые · {props.poses.length}</p>
+          <ul className="grid list-none gap-2">
+            {props.poses.map((pose) => {
+              const stats = formatPoseStats(pose)
+              return (
+                <li
+                  key={pose.id}
+                  className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] p-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {pose.thumbnail ? (
+                        <img
+                          src={pose.thumbnail}
+                          alt=""
+                          className="h-11 w-11 flex-none rounded-xl border border-[var(--glass-border)] object-cover"
+                        />
+                      ) : (
+                        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-[var(--glass-border)] bg-[var(--glass-fill)] text-[0.68rem] text-[var(--fg-faint)]">
+                          —
+                        </span>
+                      )}
+                      <p className="truncate text-[0.9rem] font-bold text-[var(--fg-strong)]">
+                        {pose.name}
+                      </p>
                     </div>
-                    <PoseStatsGrid stats={stats} />
                     <button
                       type="button"
-                      className={chipNeutralClass}
-                      onClick={() => props.onApply(pose)}
+                      className={cn(
+                        'inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-danger/35 bg-danger/12 px-2.5 py-1 text-[0.75rem] font-semibold leading-none text-[var(--danger-soft)]',
+                      )}
+                      onClick={() => props.onDelete(pose.id)}
                     >
-                      Применить
+                      Удалить
                     </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
-      </Section>
+                  </div>
+                  <PoseStatsGrid stats={stats} />
+                  <button
+                    type="button"
+                    className={chipNeutralClass}
+                    onClick={() => props.onApply(pose)}
+                  >
+                    Применить
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <CornerAction label="Очистить всё" onClick={props.onClear}>
+            <TrashIcon />
+          </CornerAction>
+        </>
+      )}
+    </div>
+  )
+
+  return (
+    <div className={cn(panelClass, 'gap-0')}>
+      <PanelTabs
+        tabs={[
+          { id: 'now', label: 'Сейчас', content: currentTab },
+          { id: 'list', label: 'Список', content: listTab },
+        ]}
+        storageKey="eyepaint-poses-tab"
+      />
     </div>
   )
 }

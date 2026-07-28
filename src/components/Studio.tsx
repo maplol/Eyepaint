@@ -20,7 +20,7 @@ import { MaskPainter } from './studio/MaskPainter'
 import { PanelHint } from './studio/PanelHint'
 import { PosesPanel } from './studio/PosesPanel'
 import { ProjectPanel } from './studio/ProjectPanel'
-import { SettingsPanel } from './studio/SettingsPanel'
+import { SettingsPanel, type SettingsSection } from './studio/SettingsPanel'
 import { ToolRail } from './studio/ToolRail'
 import {
   cameraClass,
@@ -148,8 +148,6 @@ type StudioProps = {
   projectBoot?: HydratedProject | null
   onAutosaveWritten?: (meta: AutosaveMeta | null) => void
 }
-
-type SettingsSection = 'link' | 'keys' | 'flags' | 'project'
 
 const LAYERS_OPEN_KEY = 'eyepaint-layers-sheet-open-v1'
 
@@ -526,6 +524,15 @@ export function Studio({
       delete document.documentElement.dataset.atmosphere
     }
   }, [atmosphere])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [settingsOpen])
 
   useEffect(() => {
     setLayers((prev) => syncPrimaryUrl(prev, imageUrl))
@@ -936,8 +943,7 @@ export function Studio({
       ? `Камера: локальная${trackInfo ? ` · ${trackInfo}` : ''}`
       : 'Камера: нет'
 
-  const showToolInspector =
-    settingsOpen || (toolPanelOpen && activeTool !== null && activeTool !== 'layers')
+  const showToolInspector = toolPanelOpen && activeTool !== null && activeTool !== 'layers'
 
   const loupeMode = activeTool === 'loupe' && loupe.enabled
   const blockLayerGestures = loupeMode || pickMode || brush.editing
@@ -1129,56 +1135,10 @@ export function Studio({
       saveSessionShots([])
       showToast('Галерея очищена')
     },
-    atmosphere,
-    atmosphereEnabled: flags.lightTheme,
-    onAtmosphere: setAtmosphere,
   }
 
-  const toolPanelBody = settingsOpen ? (
-    <SettingsPanel
-      section={settingsSection}
-      onSection={setSettingsSection}
-      roomEnabled={roomEnabled}
-      roomCode={roomCode}
-      qrDataUrl={qrDataUrl}
-      roomJoinUrl={roomJoinUrl}
-      roomStatus={room.status}
-      roomError={room.error}
-      trackInfo={trackInfo}
-      onCopyCode={() => {
-        void copyText(roomCode).then((ok) =>
-          showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
-        )
-      }}
-      onNewCode={() => {
-        const next = createRoomCode()
-        setRoomCode(next)
-        saveHostRoomCode(next)
-        showToast('Новая комната')
-      }}
-      onDisableRoom={() => setRoomEnabled(false)}
-      onEnableRoom={() => {
-        if (!roomCode) {
-          const next = createRoomCode()
-          setRoomCode(next)
-          saveHostRoomCode(next)
-        }
-        setRoomEnabled(true)
-      }}
-      hotkeys={hotkeys}
-      listeningFor={listeningFor}
-      setListeningFor={setListeningFor}
-      formatHotkey={formatHotkey}
-      setHotkeys={setHotkeys}
-      onHotkeysResetToast={() => showToast('Клавиши сброшены')}
-      flags={flags}
-      onFlags={setFlags}
-      onSaveProject={handleSaveProjectFile}
-      onClearAutosave={handleClearAutosave}
-      savingProject={savingProject}
-      autosaveLabel={autosaveLabel}
-    />
-  ) : activeTool === 'hand' ? (
+  const toolPanelBody =
+    activeTool === 'hand' ? (
     <MainPanel {...mainPanelProps} focus="hand" />
   ) : activeTool === 'calc' ? (
     <MainPanel {...mainPanelProps} focus="calc" />
@@ -1319,31 +1279,18 @@ export function Studio({
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <p className={sectionTitleClass}>
-            {settingsOpen
-              ? 'Настройки'
-              : activeTool && activeTool !== 'layers'
-                ? STUDIO_TOOL_LABELS[activeTool]
-                : 'Инструмент'}
+            {activeTool && activeTool !== 'layers'
+              ? STUDIO_TOOL_LABELS[activeTool]
+              : 'Инструмент'}
           </p>
-          {(settingsOpen || (activeTool && activeTool !== 'layers')) && (
-            <PanelHint
-              tipId={
-                settingsOpen
-                  ? 'studio-settings'
-                  : (activeTool as string)
-              }
-            />
-          )}
+          {activeTool && activeTool !== 'layers' && <PanelHint tipId={activeTool} />}
         </div>
         <button
           type="button"
           className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold leading-none text-[var(--fg-strong)]"
-          onClick={() => {
-            if (settingsOpen) setSettingsOpen(false)
-            else setToolPanelOpen(false)
-          }}
+          onClick={() => setToolPanelOpen(false)}
         >
-          {settingsOpen ? 'К студии' : 'Закрыть'}
+          Закрыть
         </button>
       </div>
       <div
@@ -1635,16 +1582,14 @@ export function Studio({
 
       {!uiHidden && (
         <>
-          {!settingsOpen && (
-            <ToolRail
-              activeTool={activeTool}
-              layersSheetOpen={layersSheetOpen}
-              guidesOn={guides.kind !== 'none'}
-              calcOn={calcMode.enabled}
-              loupeOn={loupeMode}
-              onSelect={handleSelectTool}
-            />
-          )}
+          <ToolRail
+            activeTool={activeTool}
+            layersSheetOpen={layersSheetOpen}
+            guidesOn={guides.kind !== 'none'}
+            calcOn={calcMode.enabled}
+            loupeOn={loupeMode}
+            onSelect={handleSelectTool}
+          />
 
           {desktopLayout &&
             flags.multiLayers &&
@@ -1652,33 +1597,71 @@ export function Studio({
             layersSheetOpen && <div className={layersColumnClass}>{layersPanel}</div>}
 
           {desktopLayout && showToolInspector && (
-            <aside
-              className={cn(
-                toolInspectorClass,
-                settingsOpen && 'max-h-[min(62vh,560px)] w-[min(320px,calc(100vw-22rem))]',
-              )}
-              translate={settingsOpen ? 'no' : undefined}
-              aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
-            >
+            <aside className={toolInspectorClass} aria-label="Настройки инструмента">
               {toolPanelChrome}
             </aside>
           )}
 
           {!desktopLayout && (
             <div className={dockShellClass}>
-              {!settingsOpen && flags.multiLayers && layers.length > 0 && layersPanel}
+              {flags.multiLayers && layers.length > 0 && layersPanel}
               {showToolInspector && (
-                <aside
-                  className={cn(dockClass, settingsOpen && 'max-h-[min(58dvh,520px)]')}
-                  translate={settingsOpen ? 'no' : undefined}
-                  aria-label={settingsOpen ? 'Настройки' : 'Настройки инструмента'}
-                >
+                <aside className={dockClass} aria-label="Настройки инструмента">
                   {toolPanelChrome}
                 </aside>
               )}
             </div>
           )}
         </>
+      )}
+
+      {settingsOpen && (
+        <SettingsPanel
+          section={settingsSection}
+          onSection={setSettingsSection}
+          onClose={() => setSettingsOpen(false)}
+          roomEnabled={roomEnabled}
+          roomCode={roomCode}
+          qrDataUrl={qrDataUrl}
+          roomJoinUrl={roomJoinUrl}
+          roomStatus={room.status}
+          roomError={room.error}
+          trackInfo={trackInfo}
+          onCopyCode={() => {
+            void copyText(roomCode).then((ok) =>
+              showToast(ok ? 'Код скопирован' : 'Не удалось скопировать'),
+            )
+          }}
+          onNewCode={() => {
+            const next = createRoomCode()
+            setRoomCode(next)
+            saveHostRoomCode(next)
+            showToast('Новая комната')
+          }}
+          onDisableRoom={() => setRoomEnabled(false)}
+          onEnableRoom={() => {
+            if (!roomCode) {
+              const next = createRoomCode()
+              setRoomCode(next)
+              saveHostRoomCode(next)
+            }
+            setRoomEnabled(true)
+          }}
+          hotkeys={hotkeys}
+          listeningFor={listeningFor}
+          setListeningFor={setListeningFor}
+          formatHotkey={formatHotkey}
+          setHotkeys={setHotkeys}
+          onHotkeysResetToast={() => showToast('Клавиши сброшены')}
+          flags={flags}
+          onFlags={setFlags}
+          onSaveProject={handleSaveProjectFile}
+          onClearAutosave={handleClearAutosave}
+          savingProject={savingProject}
+          autosaveLabel={autosaveLabel}
+          atmosphere={atmosphere}
+          onAtmosphere={setAtmosphere}
+        />
       )}
 
       {!uiHidden && desktopLayout && !showToolInspector && (

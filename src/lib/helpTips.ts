@@ -160,6 +160,12 @@ export const HELP_TIPS: Record<string, HelpTip> = {
     title: 'Проект',
     body: 'Сохранить .eyepaint.json на диск или очистить автосейв браузера. Не забудь сохраниться перед сменой устройства.',
   },
+  'settings-theme': {
+    id: 'settings-theme',
+    page: 'studio',
+    title: 'Тема',
+    body: 'Тёмная или светлая атмосфера студии. Светлая доступна, если включён флаг «Светлая тема».',
+  },
 
   'camera-code': {
     id: 'camera-code',

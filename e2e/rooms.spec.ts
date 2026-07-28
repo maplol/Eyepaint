@@ -26,7 +26,7 @@ test.describe('Rooms & camera', () => {
     await enterStudioFromGallery(page)
 
     await page.getByRole('button', { name: 'Настройки' }).click()
-    await expect(page.getByText('Настройки').first()).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Настройки' })).toBeVisible()
     await page.getByRole('button', { name: 'Связь' }).click()
     await page.getByRole('button', { name: 'Создать комнату' }).click()
 
