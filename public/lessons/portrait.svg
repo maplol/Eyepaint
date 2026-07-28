@@ -1,9 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="800" viewBox="0 0 640 800" fill="none">
   <rect width="640" height="800" fill="#1c2428"/>
-  <ellipse cx="320" cy="250" rx="120" ry="150" fill="#e09a6a" opacity="0.85"/>
-  <path d="M200 400 Q320 360 440 400 L460 720 Q320 760 180 720 Z" fill="#c9855c" opacity="0.9"/>
-  <ellipse cx="280" cy="230" rx="14" ry="10" fill="#2a1a10"/>
-  <ellipse cx="360" cy="230" rx="14" ry="10" fill="#2a1a10"/>
-  <path d="M290 290 Q320 310 350 290" stroke="#2a1a10" stroke-width="6" stroke-linecap="round"/>
-  <text x="320" y="60" text-anchor="middle" fill="#f5f7f8" font-family="sans-serif" font-size="28" font-weight="700">>@B@5B 3/4</text>
+  <!-- 3/4 head: oval turned slightly left -->
+  <ellipse cx="336" cy="268" rx="118" ry="148" fill="#e09a6a" opacity="0.92"/>
+  <!-- jaw / cheek plane -->
+  <path d="M250 300 C248 380 270 430 336 448 C390 438 420 390 418 310" fill="#d4895a" opacity="0.55"/>
+  <!-- center line of face (3/4) -->
+  <path d="M360 140 C348 220 340 300 344 400" stroke="#2a1a10" stroke-width="3" stroke-opacity="0.35" fill="none"/>
+  <!-- brow / eye line -->
+  <path d="M250 250 L410 242" stroke="#2a1a10" stroke-width="3" stroke-opacity="0.4" fill="none"/>
+  <!-- eyes -->
+  <ellipse cx="300" cy="255" rx="16" ry="11" fill="#2a1a10"/>
+  <ellipse cx="382" cy="248" rx="13" ry="10" fill="#2a1a10"/>
+  <!-- nose -->
+  <path d="M348 255 L338 310 L358 318" stroke="#2a1a10" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- mouth -->
+  <path d="M318 348 Q348 365 378 344" stroke="#2a1a10" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <!-- ear (far side hint) -->
+  <ellipse cx="248" cy="275" rx="14" ry="26" fill="#c9855c"/>
+  <!-- neck + shoulders -->
+  <path d="M300 410 L318 480 L360 480 L380 405" fill="#c9855c"/>
+  <path d="M200 500 Q320 460 440 500 L460 720 Q320 760 180 720 Z" fill="#b8764f" opacity="0.95"/>
+  <!-- construction marks -->
+  <ellipse cx="336" cy="268" rx="118" ry="148" fill="none" stroke="#ffd9bd" stroke-width="2" stroke-opacity="0.35"/>
+  <line x1="250" y1="250" x2="410" y2="242" stroke="#ffd9bd" stroke-width="1.5" stroke-opacity="0.4"/>
+  <line x1="260" y1="330" x2="400" y2="328" stroke="#ffd9bd" stroke-width="1.2" stroke-opacity="0.3" stroke-dasharray="6 4"/>
 </svg>

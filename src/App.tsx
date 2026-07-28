@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CameraRoom } from './components/CameraRoom'
+import { HelpProvider } from './components/HelpSystem'
 import { Onboarding } from './components/Onboarding'
 import { Studio } from './components/Studio'
 import { Welcome } from './components/Welcome'
@@ -21,6 +22,8 @@ type LessonBoot = {
   guide: LessonCard['guide']
   opacity: number
   calcStrength?: number
+  tip?: string
+  title?: string
 }
 
 function App() {
@@ -82,6 +85,8 @@ function App() {
       guide: lesson.guide,
       opacity: lesson.opacity,
       calcStrength: lesson.calcStrength,
+      tip: lesson.tip,
+      title: lesson.title,
     })
     setImageUrl((prev) => {
       if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
@@ -119,8 +124,19 @@ function App() {
       .finally(() => setProjectBusy(false))
   }
 
+  const onboarding: ReactNode =
+    showOnboarding && (
+      <Onboarding
+        onDone={() => {
+          markOnboardingDone()
+          setShowOnboarding(false)
+        }}
+      />
+    )
+
+  let screen: ReactNode
   if (mode === 'camera') {
-    return (
+    screen = (
       <CameraRoom
         initialCode={joinCode}
         onExit={() => {
@@ -128,10 +144,8 @@ function App() {
         }}
       />
     )
-  }
-
-  if (mode === 'studio' && imageUrl) {
-    return (
+  } else if (mode === 'studio' && imageUrl) {
+    screen = (
       <>
         <Studio
           imageUrl={imageUrl}
@@ -145,54 +159,42 @@ function App() {
             setMode('welcome')
           }}
         />
-        {showOnboarding && (
-          <Onboarding
-            onDone={() => {
-              markOnboardingDone()
-              setShowOnboarding(false)
-            }}
-          />
+        {onboarding}
+      </>
+    )
+  } else {
+    screen = (
+      <>
+        <Welcome
+          onPickImage={handlePickImage}
+          onStartCameraRoom={() => setMode('camera')}
+          onStartLesson={handleStartLesson}
+          onOpenProjectFile={handleOpenProjectFile}
+          onContinueSession={handleContinueSession}
+          autosaveMeta={autosaveMeta}
+          projectBusy={projectBusy}
+        />
+        {welcomeError && (
+          <p className="fixed inset-x-4 bottom-[calc(var(--safe-bottom)+1rem)] z-20 rounded-2xl border border-[rgba(239,139,139,0.45)] bg-[rgba(20,26,29,0.88)] px-4 py-3 text-center text-sm text-[#ffb4b4] backdrop-blur-md">
+            {welcomeError}
+            <button
+              type="button"
+              className="ml-3 underline"
+              onClick={() => {
+                void clearAutosave().then(() => setAutosaveMeta(null))
+                setWelcomeError(null)
+              }}
+            >
+              Ок
+            </button>
+          </p>
         )}
+        {onboarding}
       </>
     )
   }
 
-  return (
-    <>
-      <Welcome
-        onPickImage={handlePickImage}
-        onStartCameraRoom={() => setMode('camera')}
-        onStartLesson={handleStartLesson}
-        onOpenProjectFile={handleOpenProjectFile}
-        onContinueSession={handleContinueSession}
-        autosaveMeta={autosaveMeta}
-        projectBusy={projectBusy}
-      />
-      {welcomeError && (
-        <p className="fixed inset-x-4 bottom-[calc(var(--safe-bottom)+1rem)] z-20 rounded-2xl border border-[rgba(239,139,139,0.45)] bg-[rgba(20,26,29,0.88)] px-4 py-3 text-center text-sm text-[#ffb4b4] backdrop-blur-md">
-          {welcomeError}
-          <button
-            type="button"
-            className="ml-3 underline"
-            onClick={() => {
-              void clearAutosave().then(() => setAutosaveMeta(null))
-              setWelcomeError(null)
-            }}
-          >
-            Ок
-          </button>
-        </p>
-      )}
-      {showOnboarding && (
-        <Onboarding
-          onDone={() => {
-            markOnboardingDone()
-            setShowOnboarding(false)
-          }}
-        />
-      )}
-    </>
-  )
+  return <HelpProvider>{screen}</HelpProvider>
 }
 
 export default App

@@ -2,25 +2,28 @@
   {
     "id": "portrait-34",
     "title": "Портрет 3/4",
-    "description": "Лицо под углом — гид осей + мягкая калька",
-    "image": "portrait.svg",
+    "description": "Овал, ось лица и линия глаз — классическая постановка головы",
+    "tip": "Совмести овал гида с головой на референсе. Линия глаз — на половине высоты головы.",
+    "image": "lessons/portrait.svg",
     "guide": "face",
-    "opacity": 0.42
+    "opacity": 0.46
   },
   {
     "id": "figure-standing",
     "title": "Фигура стоя",
-    "description": "Пропорции роста и осевая линия",
-    "image": "figure.svg",
+    "description": "Прямая ось роста, плечи и таз параллельны — 8 голов",
+    "tip": "Держи позвоночник строго вертикально. Плечи и таз — горизонтальные линии, ноги почти параллельны.",
+    "image": "lessons/figure.svg",
     "guide": "figure",
-    "opacity": 0.4
+    "opacity": 0.44
   },
   {
     "id": "still-life",
     "title": "Натюрморт",
-    "description": "Сетка 3×3 для композиции предметов",
-    "image": "still-life.svg",
+    "description": "Предметы по правилу третей: бутылка · чаша · коробка",
+    "tip": "Включи сетку 3×3. Крупный предмет — на пересечении линий, не в самом центре.",
+    "image": "lessons/still-life.svg",
     "guide": "thirds",
-    "opacity": 0.48
+    "opacity": 0.5
   }
 ]

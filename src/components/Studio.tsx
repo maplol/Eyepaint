@@ -10,6 +10,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { GuideOverlay } from './GuideOverlay'
+import { HelpToggleButton } from './HelpSystem'
 import { Toast } from './Toast'
 import { ColorsPanel } from './studio/ColorsPanel'
 import { LayersPanel } from './studio/LayersPanel'
@@ -139,6 +140,8 @@ type StudioProps = {
     guide: GuideKind
     opacity: number
     calcStrength?: number
+    tip?: string
+    title?: string
   } | null
   projectBoot?: HydratedProject | null
   onAutosaveWritten?: (meta: AutosaveMeta | null) => void
@@ -374,6 +377,14 @@ export function Studio({
   const displayUrl = filteredUrl ?? colorSourceUrl
   const framed = colorMode === 'mask'
   const showToast = (message: string) => setToast(message)
+
+  useEffect(() => {
+    if (!lessonBoot?.tip) return
+    const label = lessonBoot.title ? `Урок · ${lessonBoot.title}` : 'Урок'
+    showToast(`${label}: ${lessonBoot.tip}`)
+    // tip once when lesson opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const layerDisplayUrl = (layerId: string, fallbackUrl: string) =>
     layerId === activeLayerId && filteredUrl ? filteredUrl : fallbackUrl
@@ -1524,6 +1535,7 @@ export function Studio({
             onClick={onExit}
             aria-label="Назад"
             title="Назад"
+            data-help="studio-back"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -1542,6 +1554,7 @@ export function Studio({
             <p className="truncate text-[0.68rem] text-[var(--fg-muted)]">{cameraLabel}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 justify-self-end">
+            <HelpToggleButton />
             {roomEnabled && (
               <span
                 className={cn(
@@ -1563,6 +1576,7 @@ export function Studio({
               aria-label={settingsOpen ? 'Закрыть настройки' : 'Настройки'}
               title={settingsOpen ? 'К студии' : 'Настройки'}
               aria-pressed={settingsOpen}
+              data-help="studio-settings"
               onClick={() => {
                 setSettingsOpen((value) => {
                   const next = !value
@@ -1589,6 +1603,7 @@ export function Studio({
               onClick={() => setUiHidden(true)}
               aria-label="Скрыть интерфейс"
               title="Скрыть"
+              data-help="studio-hide"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -1671,6 +1686,7 @@ export function Studio({
           className="eyepaint-glass-chip absolute bottom-[calc(var(--safe-bottom)+0.35rem)] right-2 z-40 grid h-12 w-12 place-items-center rounded-full text-[var(--fg-strong)]"
           onClick={() => setUiHidden(false)}
           aria-label="Показать интерфейс"
+          data-help="studio-show"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path

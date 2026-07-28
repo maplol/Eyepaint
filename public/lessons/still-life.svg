@@ -1,8 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
   <rect width="800" height="600" fill="#1c2428"/>
-  <ellipse cx="280" cy="360" rx="110" ry="70" fill="#e09a6a" opacity="0.75"/>
-  <rect x="420" y="220" width="160" height="200" rx="12" fill="#82b0ba" opacity="0.7"/>
-  <circle cx="500" cy="180" r="48" fill="#ffd9bd" opacity="0.85"/>
-  <rect x="120" y="420" width="560" height="24" rx="6" fill="#2a343a"/>
-  <text x="400" y="60" text-anchor="middle" fill="#f5f7f8" font-family="sans-serif" font-size="28" font-weight="700">0BN@<>@B</text>
+  <!-- table plane -->
+  <path d="M60 420 L740 420 L780 560 L20 560 Z" fill="#2a343a"/>
+  <line x1="60" y1="420" x2="740" y2="420" stroke="#ffd9bd" stroke-width="2" stroke-opacity="0.25"/>
+  <!-- bottle (left third) -->
+  <rect x="160" y="200" width="70" height="200" rx="8" fill="#82b0ba" opacity="0.85"/>
+  <rect x="175" y="150" width="40" height="55" rx="6" fill="#6a9aa4"/>
+  <ellipse cx="195" cy="150" rx="20" ry="8" fill="#9bc4cc"/>
+  <!-- bowl (center) -->
+  <ellipse cx="400" cy="390" rx="120" ry="40" fill="#c9855c"/>
+  <path d="M280 370 Q400 300 520 370" fill="#e09a6a"/>
+  <!-- fruit in bowl -->
+  <circle cx="360" cy="350" r="28" fill="#e09a6a"/>
+  <circle cx="410" cy="340" r="32" fill="#d4895a"/>
+  <circle cx="445" cy="360" r="24" fill="#ffd9bd"/>
+  <!-- box (right third) -->
+  <path d="M560 280 L680 260 L700 400 L580 420 Z" fill="#8a9e7a" opacity="0.9"/>
+  <path d="M560 280 L580 250 L700 230 L680 260 Z" fill="#a3b892"/>
+  <path d="M680 260 L700 230 L720 370 L700 400 Z" fill="#6f835f"/>
+  <!-- soft thirds grid hint -->
+  <line x1="267" y1="40" x2="267" y2="560" stroke="#ffd9bd" stroke-width="1" stroke-opacity="0.18"/>
+  <line x1="533" y1="40" x2="533" y2="560" stroke="#ffd9bd" stroke-width="1" stroke-opacity="0.18"/>
+  <line x1="40" y1="200" x2="760" y2="200" stroke="#ffd9bd" stroke-width="1" stroke-opacity="0.15"/>
 </svg>

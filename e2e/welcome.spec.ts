@@ -37,4 +37,18 @@ test.describe('Welcome', () => {
     await page.getByRole('button', { name: 'Пропустить' }).click()
     await expect(page.getByText(/Старт ·/)).toHaveCount(0)
   })
+
+  test('режим подсказок рассказывает про кнопку', async ({ page }) => {
+    await prepareApp(page)
+    await page.goto('./')
+    await dismissOnboardingIfAny(page)
+
+    await page.getByRole('button', { name: 'Включить подсказки' }).click()
+    await expect(page.getByRole('button', { name: 'Выключить подсказки' })).toBeVisible()
+    await page.getByRole('button', { name: 'Телефон как камера' }).click()
+    await expect(page.getByRole('dialog', { name: 'Телефон как камера' })).toBeVisible()
+    await expect(page.getByText(/ПК создаёт комнату/i)).toBeVisible()
+    await page.getByRole('button', { name: 'Понятно' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
 })
