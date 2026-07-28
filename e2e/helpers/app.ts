@@ -11,8 +11,16 @@ export async function prepareApp(page: Page, opts?: { onboardingDone?: boolean }
 
   await page.addInitScript((done) => {
     try {
-      if (done) localStorage.setItem('eyepaint-onboarding-done-v1', '1')
-      else localStorage.removeItem('eyepaint-onboarding-done-v1')
+      if (done) {
+        localStorage.setItem('eyepaint-onboarding-done-v1', '1')
+        localStorage.setItem('eyepaint-studio-tour-v1', '1')
+        localStorage.setItem('eyepaint-camera-tour-v1', '1')
+      } else {
+        localStorage.removeItem('eyepaint-onboarding-done-v1')
+        // студию/камеру не трогаем при тесте welcome-тура
+        localStorage.setItem('eyepaint-studio-tour-v1', '1')
+        localStorage.setItem('eyepaint-camera-tour-v1', '1')
+      }
       localStorage.setItem('eyepaint-layers-sheet-open-v1', '1')
       localStorage.removeItem('eyepaint-layers-panel-open-v1')
     } catch {
@@ -70,9 +78,22 @@ export const test = base.extend<Fixtures>({
 export { expect }
 
 export async function dismissOnboardingIfAny(page: Page) {
-  const skip = page.getByRole('button', { name: 'Пропустить' })
-  if (await skip.isVisible().catch(() => false)) {
-    await skip.click()
+  for (let i = 0; i < 3; i++) {
+    const skip = page.getByRole('dialog', { name: 'Обучение' }).getByRole('button', {
+      name: 'Пропустить',
+    })
+    if (await skip.isVisible().catch(() => false)) {
+      await skip.click()
+      await page.waitForTimeout(100)
+      continue
+    }
+    const legacy = page.getByRole('button', { name: 'Пропустить' })
+    if (await legacy.isVisible().catch(() => false)) {
+      await legacy.click()
+      await page.waitForTimeout(100)
+      continue
+    }
+    break
   }
 }
 
@@ -83,6 +104,7 @@ export async function enterStudioFromGallery(page: Page, file = FIXTURE_IMAGE) {
   await expect(page.getByRole('toolbar', { name: 'Инструменты' })).toBeVisible({
     timeout: 20_000,
   })
+  await dismissOnboardingIfAny(page)
   await expect(page.getByRole('button', { name: 'Рука' })).toBeVisible()
 }
 

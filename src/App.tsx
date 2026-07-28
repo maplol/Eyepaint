@@ -5,7 +5,17 @@ import { Onboarding } from './components/Onboarding'
 import { Studio } from './components/Studio'
 import { Welcome } from './components/Welcome'
 import { type LessonCard } from './lib/lessons'
-import { isOnboardingDone, markOnboardingDone } from './lib/onboarding'
+import {
+  CAMERA_COACH_STEPS,
+  isCameraTourDone,
+  isOnboardingDone,
+  isStudioTourDone,
+  markCameraTourDone,
+  markOnboardingDone,
+  markStudioTourDone,
+  STUDIO_COACH_STEPS,
+  WELCOME_COACH_STEPS,
+} from './lib/onboarding'
 import {
   clearAutosave,
   loadAutosaveMeta,
@@ -31,7 +41,13 @@ function App() {
   const [mode, setMode] = useState<Mode>(() => (joinFromUrl ? 'camera' : 'welcome'))
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [joinCode] = useState<string | null>(() => joinFromUrl)
-  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone() && !joinFromUrl)
+  const [showWelcomeTour, setShowWelcomeTour] = useState(
+    () => !isOnboardingDone() && !joinFromUrl,
+  )
+  const [showStudioTour, setShowStudioTour] = useState(() => !isStudioTourDone())
+  const [showCameraTour, setShowCameraTour] = useState(
+    () => !isCameraTourDone() && Boolean(joinFromUrl),
+  )
   const [lessonBoot, setLessonBoot] = useState<LessonBoot | null>(null)
   const [projectBoot, setProjectBoot] = useState<HydratedProject | null>(null)
   const [autosaveMeta, setAutosaveMeta] = useState<AutosaveMeta | null>(() => loadAutosaveMeta())
@@ -124,25 +140,27 @@ function App() {
       .finally(() => setProjectBusy(false))
   }
 
-  const onboarding: ReactNode =
-    showOnboarding && (
-      <Onboarding
-        onDone={() => {
-          markOnboardingDone()
-          setShowOnboarding(false)
-        }}
-      />
-    )
-
   let screen: ReactNode
   if (mode === 'camera') {
     screen = (
-      <CameraRoom
-        initialCode={joinCode}
-        onExit={() => {
-          setMode('welcome')
-        }}
-      />
+      <>
+        <CameraRoom
+          initialCode={joinCode}
+          onExit={() => {
+            setMode('welcome')
+          }}
+        />
+        {showCameraTour && (
+          <Onboarding
+            label="Камера"
+            steps={CAMERA_COACH_STEPS}
+            onDone={() => {
+              markCameraTourDone()
+              setShowCameraTour(false)
+            }}
+          />
+        )}
+      </>
     )
   } else if (mode === 'studio' && imageUrl) {
     screen = (
@@ -159,7 +177,16 @@ function App() {
             setMode('welcome')
           }}
         />
-        {onboarding}
+        {showStudioTour && (
+          <Onboarding
+            label="Студия"
+            steps={STUDIO_COACH_STEPS}
+            onDone={() => {
+              markStudioTourDone()
+              setShowStudioTour(false)
+            }}
+          />
+        )}
       </>
     )
   } else {
@@ -167,7 +194,10 @@ function App() {
       <>
         <Welcome
           onPickImage={handlePickImage}
-          onStartCameraRoom={() => setMode('camera')}
+          onStartCameraRoom={() => {
+            setMode('camera')
+            if (!isCameraTourDone()) setShowCameraTour(true)
+          }}
           onStartLesson={handleStartLesson}
           onOpenProjectFile={handleOpenProjectFile}
           onContinueSession={handleContinueSession}
@@ -189,7 +219,16 @@ function App() {
             </button>
           </p>
         )}
-        {onboarding}
+        {showWelcomeTour && (
+          <Onboarding
+            label="Старт"
+            steps={WELCOME_COACH_STEPS}
+            onDone={() => {
+              markOnboardingDone()
+              setShowWelcomeTour(false)
+            }}
+          />
+        )}
       </>
     )
   }
