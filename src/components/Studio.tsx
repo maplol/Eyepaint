@@ -12,6 +12,7 @@ import {
 import { GuideOverlay } from './GuideOverlay'
 import { HelpToggleButton } from './HelpSystem'
 import { Toast } from './Toast'
+import { ArModeBar } from './studio/ArModeBar'
 import { ColorsPanel } from './studio/ColorsPanel'
 import { LayersPanel } from './studio/LayersPanel'
 import { LoupeOverlay } from './studio/LoupeOverlay'
@@ -38,6 +39,7 @@ import {
   type StudioToolId,
 } from './studio/studioUi'
 import { useCamera } from '../hooks/useCamera'
+import { useArucoTracker } from '../hooks/useArucoTracker'
 import {
   DEFAULT_TRANSFORM,
   buildOverlayCssTransform,
@@ -46,6 +48,7 @@ import {
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
+import type { ArPhase, ArViewMode, PlaneLock } from '../lib/arPlane'
 import { DEFAULT_BRUSH_MASK, type BrushMaskSettings } from '../lib/brushMask'
 import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposite'
 import {
@@ -250,6 +253,9 @@ export function Studio({
   }, [usingPhoneCam])
 
   const [flags, setFlags] = useState<FeatureFlags>(() => projectBoot?.flags ?? loadFlags())
+  const [arMode, setArMode] = useState<ArViewMode>('free')
+  const [arPhase, setArPhase] = useState<ArPhase>('idle')
+  const [planeLock, setPlaneLock] = useState<PlaneLock | null>(null)
   const [atmosphere, setAtmosphere] = useState<StudioAtmosphere>(
     () => projectBoot?.atmosphere ?? loadAtmosphere(),
   )
@@ -369,6 +375,7 @@ export function Studio({
     dragMode,
     transform,
     setTransform,
+    arMode === 'ar' && arPhase === 'locked' ? planeLock : null,
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
@@ -376,6 +383,47 @@ export function Studio({
   const displayUrl = filteredUrl ?? colorSourceUrl
   const framed = colorMode === 'mask'
   const showToast = (message: string) => setToast(message)
+
+  const handleArLock = (plane: PlaneLock) => {
+    setPlaneLock(plane)
+    setArPhase('locked')
+    setTransform((prev) => ({
+      ...prev,
+      x: plane.origin.x,
+      y: plane.origin.y,
+      rotateX: plane.rotateX,
+      rotateY: plane.rotateY,
+      rotation: plane.rotation,
+      scale: Math.min(3, Math.max(0.35, plane.scale)),
+    }))
+    showToast('Плоскость зафиксирована — маркер можно убрать')
+  }
+
+  const arTrackingOn = flags.arPlaneLock && arMode === 'ar' && !uiHidden
+  const { ready: arDetectorReady, progress: arProgress } = useArucoTracker({
+    enabled: arTrackingOn,
+    phase: arPhase,
+    videoRef,
+    stageRef,
+    onLock: handleArLock,
+  })
+
+  const setArViewMode = (mode: ArViewMode) => {
+    setArMode(mode)
+    if (mode === 'free') {
+      setArPhase(planeLock ? 'locked' : 'idle')
+      return
+    }
+    if (planeLock) setArPhase('locked')
+    else setArPhase('hunting')
+  }
+
+  const recalibrateAr = () => {
+    setPlaneLock(null)
+    setArMode('ar')
+    setArPhase('hunting')
+    showToast('Ищи маркер…')
+  }
 
   useEffect(() => {
     if (!lessonBoot?.tip) return
@@ -1514,10 +1562,23 @@ export function Studio({
             </svg>
           </button>
           <div className="min-w-0 justify-self-center text-center">
-            <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[var(--fg-strong)]">
-              EYEPAINT
-            </p>
-            <p className="truncate text-[0.68rem] text-[var(--fg-muted)]">{cameraLabel}</p>
+            {flags.arPlaneLock ? (
+              <ArModeBar
+                mode={arMode}
+                phase={arPhase}
+                progress={arProgress}
+                detectorReady={arDetectorReady}
+                onMode={setArViewMode}
+                onRecalibrate={recalibrateAr}
+              />
+            ) : (
+              <>
+                <p className="font-[family-name:var(--font-display)] text-[0.78rem] font-bold tracking-[0.08em] text-[var(--fg-strong)]">
+                  EYEPAINT
+                </p>
+                <p className="truncate text-[0.68rem] text-[var(--fg-muted)]">{cameraLabel}</p>
+              </>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2 justify-self-end">
             <HelpToggleButton />
