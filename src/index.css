@@ -314,3 +314,33 @@ html[data-help-mode='1'] [data-help] {
   outline-offset: 3px;
   cursor: help !important;
 }
+
+/* Карточка coachmark — плотный glass, не сливается с фоном */
+.eyepaint-coach-card {
+  background-color: color-mix(in srgb, var(--panel-solid) 92%, transparent);
+  background-image: var(--dock-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--shadow-glass),
+    0 0 0 1px color-mix(in srgb, var(--fg-strong) 6%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--fg-strong) 10%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.45);
+  backdrop-filter: blur(28px) saturate(1.45);
+  color: var(--fg);
+}
+
+@media (max-width: 959px) {
+  .eyepaint-coach-card {
+    background-color: var(--panel-solid);
+    background-image: var(--dock-bg);
+  }
+}
+
+/* Кольцо вокруг цели тура — мягкое стекло, не акцент-заливка */
+.eyepaint-coach-spot {
+  border: 1.5px solid color-mix(in srgb, var(--glass-border) 70%, var(--chip-accent-fg));
+  background: color-mix(in srgb, var(--glass-fill) 35%, transparent);
+  box-shadow:
+    0 0 0 9999px rgba(10, 14, 18, 0.78),
+    inset 0 0 0 1px color-mix(in srgb, var(--fg-strong) 8%, transparent);
+}
