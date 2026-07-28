@@ -34,10 +34,13 @@ test.describe('Studio smoke', () => {
     await page.getByRole('button', { name: '2.5×', exact: true }).click()
 
     await openStudioTool(page, 'Рука')
+    await page.getByRole('button', { name: 'Настройки' }).click()
+    await page.getByRole('button', { name: 'Тема' }).click()
     await page.getByRole('button', { name: 'Светлая' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-atmosphere', 'light')
     await page.getByRole('button', { name: 'Тёмная' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-atmosphere', 'dark')
+    await page.getByRole('dialog', { name: 'Настройки' }).getByRole('button', { name: 'Закрыть' }).click()
   })
 
   test('гиды sticky: Закрыть не гасит, повторный клик гасит', async ({ page }) => {
@@ -63,6 +66,7 @@ test.describe('Studio smoke', () => {
 
   test('сессия и снимок прогресса не ломают UI', async ({ page }) => {
     await openStudioTool(page, 'Рука')
+    await page.getByRole('tab', { name: 'Сессия' }).click()
     await page.getByRole('button', { name: '25 мин' }).click()
     await expect(page.getByText(/\d+:\d+/)).toBeVisible()
     await page.getByRole('button', { name: 'Снимок прогресса' }).click()
@@ -77,9 +81,11 @@ test.describe('Studio smoke', () => {
 
   test('настройки: вкладка Проект и сохранение', async ({ page }) => {
     await page.getByRole('button', { name: 'Настройки' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Настройки' })
+    await expect(dialog).toBeVisible()
     await page.getByRole('button', { name: 'Проект' }).click()
-    await expect(page.getByRole('button', { name: 'Сохранить проект в файл' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Очистить автосейв' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Сохранить проект в файл' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Очистить автосейв' })).toBeVisible()
   })
 
   test('назад на Welcome', async ({ page }) => {
@@ -104,6 +110,7 @@ test.describe('Studio projection & poses', () => {
   test('сохранение позы', async ({ page }) => {
     await openStudioTool(page, 'Позы')
     await page.getByRole('button', { name: '+ Сохранить в список' }).click()
+    await page.getByRole('tab', { name: 'Список' }).click()
     await expect(page.getByText(/Сохранённые ·/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Применить' }).first()).toBeVisible()
   })

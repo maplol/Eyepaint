@@ -14,6 +14,8 @@ import {
 } from '../../lib/studioTools'
 import type { SessionShot } from '../../lib/sessionGallery'
 import { SHOT_KIND_LABEL } from '../../lib/sessionGallery'
+import { CornerAction, TrashIcon } from './CornerAction'
+import { PanelTabs } from './PanelTabs'
 import {
   chipAccentClass,
   chipNeutralClass,
@@ -56,9 +58,6 @@ type MainPanelProps = {
   onProgressShot: () => void
   onDownloadShot: (shot: SessionShot) => void
   onClearShots: () => void
-  atmosphere: 'dark' | 'light'
-  atmosphereEnabled: boolean
-  onAtmosphere: (value: 'dark' | 'light') => void
 }
 
 function Section({
@@ -76,19 +75,143 @@ function Section({
 
 export function MainPanel(props: MainPanelProps) {
   const focus = props.focus ?? 'all'
-  const show = (section: MainPanelFocus | 'session' | 'phone') => {
-    if (focus === 'all') return true
-    if (focus === 'hand') return section === 'hand' || section === 'session' || section === 'phone'
-    return focus === section
+
+  if (focus === 'hand') {
+    const tabs = [
+      {
+        id: 'ref',
+        label: 'Референс',
+        content: (
+          <div>
+            <div className={sliderLabelsClass}>
+              <span>Прозрачность</span>
+              <span>{Math.round(props.opacity * 100)}%</span>
+            </div>
+            <input
+              className={rangeInputClass}
+              type="range"
+              min={0.05}
+              max={1}
+              step={0.01}
+              value={props.opacity}
+              onChange={(event) => props.onOpacity(Number(event.target.value))}
+              aria-label="Прозрачность референса"
+            />
+          </div>
+        ),
+      },
+      {
+        id: 'session',
+        label: 'Сессия',
+        content: (
+          <div className="relative grid gap-2 pb-11">
+            <div className="flex min-h-7 items-center justify-between gap-2">
+              <p className={fieldLabelClass}>Таймер</p>
+              <span
+                className={cn(
+                  'inline-flex min-h-7 min-w-[3.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold leading-none [font-variant-numeric:tabular-nums]',
+                  props.sessionRemainingLabel
+                    ? 'border-accent/35 bg-accent/15 text-[var(--chip-accent-fg)]'
+                    : 'border-transparent text-transparent',
+                )}
+                aria-hidden={!props.sessionRemainingLabel}
+              >
+                {props.sessionRemainingLabel ?? '0:00'}
+              </span>
+            </div>
+            <div className={rowClass}>
+              {SESSION_OPTIONS.map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  className={chipAccentClass(props.sessionMins === minutes)}
+                  onClick={() => props.onStartSession(minutes)}
+                >
+                  {minutes} мин
+                </button>
+              ))}
+            </div>
+            {props.galleryEnabled && (
+              <>
+                <label className="flex min-h-8 items-center justify-between gap-2 text-[0.78rem] text-[var(--fg-muted)]">
+                  <span className="min-w-0 leading-snug">Авто-снимок «до»</span>
+                  <input
+                    type="checkbox"
+                    className="shrink-0"
+                    checked={props.autoSessionShot}
+                    onChange={(event) => props.onAutoSessionShot(event.target.checked)}
+                  />
+                </label>
+                <button type="button" className={chipNeutralClass} onClick={props.onProgressShot}>
+                  Снимок прогресса
+                </button>
+                {props.shots.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto py-1 eyepaint-scroll">
+                    {props.shots.map((shot) => (
+                      <button
+                        key={shot.id}
+                        type="button"
+                        className="relative h-16 w-16 flex-none overflow-hidden rounded-xl border border-[var(--glass-border)]"
+                        title={`${SHOT_KIND_LABEL[shot.kind]} · скачать`}
+                        onClick={() => props.onDownloadShot(shot)}
+                      >
+                        <img src={shot.dataUrl} alt="" className="h-full w-full object-cover" />
+                        <span className="absolute inset-x-0 bottom-0 bg-[color-mix(in_srgb,var(--ink-deep)_75%,transparent)] text-center text-[0.62rem] text-[var(--fg-strong)]">
+                          {SHOT_KIND_LABEL[shot.kind]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <CornerAction
+                  label="Очистить галерею"
+                  disabled={props.shots.length === 0}
+                  onClick={props.onClearShots}
+                >
+                  <TrashIcon />
+                </CornerAction>
+              </>
+            )}
+          </div>
+        ),
+      },
+      ...(props.usingPhoneCam
+        ? [
+            {
+              id: 'phone',
+              label: 'Телефон',
+              content: (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className={chipAccentClass(props.remoteFrozen)}
+                    aria-pressed={props.remoteFrozen}
+                    onClick={props.onToggleFreeze}
+                  >
+                    Заморозка
+                  </button>
+                  <button
+                    type="button"
+                    className={chipAccentClass(props.remoteTorch)}
+                    aria-pressed={props.remoteTorch}
+                    onClick={props.onToggleTorch}
+                  >
+                    Фонарик
+                  </button>
+                </div>
+              ),
+            },
+          ]
+        : []),
+    ]
+
+    return <PanelTabs tabs={tabs} storageKey="eyepaint-hand-tab" />
   }
 
-  const hasOpacity = show('hand')
+  const show = (section: MainPanelFocus) => focus === 'all' || focus === section
   const hasCalc = show('calc')
-  const hasAtmosphere = show('hand') && props.atmosphereEnabled
   const hasGuides = show('guides')
   const hasLoupe = show('loupe')
-  const hasSession = show('session')
-  const hasPhone = show('phone') && props.usingPhoneCam
 
   let sectionIndex = 0
   const mark = (visible: boolean) => {
@@ -97,34 +220,12 @@ export function MainPanel(props: MainPanelProps) {
     sectionIndex += 1
     return { show: true, first }
   }
-
-  const opacitySec = mark(hasOpacity)
   const calcSec = mark(hasCalc)
-  const atmosphereSec = mark(hasAtmosphere)
   const guidesSec = mark(hasGuides)
   const loupeSec = mark(hasLoupe)
-  const sessionSec = mark(hasSession)
-  const phoneSec = mark(hasPhone)
 
   return (
     <div className={cn(panelClass, 'gap-0')}>
-      <Section show={opacitySec.show} first={opacitySec.first}>
-        <div className={sliderLabelsClass}>
-          <span>Прозрачность</span>
-          <span>{Math.round(props.opacity * 100)}%</span>
-        </div>
-        <input
-          className={rangeInputClass}
-          type="range"
-          min={0.05}
-          max={1}
-          step={0.01}
-          value={props.opacity}
-          onChange={(event) => props.onOpacity(Number(event.target.value))}
-          aria-label="Прозрачность референса"
-        />
-      </Section>
-
       <Section show={calcSec.show} first={calcSec.first}>
         <div className={sliderLabelsClass}>
           <span>Сила</span>
@@ -145,25 +246,6 @@ export function MainPanel(props: MainPanelProps) {
           }
           aria-label="Сила режима кальки"
         />
-      </Section>
-
-      <Section show={atmosphereSec.show} first={atmosphereSec.first}>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className={chipAccentClass(props.atmosphere === 'dark')}
-            onClick={() => props.onAtmosphere('dark')}
-          >
-            Тёмная
-          </button>
-          <button
-            type="button"
-            className={chipAccentClass(props.atmosphere === 'light')}
-            onClick={() => props.onAtmosphere('light')}
-          >
-            Светлая
-          </button>
-        </div>
       </Section>
 
       <Section show={guidesSec.show} first={guidesSec.first}>
@@ -248,102 +330,6 @@ export function MainPanel(props: MainPanelProps) {
               ))}
             </div>
           </div>
-        </div>
-      </Section>
-
-      <Section show={sessionSec.show} first={sessionSec.first}>
-        <div className="grid gap-2">
-          <div className="flex min-h-7 items-center justify-between gap-2">
-            <p className={fieldLabelClass}>Сессия</p>
-            <span
-              className={cn(
-                'inline-flex min-h-7 min-w-[3.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold leading-none [font-variant-numeric:tabular-nums]',
-                props.sessionRemainingLabel
-                  ? 'border-accent/35 bg-accent/15 text-[var(--chip-accent-fg)]'
-                  : 'border-transparent text-transparent',
-              )}
-              aria-hidden={!props.sessionRemainingLabel}
-            >
-              {props.sessionRemainingLabel ?? '0:00'}
-            </span>
-          </div>
-          <div className={rowClass}>
-            {SESSION_OPTIONS.map((minutes) => (
-              <button
-                key={minutes}
-                type="button"
-                className={chipAccentClass(props.sessionMins === minutes)}
-                onClick={() => props.onStartSession(minutes)}
-              >
-                {minutes} мин
-              </button>
-            ))}
-          </div>
-          {props.galleryEnabled && (
-            <>
-              <label className="flex min-h-8 items-center justify-between gap-2 text-[0.78rem] text-[var(--fg-muted)]">
-                <span className="min-w-0 leading-snug">Авто-снимок «до»</span>
-                <input
-                  type="checkbox"
-                  className="shrink-0"
-                  checked={props.autoSessionShot}
-                  onChange={(event) => props.onAutoSessionShot(event.target.checked)}
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" className={chipNeutralClass} onClick={props.onProgressShot}>
-                  Снимок прогресса
-                </button>
-                <button
-                  type="button"
-                  className={chipNeutralClass}
-                  disabled={props.shots.length === 0}
-                  onClick={props.onClearShots}
-                >
-                  Очистить галерею
-                </button>
-              </div>
-              {props.shots.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto py-1 eyepaint-scroll">
-                  {props.shots.map((shot) => (
-                    <button
-                      key={shot.id}
-                      type="button"
-                      className="relative h-16 w-16 flex-none overflow-hidden rounded-xl border border-[var(--glass-border)]"
-                      title={`${SHOT_KIND_LABEL[shot.kind]} · скачать`}
-                      onClick={() => props.onDownloadShot(shot)}
-                    >
-                      <img src={shot.dataUrl} alt="" className="h-full w-full object-cover" />
-                      <span className="absolute inset-x-0 bottom-0 bg-[color-mix(in_srgb,var(--ink-deep)_75%,transparent)] text-center text-[0.62rem] text-[var(--fg-strong)]">
-                        {SHOT_KIND_LABEL[shot.kind]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </Section>
-
-      <Section show={phoneSec.show} first={phoneSec.first}>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className={chipAccentClass(props.remoteFrozen)}
-            aria-pressed={props.remoteFrozen}
-            onClick={props.onToggleFreeze}
-          >
-            Заморозка
-          </button>
-          <button
-            type="button"
-            className={chipAccentClass(props.remoteTorch)}
-            aria-pressed={props.remoteTorch}
-            onClick={props.onToggleTorch}
-          >
-            Фонарик
-          </button>
         </div>
       </Section>
     </div>
