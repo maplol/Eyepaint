@@ -106,7 +106,7 @@ export const dockShellClass =
   'absolute bottom-[calc(var(--safe-bottom)+0.35rem)] left-[3.85rem] right-2.5 z-20 flex max-h-[min(58dvh,520px)] min-h-0 flex-col gap-2 overflow-x-visible overflow-y-auto overscroll-contain py-1 animate-[rise-in_0.45s_ease_0.04s_both] eyepaint-scroll min-[960px]:hidden sm:left-[4.2rem]'
 
 export const dockClass = cn(
-  'flex min-h-0 max-h-[min(42dvh,380px)] flex-1 flex-col overflow-hidden rounded-3xl',
+  'flex h-[min(42dvh,380px)] min-h-0 flex-1 flex-col overflow-hidden rounded-3xl',
   glassSurfaceClass,
 )
 
@@ -124,7 +124,7 @@ export const toolRailBtnActiveClass =
 
 /** Left tool settings */
 export const toolInspectorClass = cn(
-  'absolute left-[3.85rem] top-[calc(var(--safe-top)+4.35rem)] z-20 hidden w-[min(300px,calc(100vw-22rem))] max-h-[min(48vh,460px)] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.45rem] min-[960px]:flex sm:left-[4.2rem]',
+  'absolute left-[3.85rem] top-[calc(var(--safe-top)+4.35rem)] z-20 hidden h-[min(48vh,460px)] w-[min(300px,calc(100vw-22rem))] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.3s_ease_both] min-[960px]:left-[4.45rem] min-[960px]:flex sm:left-[4.2rem]',
   glassSurfaceClass,
 )
 

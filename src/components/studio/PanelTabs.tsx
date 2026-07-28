@@ -1,20 +1,21 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { cn } from './studioUi'
 
 export type PanelTab = {
   id: string
   label: string
   content: ReactNode
+  /** Кнопка поверх скролла вкладки (слева снизу) */
+  corner?: ReactNode
 }
 
 type PanelTabsProps = {
   tabs: PanelTab[]
   className?: string
-  /** Сохранять активную вкладку между открытиями */
   storageKey?: string
 }
 
-/** Внутренние табы панели с горизонтальным «перелистыванием» */
+/** Табы с каруселью; каждая вкладка скроллит сама, corner не уезжает */
 export function PanelTabs({ tabs, className, storageKey }: PanelTabsProps) {
   const initial = (() => {
     if (!storageKey || typeof window === 'undefined') return 0
@@ -27,8 +28,6 @@ export function PanelTabs({ tabs, className, storageKey }: PanelTabsProps) {
     }
   })()
   const [index, setIndex] = useState(initial)
-  const [height, setHeight] = useState<number | 'auto'>('auto')
-  const paneRefs = useRef<Array<HTMLDivElement | null>>([])
 
   useEffect(() => {
     if (index >= tabs.length) setIndex(0)
@@ -43,24 +42,20 @@ export function PanelTabs({ tabs, className, storageKey }: PanelTabsProps) {
     }
   }, [index, storageKey])
 
-  useEffect(() => {
-    const node = paneRefs.current[index]
-    if (!node) return
-    const measure = () => setHeight(node.offsetHeight)
-    measure()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
-    ro?.observe(node)
-    return () => ro?.disconnect()
-  }, [index, tabs])
-
   if (tabs.length <= 1) {
-    return <div className={className}>{tabs[0]?.content}</div>
+    const only = tabs[0]
+    if (!only) return null
+    return (
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+        <Pane corner={only.corner}>{only.content}</Pane>
+      </div>
+    )
   }
 
   return (
-    <div className={cn('grid gap-2.5', className)}>
+    <div className={cn('flex min-h-0 flex-1 flex-col gap-2.5', className)}>
       <div
-        className="flex gap-1 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] p-1"
+        className="flex shrink-0 gap-1 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] p-1"
         role="tablist"
       >
         {tabs.map((tab, i) => (
@@ -81,29 +76,43 @@ export function PanelTabs({ tabs, className, storageKey }: PanelTabsProps) {
           </button>
         ))}
       </div>
-      <div
-        className="relative overflow-hidden transition-[height] duration-300 ease-out"
-        style={{ height: height === 'auto' ? undefined : height }}
-      >
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
-          className="flex w-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="flex h-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
           {tabs.map((tab, i) => (
             <div
               key={tab.id}
-              ref={(node) => {
-                paneRefs.current[i] = node
-              }}
               role="tabpanel"
               aria-hidden={i !== index}
-              className="w-full shrink-0 px-0.5"
+              className="h-full w-full shrink-0"
             >
-              {tab.content}
+              <Pane corner={tab.corner}>{tab.content}</Pane>
             </div>
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+function Pane({ children, corner }: { children: ReactNode; corner?: ReactNode }) {
+  return (
+    <div className="relative h-full min-h-0">
+      <div
+        className={cn(
+          'h-full overflow-auto overscroll-contain px-0.5 eyepaint-scroll [-webkit-overflow-scrolling:touch]',
+          corner ? 'pb-12' : undefined,
+        )}
+      >
+        {children}
+      </div>
+      {corner ? (
+        <div className="pointer-events-none absolute inset-0 z-[8]">
+          <div className="pointer-events-auto absolute bottom-2 left-2">{corner}</div>
+        </div>
+      ) : null}
     </div>
   )
 }
