@@ -46,8 +46,8 @@ export function PosesPanel(props: PosesPanelProps) {
 
   return (
     <div className={panelClass}>
-      <div className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-[rgba(20,26,29,0.28)] px-3 py-[0.7rem]">
-        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.04em] text-[rgba(231,238,240,0.58)]">
+      <div className="grid gap-[0.55rem] rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--panel-inset-bg)] px-3 py-[0.7rem]">
+        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.04em] text-[var(--fg-faint)]">
           Сейчас
         </p>
         <div className={poseStatsClass}>
@@ -94,11 +94,11 @@ export function PosesPanel(props: PosesPanelProps) {
         <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2 text-[0.8rem] text-[rgba(231,238,240,0.62)]">
+          <div className="flex items-center justify-between gap-2 text-[0.8rem] text-[var(--fg-muted)]">
             <span>Сохранённые · {props.poses.length}</span>
             <button
               type="button"
-              className="text-[0.78rem] font-semibold text-[var(--danger)]"
+              className="inline-flex min-h-8 items-center justify-center rounded-full px-2.5 text-[0.78rem] font-semibold leading-none text-[var(--danger)]"
               onClick={props.onClear}
             >
               Очистить всё
@@ -110,7 +110,7 @@ export function PosesPanel(props: PosesPanelProps) {
               return (
                 <li
                   key={pose.id}
-                  className="grid gap-[0.55rem] rounded-2xl border border-[var(--line-soft)] bg-[var(--glass-fill)] p-[0.7rem]"
+                  className="grid gap-[0.55rem] rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] p-[0.7rem]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -125,13 +125,13 @@ export function PosesPanel(props: PosesPanelProps) {
                           —
                         </span>
                       )}
-                      <p className="truncate text-[0.95rem] font-bold text-[var(--paper)]">
+                      <p className="truncate text-[0.95rem] font-bold text-[var(--fg-strong)]">
                         {pose.name}
                       </p>
                     </div>
                     <button
                       type="button"
-                      className="min-h-[1.9rem] shrink-0 rounded-full border border-[rgba(239,139,139,0.35)] bg-[rgba(239,139,139,0.12)] px-[0.65rem] py-1 text-[0.75rem] font-semibold text-[var(--danger-soft)]"
+                      className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-danger/35 bg-danger/12 px-2.5 py-1 text-[0.75rem] font-semibold leading-none text-[var(--danger-soft)]"
                       onClick={() => props.onDelete(pose.id)}
                     >
                       Удалить
@@ -147,7 +147,7 @@ export function PosesPanel(props: PosesPanelProps) {
                   </div>
                   <button
                     type="button"
-                    className="min-h-[2.35rem] rounded-[12px] border border-[var(--line)] bg-[var(--glass-fill-mid)] text-[0.86rem] font-bold text-[var(--fg-strong)]"
+                    className={chipNeutralClass}
                     onClick={() => props.onApply(pose)}
                   >
                     Применить

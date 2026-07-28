@@ -140,7 +140,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
             </p>
             <button
               type="button"
-              className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-[0.72rem] font-semibold text-[var(--fg)] disabled:opacity-50"
+              className="inline-flex min-h-7 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill)] px-2.5 py-1 text-center text-[0.72rem] font-semibold leading-none text-[var(--fg)] disabled:opacity-50"
               disabled={props.paletteLoading && props.palette.length === 0}
               onClick={props.onPaletteSort}
             >
@@ -337,7 +337,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
               <p className="text-sm font-bold text-[var(--fg-strong)]">Избранные палитры</p>
               <button
                 type="button"
-                className={chipNeutralClass}
+                className={cn(chipNeutralClass, 'shrink-0 px-3')}
                 disabled={props.selectedColorIds.length === 0}
                 onClick={props.onSavePalette}
               >

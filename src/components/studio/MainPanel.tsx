@@ -237,7 +237,7 @@ export function MainPanel(props: MainPanelProps) {
             <p className={sectionTitleClass}>Сессия</p>
             <span
               className={cn(
-                'min-w-[3.5rem] rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold [font-variant-numeric:tabular-nums]',
+                'inline-flex min-h-7 min-w-[3.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold leading-none [font-variant-numeric:tabular-nums]',
                 props.sessionRemainingLabel
                   ? 'border-accent/35 bg-accent/15 text-[var(--chip-accent-fg)]'
                   : 'border-transparent text-transparent',

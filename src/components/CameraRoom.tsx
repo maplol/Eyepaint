@@ -31,7 +31,7 @@ type CameraRoomProps = {
 }
 
 const qualityBtn =
-  'min-h-10 rounded-xl border px-2 py-1.5 text-[0.78rem] font-semibold transition-colors'
+  'inline-flex min-h-10 w-full items-center justify-center rounded-xl border px-2.5 py-2 text-center text-[0.78rem] font-semibold leading-tight transition-colors'
 const qualityIdle =
   'border-white/20 bg-white/10 text-[var(--mist)] active:bg-white/15'
 const qualityActive =
@@ -252,7 +252,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
         <button
           type="button"
           data-help="camera-exit"
-          className="min-h-10 justify-self-start rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-sm font-semibold text-paper backdrop-blur-md"
+          className="inline-flex min-h-10 items-center justify-center justify-self-start rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-sm font-semibold leading-none text-paper backdrop-blur-md"
           onClick={onExit}
         >
           Назад
@@ -265,7 +265,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
           <button
             type="button"
             data-help="camera-help"
-            className="min-h-10 rounded-full border border-white/20 bg-white/10 px-3 text-[0.78rem] font-semibold"
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/20 bg-white/10 px-3 text-[0.78rem] font-semibold leading-none"
             onClick={() => {
               if (helpMode) openTip('camera-help')
               else setHelpOpen((v) => !v)
@@ -409,7 +409,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
           <button
             type="button"
             data-help="camera-start"
-            className="min-h-14 w-full rounded-full bg-accent text-base font-bold text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.28)] disabled:opacity-45"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-accent px-5 text-base font-bold leading-tight text-accent-ink shadow-[0_10px_28px_rgba(224,154,106,0.28)] disabled:opacity-45"
             disabled={!ready || code.length < 4}
             onClick={() => setStarted(true)}
           >
@@ -419,7 +419,7 @@ export function CameraRoom({ onExit, initialCode = null }: CameraRoomProps) {
           <button
             type="button"
             data-help="camera-exit"
-            className="min-h-14 w-full rounded-full border border-white/30 bg-white/15 text-base font-bold text-paper backdrop-blur-md active:bg-white/20"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-white/30 bg-white/15 px-5 text-base font-bold leading-tight text-paper backdrop-blur-md active:bg-white/20"
             onClick={() => {
               applyFreeze(false)
               setStarted(false)

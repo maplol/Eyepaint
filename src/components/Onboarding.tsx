@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from 'react'
 import type { CoachStep } from '../lib/onboarding'
+import { cn, ctaPrimaryClass, ctaSecondaryClass } from './studio/studioUi'
 
 type OnboardingProps = {
   steps: readonly CoachStep[]
@@ -330,18 +331,10 @@ export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingPr
         </h2>
         <p className="mt-2 text-[0.9rem] leading-relaxed text-[var(--fg-muted)]">{current.body}</p>
         <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            className="min-h-11 flex-1 rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] font-semibold text-[var(--fg-strong)]"
-            onClick={onDone}
-          >
+          <button type="button" className={cn(ctaSecondaryClass, 'flex-1')} onClick={onDone}>
             Пропустить
           </button>
-          <button
-            type="button"
-            className="min-h-11 flex-1 rounded-full bg-accent font-bold text-accent-ink"
-            onClick={goNext}
-          >
+          <button type="button" className={cn(ctaPrimaryClass, 'flex-1')} onClick={goNext}>
             {isLast ? 'Готово' : 'Дальше'}
           </button>
         </div>

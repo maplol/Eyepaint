@@ -23,6 +23,7 @@ import { SettingsPanel } from './studio/SettingsPanel'
 import { ToolRail } from './studio/ToolRail'
 import {
   cameraClass,
+  chromePillClass,
   cn,
   dockClass,
   dockShellClass,
@@ -1324,7 +1325,7 @@ export function Studio({
         </p>
         <button
           type="button"
-          className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
+          className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold leading-none text-[var(--fg-strong)]"
           onClick={() => {
             if (settingsOpen) setSettingsOpen(false)
             else setToolPanelOpen(false)
@@ -1558,10 +1559,11 @@ export function Studio({
             {roomEnabled && (
               <span
                 className={cn(
-                  'hidden rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold sm:inline-flex',
+                  chromePillClass,
+                  'hidden sm:inline-flex',
                   usingPhoneCam
                     ? 'border-accent/50 bg-accent/20 text-[var(--chip-accent-fg)]'
-                    : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-muted)]',
+                    : 'text-[var(--fg-muted)]',
                 )}
               >
                 {usingPhoneCam ? 'Телефон' : 'Жду…'}

@@ -297,12 +297,9 @@
 }
 
 @utility glass-panel {
-  border: 1px solid var(--line);
-  background: linear-gradient(
-    170deg,
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
+  border: 1px solid var(--glass-border);
+  background-color: var(--panel-solid);
+  background-image: var(--dock-bg);
   box-shadow: var(--shadow-glass);
   backdrop-filter: blur(22px) saturate(1.25);
   -webkit-backdrop-filter: blur(22px) saturate(1.25);
