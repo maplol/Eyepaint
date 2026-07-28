@@ -51,6 +51,7 @@ import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
 import {
   buildArPlaneCssTransform,
+  formatDistanceCm,
   type ArPhase,
   type ArViewMode,
   type PlaneLock,
@@ -433,7 +434,12 @@ export function Studio({
         : 1
     setPlaneLock({ ...plane, aspect, u: 0, v: 0 })
     setArPhase('locked')
-    showToast('Плоскость зафиксирована — маркер можно убрать')
+    const distLabel = formatDistanceCm(plane.distanceCm)
+    showToast(
+      distLabel
+        ? `Плоскость зафиксирована · ${distLabel} — маркер можно убрать`
+        : 'Плоскость зафиксирована — маркер можно убрать',
+    )
   }
 
   /** Sync preset chips → guide-layer shapes (skip mount so project shapes survive). */
@@ -475,13 +481,24 @@ export function Studio({
   }, [guideLayersOn, guides.opacity])
 
   const arTrackingOn = flags.arPlaneLock && arMode === 'ar' && !uiHidden
-  const { ready: arDetectorReady, progress: arProgress } = useArucoTracker({
+  const {
+    ready: arDetectorReady,
+    progress: arProgress,
+    liveDistanceCm,
+  } = useArucoTracker({
     enabled: arTrackingOn,
     phase: arPhase,
     videoRef,
     stageRef,
     onLock: handleArLock,
   })
+
+  const arDistanceCm =
+    arMode === 'ar'
+      ? arPhase === 'locked'
+        ? (planeLock?.distanceCm ?? null)
+        : liveDistanceCm
+      : null
 
   const setArViewMode = (mode: ArViewMode) => {
     setArMode(mode)
@@ -1740,6 +1757,7 @@ export function Studio({
                 phase={arPhase}
                 progress={arProgress}
                 detectorReady={arDetectorReady}
+                distanceCm={arDistanceCm}
                 onMode={setArViewMode}
                 onRecalibrate={recalibrateAr}
               />

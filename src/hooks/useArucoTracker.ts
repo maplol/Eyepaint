@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   AR_MARKER,
+  averageMarkerSidePx,
+  estimateDistanceCm,
+  markerSizeMmForId,
+  orderCornersTLTRBRBL,
   planeLockFromCorners,
   type ArPhase,
   type PlaneLock,
@@ -23,7 +27,7 @@ type TrackerOptions = {
 
 /**
  * Hunts for ArUco center marker (ID 0) while phase === 'hunting'.
- * Locks after N stable frames.
+ * Locks after N stable frames. Exposes live distance estimate while visible.
  */
 export function useArucoTracker({
   enabled,
@@ -153,6 +157,8 @@ export function useArucoTracker({
 
     const stageRect = stage.getBoundingClientRect()
     const { w: detectW, h: detectH } = detectSizeRef.current
+    const orderedDetect = orderCornersTLTRBRBL(corners as [Point2, Point2, Point2, Point2])
+    const detectSidePx = averageMarkerSidePx(orderedDetect)
     const mapped = mapVideoCornersToStage(
       corners as [Point2, Point2, Point2, Point2],
       video.videoWidth,
@@ -166,16 +172,31 @@ export function useArucoTracker({
     const quality = Math.max(0.55, 1 - (lastHit.hammingDistance ?? 0) * 0.15)
     if (quality < AR_MARKER.minQuality) return
 
-    const plane = planeLockFromCorners(mapped, stageRect, lastHit.id, quality)
+    const plane = planeLockFromCorners(mapped, stageRect, lastHit.id, quality, 1, {
+      detectSidePx,
+      imageWidthPx: detectW,
+    })
     stableRef.current = []
     setStableCount(0)
     onLockRef.current(plane)
   }, [lastHit, phase, stageRef, videoRef])
 
+  const liveDistanceCm = useMemo(() => {
+    if (!enabled || !lastHit || lastHit.corners.length < 4) return null
+    const ordered = orderCornersTLTRBRBL(
+      lastHit.corners.slice(0, 4) as [Point2, Point2, Point2, Point2],
+    )
+    return estimateDistanceCm({
+      markerSidePx: averageMarkerSidePx(ordered),
+      imageWidthPx: detectSizeRef.current.w,
+      markerSizeMm: markerSizeMmForId(lastHit.id),
+    })
+  }, [enabled, lastHit])
+
   const progress =
     phase === 'hunting' ? Math.min(1, stableCount / AR_MARKER.stableFramesNeeded) : 0
 
-  return { ready, lastHit, progress, stableCount }
+  return { ready, lastHit, progress, stableCount, liveDistanceCm }
 }
 
 function mapVideoCornersToStage(

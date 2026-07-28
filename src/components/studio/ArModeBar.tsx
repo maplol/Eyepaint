@@ -1,4 +1,9 @@
-import { markerAssetUrl, type ArPhase, type ArViewMode } from '../../lib/arPlane'
+import {
+  formatDistanceCm,
+  markerAssetUrl,
+  type ArPhase,
+  type ArViewMode,
+} from '../../lib/arPlane'
 import { cn } from './studioUi'
 
 type ArModeBarProps = {
@@ -6,6 +11,8 @@ type ArModeBarProps = {
   phase: ArPhase
   progress: number
   detectorReady: boolean
+  /** Live estimate while hunting; locked value after fix */
+  distanceCm?: number | null
   onMode: (mode: ArViewMode) => void
   onRecalibrate: () => void
 }
@@ -15,9 +22,12 @@ export function ArModeBar({
   phase,
   progress,
   detectorReady,
+  distanceCm = null,
   onMode,
   onRecalibrate,
 }: ArModeBarProps) {
+  const distanceLabel = formatDistanceCm(distanceCm)
+
   const status =
     mode === 'free'
       ? null
@@ -30,7 +40,13 @@ export function ArModeBar({
           : null
 
   const statusTitle =
-    phase === 'locked' ? 'Плоскость зафиксирована · маркер можно убрать' : undefined
+    phase === 'locked'
+      ? distanceLabel
+        ? `Плоскость зафиксирована · ${distanceLabel} до маркера (оценка ±20%). Маркер можно убрать.`
+        : 'Плоскость зафиксирована · маркер можно убрать'
+      : distanceLabel
+        ? `Оценка дистанции ${distanceLabel} по маркеру 90 мм (FOV≈65°)`
+        : undefined
 
   return (
     <div className="flex min-w-0 max-w-full flex-col items-center gap-1 justify-self-center">
@@ -78,6 +94,15 @@ export function ArModeBar({
             >
               {status}
             </p>
+          )}
+          {distanceLabel && (
+            <span
+              className="inline-flex min-h-7 items-center rounded-full border border-[var(--glass-border-soft)] bg-[var(--glass-fill-mid)] px-2 text-[0.65rem] font-semibold tabular-nums text-[var(--fg-strong)] sm:text-[0.68rem]"
+              title={statusTitle}
+              aria-label={`Дистанция ${distanceLabel}`}
+            >
+              {distanceLabel}
+            </span>
           )}
           {phase === 'hunting' && (
             <div
