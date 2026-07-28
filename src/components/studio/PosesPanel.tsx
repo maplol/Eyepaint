@@ -122,7 +122,7 @@ function PoseStatsGrid({ stats }: { stats: Record<string, string> }) {
         if (value == null) return null
         const label = STAT_LABELS[key] ?? key
         return (
-          <HoverTooltip key={key} label={label}>
+          <HoverTooltip key={key} label={label} className="min-w-0 w-full [&_>span]:w-full">
             <div className={poseStatClass} aria-label={`${label}: ${value}`}>
               <StatIcon id={key} />
               <strong className={poseStatValueClass}>{value}</strong>
@@ -188,11 +188,14 @@ export function PosesPanel(props: PosesPanelProps) {
   )
 
   const listTab = (
-    <div className="relative grid gap-2 pb-11">
+    <div className="grid gap-2 pb-14">
       {props.poses.length === 0 ? (
         <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
       ) : (
         <>
+          <CornerAction label="Очистить всё" onClick={props.onClear}>
+            <TrashIcon />
+          </CornerAction>
           <p className={fieldLabelClass}>Сохранённые · {props.poses.length}</p>
           <ul className="grid list-none gap-2">
             {props.poses.map((pose) => {
@@ -241,9 +244,6 @@ export function PosesPanel(props: PosesPanelProps) {
               )
             })}
           </ul>
-          <CornerAction label="Очистить всё" onClick={props.onClear}>
-            <TrashIcon />
-          </CornerAction>
         </>
       )}
     </div>

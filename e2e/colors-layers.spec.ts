@@ -11,12 +11,12 @@ test.describe('Colors & layers', () => {
     await openStudioTool(page, 'Пипетка')
 
     await expect(page.getByLabel('Точность палитры')).toBeVisible()
-    await expect(page.getByText(/цветов · выбрано/)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/выбрано \d+/)).toBeVisible({ timeout: 20_000 })
 
     const precision = page.getByLabel('Точность палитры')
     await precision.fill('5')
     const panel = page.getByLabel('Настройки инструмента')
-    await expect(panel.getByRole('button', { name: 'Пипетка' })).toBeVisible()
+    await expect(panel.getByRole('button', { name: /Пипетка/ })).toBeVisible()
     await expect(panel.getByRole('button', { name: 'Кожа' })).toBeVisible()
     await panel.getByRole('button', { name: 'Кожа' }).click()
   })

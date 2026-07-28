@@ -104,7 +104,14 @@ export function MainPanel(props: MainPanelProps) {
         id: 'session',
         label: 'Сессия',
         content: (
-          <div className="relative grid gap-2 pb-11">
+          <div className="grid gap-2 pb-14">
+            <CornerAction
+              label="Очистить галерею"
+              disabled={props.shots.length === 0}
+              onClick={props.onClearShots}
+            >
+              <TrashIcon />
+            </CornerAction>
             <div className="flex min-h-7 items-center justify-between gap-2">
               <p className={fieldLabelClass}>Таймер</p>
               <span
@@ -163,13 +170,6 @@ export function MainPanel(props: MainPanelProps) {
                     ))}
                   </div>
                 )}
-                <CornerAction
-                  label="Очистить галерею"
-                  disabled={props.shots.length === 0}
-                  onClick={props.onClearShots}
-                >
-                  <TrashIcon />
-                </CornerAction>
               </>
             )}
           </div>

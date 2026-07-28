@@ -83,7 +83,7 @@ export function HoverTooltip({
   return (
     <span
       ref={anchorRef}
-      className={cn('inline-flex shrink-0', className)}
+      className={cn('inline-flex min-w-0 shrink-0', className)}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => {
         if (!pinned) setOpen(false)
@@ -94,7 +94,7 @@ export function HoverTooltip({
       }}
     >
       <span
-        className="inline-flex"
+        className="inline-flex min-w-0 w-full"
         onClick={(event) => {
           event.stopPropagation()
           if (onTriggerClick) {

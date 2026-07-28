@@ -45,6 +45,10 @@ type ColorsPanelProps = {
   onSelectAll: () => void
   onInvert: () => void
   onResetSelection: () => void
+  /** Убрать все цвета, взятые пипеткой, из палитры и выбора */
+  onClearPicks: () => void
+  /** Убрать один pick-цвет */
+  onRemovePick: (id: string) => void
   pickMode: boolean
   onPickMode: () => void
   colorMode: ColorFilterMode
@@ -65,75 +69,29 @@ type ColorsPanelProps = {
 
 export function ColorsPanel(props: ColorsPanelProps) {
   const hasPalette = props.palette.length > 0 || props.paletteLoading
+  const pickCount = props.palette.filter((c) => c.source === 'pick').length
 
   const pickTab = (
-    <div className="relative grid gap-0 pb-11">
-      <div>
-        <div className={sliderLabelsClass}>
-          <span>Точность палитры</span>
-          <span>
-            {props.precisionProfile.label} · {props.precisionProfile.maxColors}
-          </span>
-        </div>
-        <input
-          className={rangeInputClass}
-          type="range"
-          min={1}
-          max={5}
-          step={1}
-          value={props.colorPrecision}
-          onChange={(event) => props.onPrecision(Number(event.target.value) as ColorPrecision)}
-          aria-label="Точность палитры"
-        />
-        <p className="mt-1 text-[0.72rem] text-[var(--fg-faint)]">{props.precisionProfile.hint}</p>
-      </div>
-
-      <div className={sectionDividerClass}>
-        <div className={sliderLabelsClass}>
-          <span>Допуск совпадения</span>
-          <span>{props.matchTolerance}</span>
-        </div>
-        <input
-          className={rangeInputClass}
-          type="range"
-          min={12}
-          max={100}
-          step={1}
-          value={props.matchTolerance}
-          onChange={(event) => props.onTolerance(Number(event.target.value))}
-          aria-label="Допуск совпадения цвета"
-        />
-      </div>
-
-      <div className={cn(sectionDividerClass, 'grid gap-2')}>
-        <p className={fieldLabelClass}>Пресеты</p>
-        <div className="grid grid-cols-4 gap-2">
-          {PALETTE_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={chipNeutralClass}
-              title={preset.hint}
-              disabled={props.palette.length === 0}
-              onClick={() => props.onPreset(preset.id)}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="grid gap-0 pb-14">
+      <CornerAction
+        label="Сбросить выбор"
+        disabled={props.paletteLoading || props.selectedColorIds.length === 0}
+        onClick={props.onResetSelection}
+      >
+        <TrashIcon />
+      </CornerAction>
 
       {!hasPalette ? (
-        <p className={cn(tipClass, sectionDividerClass)}>Не удалось вытащить палитру</p>
+        <p className={tipClass}>Не удалось вытащить палитру</p>
       ) : (
-        <div className={cn(sectionDividerClass, 'grid gap-2')}>
+        <div className="grid gap-2.5 pl-0">
           <div className="flex min-h-7 items-center justify-between gap-2">
-            <p className="text-[0.78rem] text-[var(--fg-muted)]">
+            <p className="min-w-0 text-[0.78rem] leading-snug text-[var(--fg-muted)]">
               {props.paletteLoading
                 ? 'Обновляю палитру…'
-                : `${props.palette.length} цветов · выбрано ${props.selectedColorIds.length}${
+                : `${props.palette.length} · выбрано ${props.selectedColorIds.length}${
                     props.selectionCoverage != null
-                      ? ` · ~${props.selectionCoverage}% кадра`
+                      ? ` · ~${props.selectionCoverage}%`
                       : ''
                   }`}
             </p>
@@ -165,32 +123,78 @@ export function ColorsPanel(props: ColorsPanelProps) {
                 ))
               : props.visiblePalette.map((color) => {
                   const active = props.selectedSet.has(color.id)
+                  const isPick = color.source === 'pick'
                   return (
-                    <button
-                      key={color.id}
-                      type="button"
-                      className={cn(
-                        'relative h-10 w-10 flex-none rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-opacity',
-                        props.paletteLoading && 'opacity-55',
-                        active
-                          ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
-                          : 'border-white/35',
+                    <div key={color.id} className="relative h-10 w-10 flex-none">
+                      <button
+                        type="button"
+                        className={cn(
+                          'h-full w-full rounded-full border-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.12)] transition-opacity',
+                          props.paletteLoading && 'opacity-55',
+                          active
+                            ? 'scale-[1.06] border-white shadow-[0_0_0_2px_rgba(224,154,106,0.85),inset_0_0_0_1px_rgba(0,0,0,0.12)]'
+                            : 'border-white/35',
+                        )}
+                        style={{ background: color.hex }}
+                        aria-pressed={active}
+                        disabled={props.paletteLoading}
+                        title={`${color.hex}${isPick ? ' · пипетка' : ''}`}
+                        onClick={() => props.onToggleColor(color.id)}
+                      />
+                      {isPick && (
+                        <button
+                          type="button"
+                          className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-ink-deep bg-danger text-[0.55rem] font-bold leading-none text-ink-deep"
+                          aria-label={`Убрать пипетку ${color.hex}`}
+                          title="Убрать цвет пипетки"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            props.onRemovePick(color.id)
+                          }}
+                        >
+                          ×
+                        </button>
                       )}
-                      style={{ background: color.hex }}
-                      aria-pressed={active}
-                      disabled={props.paletteLoading}
-                      title={`${color.hex}${color.source === 'pick' ? ' · пипетка' : ''}`}
-                      onClick={() => props.onToggleColor(color.id)}
-                    >
-                      {color.source === 'pick' && (
-                        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-ink-deep bg-accent" />
-                      )}
-                    </button>
+                    </div>
                   )
                 })}
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <button
+            type="button"
+            className={cn(
+              'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-3 text-[0.86rem] font-bold leading-tight transition-colors',
+              props.pickMode
+                ? 'border-accent/60 bg-accent text-accent-ink shadow-[0_0_0_1px_rgba(224,154,106,0.35)]'
+                : 'border-accent/45 bg-accent/20 text-[var(--chip-accent-fg)] hover:bg-accent/30',
+            )}
+            disabled={props.paletteLoading}
+            aria-pressed={props.pickMode}
+            onClick={props.onPickMode}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M3 21l7-7M14.5 5.5l4 4M9 16l-2.5 2.5M16 4l4 4-8.5 8.5H9v-2.5L16 4Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {props.pickMode ? 'Пипетка вкл — клик по референсу' : 'Пипетка'}
+          </button>
+
+          {pickCount > 0 && (
+            <button
+              type="button"
+              className="text-center text-[0.75rem] font-semibold text-[var(--danger-soft)]"
+              onClick={props.onClearPicks}
+            >
+              Убрать цвета пипетки · {pickCount}
+            </button>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               className={chipNeutralClass}
@@ -207,14 +211,9 @@ export function ColorsPanel(props: ColorsPanelProps) {
             >
               Инверт
             </button>
-            <button
-              type="button"
-              className={chipAccentClass(props.pickMode)}
-              disabled={props.paletteLoading}
-              onClick={props.onPickMode}
-            >
-              Пипетка
-            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               className={chipAccentClass(props.colorMode === 'mask')}
@@ -223,38 +222,87 @@ export function ColorsPanel(props: ColorsPanelProps) {
               }
               onClick={props.onMaskMode}
             >
-              Маска
+              Только цвет
+            </button>
+            <button
+              type="button"
+              className={chipAccentClass(props.colorMode === 'gray')}
+              disabled={
+                props.filterBusy ||
+                (props.selectedColorIds.length === 0 && !props.brush.dataUrl)
+              }
+              onClick={props.onGrayMode}
+            >
+              Серый фон
             </button>
           </div>
-          <button
-            type="button"
-            className={chipNeutralClass}
-            disabled={
-              props.filterBusy || (props.selectedColorIds.length === 0 && !props.brush.dataUrl)
-            }
-            onClick={props.onGrayMode}
-          >
-            Серый фон
-          </button>
-          {props.pickMode && (
-            <p className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
-              Кликни по референсу — цвет в палитру
-            </p>
-          )}
-          <CornerAction
-            label="Сбросить выбор"
-            disabled={props.paletteLoading || props.selectedColorIds.length === 0}
-            onClick={props.onResetSelection}
-          >
-            <TrashIcon />
-          </CornerAction>
+
+          <div className={cn(sectionDividerClass, 'grid gap-3')}>
+            <div>
+              <div className={sliderLabelsClass}>
+                <span>Точность</span>
+                <span>
+                  {props.precisionProfile.label} · {props.precisionProfile.maxColors}
+                </span>
+              </div>
+              <input
+                className={rangeInputClass}
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={props.colorPrecision}
+                onChange={(event) =>
+                  props.onPrecision(Number(event.target.value) as ColorPrecision)
+                }
+                aria-label="Точность палитры"
+              />
+            </div>
+            <div>
+              <div className={sliderLabelsClass}>
+                <span>Допуск</span>
+                <span>{props.matchTolerance}</span>
+              </div>
+              <input
+                className={rangeInputClass}
+                type="range"
+                min={12}
+                max={100}
+                step={1}
+                value={props.matchTolerance}
+                onChange={(event) => props.onTolerance(Number(event.target.value))}
+                aria-label="Допуск совпадения цвета"
+              />
+            </div>
+          </div>
+
+          <div className={cn(sectionDividerClass, 'grid gap-2')}>
+            <p className={fieldLabelClass}>Пресеты</p>
+            <div className="grid grid-cols-4 gap-2">
+              {PALETTE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={chipNeutralClass}
+                  title={preset.hint}
+                  disabled={props.palette.length === 0}
+                  onClick={() => props.onPreset(preset.id)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 
   const brushTab = (
-    <div className="relative grid gap-2 pb-11">
+    <div className="grid gap-2 pb-14">
+      <CornerAction label="Очистить маску" onClick={props.onClearBrush}>
+        <TrashIcon />
+      </CornerAction>
       <div className="flex items-center justify-between gap-2">
         <p className={fieldLabelClass}>Кисть-маска</p>
         <button
@@ -329,9 +377,6 @@ export function ColorsPanel(props: ColorsPanelProps) {
           ? 'Применяю фильтр…'
           : 'Кисть режет зону цвета (AND/OR) на активном слое'}
       </p>
-      <CornerAction label="Очистить маску" onClick={props.onClearBrush}>
-        <TrashIcon />
-      </CornerAction>
     </div>
   )
 

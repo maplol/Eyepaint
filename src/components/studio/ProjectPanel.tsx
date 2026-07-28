@@ -16,7 +16,20 @@ type ProjectPanelProps = {
 
 export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
   return (
-    <div className={cn(panelClass, 'relative gap-0 pb-11')}>
+    <div className={cn(panelClass, 'gap-0 pb-14')}>
+      <CornerAction
+        label="Сбросить углы"
+        onClick={() =>
+          setTransform((prev) => ({
+            ...prev,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+          }))
+        }
+      >
+        <ResetIcon />
+      </CornerAction>
       <div>
         <div className={sliderLabelsClass}>
           <span>Наклон X</span>
@@ -89,19 +102,6 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           }
         />
       </div>
-      <CornerAction
-        label="Сбросить углы"
-        onClick={() =>
-          setTransform((prev) => ({
-            ...prev,
-            rotateX: 0,
-            rotateY: 0,
-            rotation: 0,
-          }))
-        }
-      >
-        <ResetIcon />
-      </CornerAction>
     </div>
   )
 }
