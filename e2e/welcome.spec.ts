@@ -31,11 +31,27 @@ test.describe('Welcome', () => {
     await prepareApp(page, { onboardingDone: false })
     await page.goto('./')
 
-    await expect(page.getByText(/Старт · 1\//)).toBeVisible()
-    await page.getByRole('button', { name: 'Дальше' }).click()
-    await expect(page.getByText(/Старт · 2\//)).toBeVisible()
-    await page.getByRole('button', { name: 'Пропустить' }).click()
-    await expect(page.getByText(/Старт ·/)).toHaveCount(0)
+    const tour = page.getByRole('dialog', { name: 'Обучение' })
+    await expect(tour).toBeVisible()
+    await expect(tour.getByText(/Старт · 1\//)).toBeVisible()
+    await tour.getByRole('button', { name: 'Дальше' }).click()
+    await expect(tour.getByText(/Старт · 2\//)).toBeVisible()
+    await expect(tour.getByRole('heading', { name: 'Сфотографировать' })).toBeVisible()
+    await tour.getByRole('button', { name: 'Пропустить' }).click()
+    await expect(page.getByRole('dialog', { name: 'Обучение' })).toHaveCount(0)
+  })
+
+  test('онбординг со стрелкой подсвечивает кнопку', async ({ page }) => {
+    await prepareApp(page, { onboardingDone: false })
+    await page.goto('./')
+
+    const tour = page.getByRole('dialog', { name: 'Обучение' })
+    await tour.getByRole('button', { name: 'Дальше' }).click()
+    await expect(tour.getByRole('heading', { name: 'Сфотографировать' })).toBeVisible()
+    // цель тура на экране и описана
+    await expect(page.locator('[data-help="welcome-capture"]')).toBeVisible()
+    await tour.getByRole('button', { name: 'Дальше' }).click()
+    await expect(tour.getByRole('heading', { name: 'Из галереи' })).toBeVisible()
   })
 
   test('режим подсказок рассказывает про кнопку', async ({ page }) => {
