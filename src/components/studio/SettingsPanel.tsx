@@ -224,7 +224,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
           <div className="relative min-h-0 overflow-auto overscroll-contain px-4 py-3.5 eyepaint-scroll">
             {props.section === 'link' && (
-              <div className="relative grid gap-0 pb-12">
+              <div className="grid gap-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[0.78rem] font-semibold text-[var(--fg-muted)]">Телефон как камера</p>
                   <span
@@ -297,7 +297,16 @@ export function SettingsPanel(props: SettingsPanelProps) {
             )}
 
             {props.section === 'keys' && (
-              <div className="relative grid gap-0 pb-12">
+              <div className="grid gap-0 pb-14">
+                <CornerAction
+                  label="Сбросить хоткеи"
+                  onClick={() => {
+                    props.setHotkeys({ ...DEFAULT_HOTKEYS })
+                    props.onHotkeysResetToast()
+                  }}
+                >
+                  <ResetIcon />
+                </CornerAction>
                 <p className={tipClass}>Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.</p>
                 <div className={cn(sectionDividerClass, 'grid gap-2')}>
                   {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
@@ -325,15 +334,6 @@ export function SettingsPanel(props: SettingsPanelProps) {
                     </div>
                   ))}
                 </div>
-                <CornerAction
-                  label="Сбросить хоткеи"
-                  onClick={() => {
-                    props.setHotkeys({ ...DEFAULT_HOTKEYS })
-                    props.onHotkeysResetToast()
-                  }}
-                >
-                  <ResetIcon />
-                </CornerAction>
               </div>
             )}
 
@@ -397,7 +397,14 @@ export function SettingsPanel(props: SettingsPanelProps) {
             )}
 
             {props.section === 'project' && (
-              <div className="relative grid gap-0 pb-12">
+              <div className="grid gap-0 pb-14">
+                <CornerAction
+                  label="Очистить автосейв"
+                  disabled={!props.autosaveLabel}
+                  onClick={props.onClearAutosave}
+                >
+                  <TrashIcon />
+                </CornerAction>
                 <p className={tipClass}>
                   Файл `.eyepaint.json` — слои и настройки. Автосейв переживает перезагрузку.
                 </p>
@@ -418,13 +425,6 @@ export function SettingsPanel(props: SettingsPanelProps) {
                     {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
                   </button>
                 </div>
-                <CornerAction
-                  label="Очистить автосейв"
-                  disabled={!props.autosaveLabel}
-                  onClick={props.onClearAutosave}
-                >
-                  <TrashIcon />
-                </CornerAction>
               </div>
             )}
           </div>

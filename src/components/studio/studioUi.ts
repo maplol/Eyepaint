@@ -57,12 +57,12 @@ export const ctaSecondaryClass =
 export const poseStatsClass = 'grid grid-cols-4 gap-1.5'
 
 export const poseStatClass =
-  'grid place-items-center gap-0.5 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-1 py-1.5'
+  'grid h-[3.4rem] w-full grid-rows-[1rem_1fr] place-items-center gap-0.5 overflow-hidden rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-1 py-1.5'
 
 export const poseStatLabelClass = 'text-[0.68rem] text-[var(--fg-faint)]'
 
 export const poseStatValueClass =
-  'text-[0.78rem] font-bold leading-none text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
+  'max-w-full truncate text-center text-[0.72rem] font-bold leading-none text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
 
 export const poseStatIconClass = 'text-[var(--fg-muted)]'
 

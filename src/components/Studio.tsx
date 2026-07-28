@@ -1179,6 +1179,18 @@ export function Studio({
         setSelectedColorIds([])
         setColorMode('off')
       }}
+      onClearPicks={() => {
+        setPalette((prev) => {
+          const next = prev.filter((c) => c.source !== 'pick')
+          const keep = new Set(next.map((c) => c.id))
+          setSelectedColorIds((ids) => ids.filter((id) => keep.has(id)))
+          return next
+        })
+      }}
+      onRemovePick={(id) => {
+        setPalette((prev) => prev.filter((c) => c.id !== id))
+        setSelectedColorIds((prev) => prev.filter((item) => item !== id))
+      }}
       pickMode={pickMode}
       onPickMode={() => {
         setPickMode((value) => !value)

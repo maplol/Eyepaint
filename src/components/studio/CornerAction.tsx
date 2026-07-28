@@ -6,21 +6,26 @@ type CornerActionProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
 }
 
-/** Фиксированная иконка-действие внизу справа панели */
+/**
+ * Иконка поверх контента: sticky к низу scrollport панели, слева.
+ * Ставить первым ребёнком скроллящегося блока (height:0 — не занимает место).
+ */
 export function CornerAction({ label, children, className, ...rest }: CornerActionProps) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className={cn(
-        'absolute bottom-2 right-2 z-[5] grid h-9 w-9 place-items-center rounded-full border border-[var(--glass-border)] bg-[var(--chip-solid)] text-[var(--fg-muted)] shadow-[var(--shadow-glass)] transition-colors hover:border-danger/45 hover:bg-danger/15 hover:text-[var(--danger-soft)] disabled:cursor-not-allowed disabled:opacity-40',
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-    </button>
+    <div className="pointer-events-none sticky top-[calc(100%-2.85rem)] z-[8] h-0 w-full">
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        className={cn(
+          'pointer-events-auto absolute left-2 top-0 grid h-9 w-9 place-items-center rounded-full border border-[var(--glass-border)] bg-[var(--chip-solid)] text-[var(--fg-muted)] shadow-[var(--shadow-glass)] transition-colors hover:border-danger/45 hover:bg-danger/15 hover:text-[var(--danger-soft)] disabled:pointer-events-none disabled:opacity-40',
+          className,
+        )}
+        {...rest}
+      >
+        {children}
+      </button>
+    </div>
   )
 }
 
