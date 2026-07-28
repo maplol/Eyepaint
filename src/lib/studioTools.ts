@@ -19,7 +19,7 @@ export function calcModeFilter(settings: CalcModeSettings): string | undefined {
   return `contrast(${contrast.toFixed(3)}) brightness(${brightness.toFixed(3)}) saturate(${saturate.toFixed(3)})`
 }
 
-export type GuideKind = 'none' | 'thirds' | 'face' | 'figure'
+export type GuideKind = 'none' | 'thirds' | 'face' | 'figure' | 'perspective'
 
 export type GuideSettings = {
   kind: GuideKind
@@ -36,6 +36,7 @@ export const GUIDE_LABELS: Record<GuideKind, string> = {
   thirds: '3×3',
   face: 'Лицо',
   figure: 'Рост',
+  perspective: 'Персп.',
 }
 
 export const GUIDE_TITLES: Record<GuideKind, string> = {
@@ -43,6 +44,7 @@ export const GUIDE_TITLES: Record<GuideKind, string> = {
   thirds: 'Сетка 3×3',
   face: 'Оси лица',
   figure: 'Пропорции фигуры',
+  perspective: 'Перспектива (1 точка)',
 }
 
 export type LoupeSettings = {

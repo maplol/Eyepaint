@@ -117,6 +117,7 @@ export function LayersPanel(props: LayersPanelProps) {
   const ghostNodeRef = useRef<HTMLDivElement | null>(null)
   const cleanupDragRef = useRef<(() => void) | null>(null)
   const prevCountRef = useRef(props.layers.length)
+  const prevIdsRef = useRef(new Set(props.layers.map((layer) => layer.id)))
 
   const displayLayers = [...props.layers].reverse()
   const canReorder = props.layers.length > 1
@@ -144,9 +145,14 @@ export function LayersPanel(props: LayersPanelProps) {
 
   useEffect(() => {
     if (variant === 'column') return
-    if (props.layers.length > prevCountRef.current) setOpen(true)
+    const ids = new Set(props.layers.map((layer) => layer.id))
+    const added = props.layers.filter((layer) => !prevIdsRef.current.has(layer.id))
+    prevIdsRef.current = ids
     prevCountRef.current = props.layers.length
-  }, [props.layers.length, variant])
+    // Guide layer is auto-created from Гиды — не перехватывать инструмент панелью слоёв
+    if (added.length > 0 && added.every((layer) => layer.kind === 'guide')) return
+    if (added.length > 0) setOpen(true)
+  }, [props.layers, variant])
 
   useEffect(() => {
     dragIdRef.current = dragId
@@ -458,6 +464,11 @@ export function LayersPanel(props: LayersPanelProps) {
               >
                 <span className="block truncate text-[0.78rem] font-semibold text-[var(--fg-strong)]">
                   {layer.name}
+                  {layer.kind === 'guide' && (
+                    <span className="ml-1.5 rounded-md border border-[var(--glass-border-soft)] px-1 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-[var(--chip-accent-fg)]">
+                      Гид
+                    </span>
+                  )}
                 </span>
                 <span className="block truncate text-[0.62rem] text-[var(--fg-faint)]">
                   {isActive ? `Активен · ${stackHint || 'edit'}` : stackHint || 'выбрать'}
@@ -682,7 +693,7 @@ export function LayersPanel(props: LayersPanelProps) {
                   </button>
                 )
               })}
-            {menuLayer.kind === 'aux' && (
+            {menuLayer.kind !== 'primary' && (
               <button
                 type="button"
                 role="menuitem"

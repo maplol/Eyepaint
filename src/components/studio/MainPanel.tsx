@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { GuideDrawTool } from '../../lib/guideShapes'
 import type {
   CalcModeSettings,
   GuideKind,
@@ -28,7 +29,13 @@ import {
   sliderLabelsClass,
 } from './studioUi'
 
-const GUIDE_KIND_OPTIONS: GuideKind[] = ['none', 'thirds', 'face', 'figure']
+const GUIDE_KIND_OPTIONS: GuideKind[] = ['none', 'thirds', 'face', 'figure', 'perspective']
+const GUIDE_DRAW_OPTIONS: Array<{ id: GuideDrawTool; label: string }> = [
+  { id: 'select', label: 'Выбор' },
+  { id: 'line', label: 'Линия' },
+  { id: 'rect', label: 'Прямоуг.' },
+  { id: 'ellipse', label: 'Овал' },
+]
 const SESSION_OPTIONS = [25, 45, 90] as const
 
 export type MainPanelFocus = 'all' | 'hand' | 'loupe' | 'calc' | 'guides'
@@ -41,6 +48,12 @@ type MainPanelProps = {
   onCalcMode: (next: CalcModeSettings | ((prev: CalcModeSettings) => CalcModeSettings)) => void
   guides: GuideSettings
   onGuides: (next: GuideSettings | ((prev: GuideSettings) => GuideSettings)) => void
+  guideLayerMode?: boolean
+  guideDrawTool?: GuideDrawTool
+  onGuideDrawTool?: (tool: GuideDrawTool) => void
+  selectedGuideShapeId?: string | null
+  onDeleteSelectedGuideShape?: () => void
+  onClearGuideShapes?: () => void
   loupe: LoupeSettings
   onLoupeChange: (next: LoupeSettings | ((prev: LoupeSettings) => LoupeSettings)) => void
   sessionMins: null | 25 | 45 | 90
@@ -256,7 +269,7 @@ export function MainPanel(props: MainPanelProps) {
 
       <Section show={guidesSec.show} first={guidesSec.first}>
         <div className="grid gap-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             {GUIDE_KIND_OPTIONS.map((kind) => (
               <button
                 key={kind}
@@ -272,7 +285,7 @@ export function MainPanel(props: MainPanelProps) {
           {props.guides.kind !== 'none' && (
             <div>
               <div className={sliderLabelsClass}>
-                <span>Прозрачность сетки</span>
+                <span>Прозрачность гида</span>
                 <span>{Math.round(props.guides.opacity * 100)}%</span>
               </div>
               <input
@@ -290,6 +303,44 @@ export function MainPanel(props: MainPanelProps) {
                 }
                 aria-label="Прозрачность направляющих"
               />
+            </div>
+          )}
+          {props.guideLayerMode && props.guides.kind !== 'none' && (
+            <div className="grid gap-2">
+              <p className={fieldLabelClass}>Фигуры</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {GUIDE_DRAW_OPTIONS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={chipAccentClass(props.guideDrawTool === item.id)}
+                    onClick={() => props.onGuideDrawTool?.(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className={rowClass}>
+                <button
+                  type="button"
+                  className={chipNeutralClass}
+                  disabled={!props.selectedGuideShapeId}
+                  onClick={() => props.onDeleteSelectedGuideShape?.()}
+                >
+                  Удалить фигуру
+                </button>
+                <button
+                  type="button"
+                  className={chipNeutralClass}
+                  onClick={() => props.onClearGuideShapes?.()}
+                >
+                  Очистить
+                </button>
+              </div>
+              <p className="text-[0.72rem] leading-snug text-[var(--fg-faint)]">
+                Гид — отдельный слой: жестами Руки двигай весь конструктив. Здесь — пресеты и
+                дорисовка.
+              </p>
             </div>
           )}
         </div>

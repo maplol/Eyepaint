@@ -142,6 +142,7 @@ const FLAG_LABELS: Array<[keyof FeatureFlags, string, string]> = [
   ['lessons', 'Уроки на Welcome', 'Карточки уроков на старте'],
   ['lightTheme', 'Светлая тема', 'Разрешить светлую атмосферу UI'],
   ['arPlaneLock', 'AR плоскость', 'Режим Свободный|AR: маркер → lock плоскости листа'],
+  ['guideLayers', 'Гиды как слой', 'Пресеты и фигуры на отдельном слое с тем же transform'],
 ]
 
 const STATUS_LABEL: Record<string, string> = {
