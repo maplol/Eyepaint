@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
 } from 'react'
+import { GuideLayerCanvas } from './GuideLayerCanvas'
 import { GuideOverlay } from './GuideOverlay'
 import { HelpToggleButton } from './HelpSystem'
 import { Toast } from './Toast'
@@ -74,12 +75,21 @@ import {
 } from '../lib/colors'
 import { loadFlags, saveFlags, type FeatureFlags } from '../lib/flags'
 import {
+  shapesForPreset,
+  type GuideDrawTool,
+  type GuidePresetKind,
+  type GuideShape,
+} from '../lib/guideShapes'
+import {
   applyLayerStackAction,
   canAddAux,
   createAuxLayer,
   createPrimaryLayer,
+  ensureGuideLayer,
+  findGuideLayer,
   MAX_LAYERS,
   nextAuxName,
+  patchGuideShapes,
   patchLayerTransform,
   reorderLayersInDisplayOrder,
   revokeAuxUrls,
@@ -284,6 +294,8 @@ export function Studio({
           kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
         },
   )
+  const [guideDrawTool, setGuideDrawTool] = useState<GuideDrawTool>('select')
+  const [selectedGuideShapeId, setSelectedGuideShapeId] = useState<string | null>(null)
   const [loupe, setLoupe] = useState<LoupeSettings>(() =>
     projectBoot?.loupe ? { ...projectBoot.loupe } : { ...DEFAULT_LOUPE },
   )
@@ -294,14 +306,33 @@ export function Studio({
   const [timerNow, setTimerNow] = useState(() => Date.now())
   const [autoSessionShot, setAutoSessionShot] = useState(true)
   const [shots, setShots] = useState<SessionShot[]>(() => loadSessionShots())
-  const [layers, setLayers] = useState<RefLayer[]>(() =>
-    projectBoot?.layers?.length
+  const [layers, setLayers] = useState<RefLayer[]>(() => {
+    const bootFlags = projectBoot?.flags ?? loadFlags()
+    const bootGuides: GuideSettings = projectBoot?.guides
+      ? { ...projectBoot.guides }
+      : {
+          ...DEFAULT_GUIDES,
+          kind: lessonBoot?.guide ?? DEFAULT_GUIDES.kind,
+        }
+    const initial: RefLayer[] = projectBoot?.layers?.length
       ? projectBoot.layers.map((layer) => ({
           ...layer,
           transform: { ...layer.transform },
+          shapes: layer.shapes ? [...layer.shapes] : layer.kind === 'guide' ? [] : undefined,
         }))
-      : [createPrimaryLayer(imageUrl)],
-  )
+      : [createPrimaryLayer(imageUrl)]
+    if (
+      bootFlags.guideLayers &&
+      bootGuides.kind !== 'none' &&
+      !initial.some((layer) => layer.kind === 'guide')
+    ) {
+      return ensureGuideLayer(initial, {
+        shapes: shapesForPreset(bootGuides.kind as GuidePresetKind),
+        opacity: bootGuides.opacity,
+      }).layers
+    }
+    return initial
+  })
   const [activeLayerId, setActiveLayerId] = useState(
     () => projectBoot?.activeLayerId ?? 'primary',
   )
@@ -353,6 +384,8 @@ export function Studio({
   paletteRef.current = palette
 
   const activeLayer = layers.find((layer) => layer.id === activeLayerId) ?? layers[0] ?? null
+  const guideLayersOn = flags.guideLayers
+  const guidesStickyOn = guides.kind !== 'none'
   const colorSourceUrl = activeLayer?.url ?? imageUrl
   const activeLayerName = activeLayer?.name ?? 'Основной'
 
@@ -402,6 +435,44 @@ export function Studio({
     setArPhase('locked')
     showToast('Плоскость зафиксирована — маркер можно убрать')
   }
+
+  /** Sync preset chips → guide-layer shapes (skip mount so project shapes survive). */
+  const guidesKindRef = useRef(guides.kind)
+  useEffect(() => {
+    if (!guideLayersOn) return
+    const kindChanged = guidesKindRef.current !== guides.kind
+    guidesKindRef.current = guides.kind
+    if (guides.kind === 'none') {
+      if (!kindChanged) return
+      setLayers((prev) =>
+        prev.map((layer) =>
+          layer.kind === 'guide' ? { ...layer, shapes: [], visible: false } : layer,
+        ),
+      )
+      setSelectedGuideShapeId(null)
+      return
+    }
+    if (!kindChanged) return
+    setLayers((prev) =>
+      ensureGuideLayer(prev, {
+        shapes: shapesForPreset(guides.kind as GuidePresetKind),
+        opacity: guides.opacity,
+      }).layers,
+    )
+  }, [guideLayersOn, guides.kind])
+
+  useEffect(() => {
+    if (!guideLayersOn) return
+    setLayers((prev) => {
+      let changed = false
+      const next = prev.map((layer) => {
+        if (layer.kind !== 'guide' || layer.opacity === guides.opacity) return layer
+        changed = true
+        return { ...layer, opacity: guides.opacity }
+      })
+      return changed ? next : prev
+    })
+  }, [guideLayersOn, guides.opacity])
 
   const arTrackingOn = flags.arPlaneLock && arMode === 'ar' && !uiHidden
   const { ready: arDetectorReady, progress: arProgress } = useArucoTracker({
@@ -1019,6 +1090,8 @@ export function Studio({
     }
     if (tool === 'guides') {
       setGuides((prev) => (prev.kind === 'none' ? prev : { ...prev, kind: 'none' }))
+      setSelectedGuideShapeId(null)
+      setGuideDrawTool('select')
     }
   }
 
@@ -1041,7 +1114,7 @@ export function Studio({
     }
 
     const stickyOn =
-      (tool === 'guides' && guides.kind !== 'none') || (tool === 'calc' && calcMode.enabled)
+      (tool === 'guides' && guidesStickyOn) || (tool === 'calc' && calcMode.enabled)
 
     // Sticky: повторный клик при открытой панели = выкл; иначе — снова открыть панель
     if (stickyOn) {
@@ -1083,6 +1156,17 @@ export function Studio({
     }
     if (tool === 'guides') {
       setGuides((prev) => ({ ...prev, kind: prev.kind === 'none' ? 'thirds' : prev.kind }))
+      if (flags.guideLayers) {
+        if (!desktopLayout) setLayersSheetOpen(false)
+        setLayers((prev) => {
+          const { layers: next, guideId } = ensureGuideLayer(prev, {
+            opacity: guides.opacity,
+          })
+          setActiveLayerId(guideId)
+          return next
+        })
+        setGuideDrawTool('select')
+      }
     }
   }
 
@@ -1135,6 +1219,10 @@ export function Studio({
         setLayers((prev) => {
           const target = prev.find((layer) => layer.id === id)
           if (target?.kind === 'aux') revokeAuxUrls([target])
+          if (target?.kind === 'guide') {
+            setGuides((g) => ({ ...g, kind: 'none' }))
+            setSelectedGuideShapeId(null)
+          }
           return prev.filter((layer) => layer.id !== id)
         })
         if (activeLayerId === id) setActiveLayerId('primary')
@@ -1164,6 +1252,26 @@ export function Studio({
     onCalcMode: setCalcMode,
     guides,
     onGuides: setGuides,
+    guideLayerMode: guideLayersOn,
+    guideDrawTool,
+    onGuideDrawTool: setGuideDrawTool,
+    selectedGuideShapeId,
+    onDeleteSelectedGuideShape: () => {
+      const guide = findGuideLayer(layers)
+      if (!guide || !selectedGuideShapeId) return
+      setLayers((prev) =>
+        patchGuideShapes(prev, guide.id, (shapes) =>
+          shapes.filter((shape) => shape.id !== selectedGuideShapeId),
+        ),
+      )
+      setSelectedGuideShapeId(null)
+    },
+    onClearGuideShapes: () => {
+      const guide = findGuideLayer(layers)
+      if (!guide) return
+      setLayers((prev) => patchGuideShapes(prev, guide.id, []))
+      setSelectedGuideShapeId(null)
+    },
     loupe,
     onLoupeChange: setLoupe,
     sessionMins,
@@ -1444,9 +1552,18 @@ export function Studio({
 
         {visibleLayers.map((layer, index) => {
           const isActive = activeLayerId === layer.id
+          const isGuide = layer.kind === 'guide'
           const isPrimary = layer.kind === 'primary'
           const layerUrl = isPrimary ? imageUrl : layer.url
-          const useArCss = Boolean(isActive && arPlaneActive && planeLock && stageRef.current)
+          const guideInteractive =
+            guideLayersOn &&
+            isGuide &&
+            isActive &&
+            activeTool === 'guides' &&
+            !locked
+          const useArCss = Boolean(
+            !isGuide && isActive && arPlaneActive && planeLock && stageRef.current,
+          )
           const stageBox = stageRef.current?.getBoundingClientRect()
           const layerElSize = {
             width: stageBox ? Math.min(stageBox.width * 0.88, 520) : 400,
@@ -1475,59 +1592,84 @@ export function Studio({
                 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] [will-change:transform,opacity] min-[960px]:w-[min(72vw,620px)]',
                 isActive &&
                   framed &&
+                  !isGuide &&
                   'rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]',
                 isActive &&
                   (pickMode || brush.editing) &&
+                  !isGuide &&
                   'cursor-crosshair ring-2 ring-accent/70 ring-offset-2 ring-offset-transparent',
+                isActive && isGuide && 'outline outline-1 outline-offset-4 outline-white/25',
               )}
               style={{
-                opacity: opacity * layer.opacity,
+                opacity: isGuide ? layer.opacity : opacity * layer.opacity,
                 transform:
                   arTransform ?? buildOverlayCssTransform(layer.transform, layer.flipped),
                 zIndex: 2 + index,
                 pointerEvents:
                   loupeMode
                     ? 'none'
-                    : isActive && (pickMode || brush.editing)
+                    : isActive && guideInteractive
                       ? 'auto'
-                      : locked
-                        ? 'none'
-                        : isActive
-                          ? 'auto'
-                          : 'none',
+                      : isActive && (pickMode || brush.editing)
+                        ? 'auto'
+                        : locked
+                          ? 'none'
+                          : isActive
+                            ? 'auto'
+                            : 'none',
               }}
-              onClick={isActive ? handleOverlayPick : undefined}
+              onClick={isActive && !isGuide ? handleOverlayPick : undefined}
               onPointerDown={(event) => {
-                if (isActive && (pickMode || brush.editing)) {
+                if (isActive && (pickMode || brush.editing || guideInteractive)) {
                   event.stopPropagation()
                 }
               }}
             >
-              <img
-                ref={isActive ? overlayImageRef : undefined}
-                src={layerDisplayUrl(layer.id, layerUrl)}
-                alt={isPrimary ? 'Референс для срисовывания' : layer.name}
-                draggable={false}
-                className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
-              />
-              {flags.brushMask && isPrimary && isActive && (
-                <MaskPainter
-                  settings={brush}
-                  onChange={(dataUrl) =>
-                    setBrush((prev) => ({
-                      ...prev,
-                      dataUrl,
-                      enabled: true,
-                    }))
-                  }
-                  className="absolute inset-0 h-full w-full"
+              {isGuide ? (
+                <GuideLayerCanvas
+                  shapes={layer.shapes ?? []}
+                  interactive={Boolean(guideInteractive)}
+                  drawTool={guideDrawTool}
+                  selectedId={selectedGuideShapeId}
+                  onSelect={setSelectedGuideShapeId}
+                  onCommitShape={(shape: GuideShape) => {
+                    setLayers((prev) =>
+                      patchGuideShapes(prev, layer.id, (shapes) => [...shapes, shape]),
+                    )
+                    setGuides((prev) =>
+                      prev.kind === 'none' ? { ...prev, kind: 'thirds' } : prev,
+                    )
+                  }}
                 />
+              ) : (
+                <>
+                  <img
+                    ref={isActive ? overlayImageRef : undefined}
+                    src={layerDisplayUrl(layer.id, layerUrl)}
+                    alt={isPrimary ? 'Референс для срисовывания' : layer.name}
+                    draggable={false}
+                    className="pointer-events-none h-auto max-h-[75dvh] w-full object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
+                  />
+                  {flags.brushMask && isPrimary && isActive && (
+                    <MaskPainter
+                      settings={brush}
+                      onChange={(dataUrl) =>
+                        setBrush((prev) => ({
+                          ...prev,
+                          dataUrl,
+                          enabled: true,
+                        }))
+                      }
+                      className="absolute inset-0 h-full w-full"
+                    />
+                  )}
+                </>
               )}
             </div>
           )
         })}
 
-        <GuideOverlay kind={guides.kind} opacity={guides.opacity} />
+        {!guideLayersOn && <GuideOverlay kind={guides.kind} opacity={guides.opacity} />}
 
         {loupe.enabled && loupeVisible && (
           <LoupeOverlay
@@ -1539,7 +1681,10 @@ export function Studio({
             sourceVideoRef={videoRef}
             layers={visibleLayers.map((layer) => ({
               ...layer,
-              url: layerDisplayUrl(layer.id, layer.kind === 'primary' ? imageUrl : layer.url),
+              url:
+                layer.kind === 'guide'
+                  ? ''
+                  : layerDisplayUrl(layer.id, layer.kind === 'primary' ? imageUrl : layer.url),
             }))}
             activeLayerId={activeLayerId}
             opacity={opacity}
@@ -1679,7 +1824,7 @@ export function Studio({
           <ToolRail
             activeTool={activeTool}
             layersSheetOpen={layersSheetOpen}
-            guidesOn={guides.kind !== 'none'}
+            guidesOn={guidesStickyOn}
             calcOn={calcMode.enabled}
             loupeOn={loupeMode}
             onSelect={handleSelectTool}

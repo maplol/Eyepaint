@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { buildOverlayCssTransform } from '../../hooks/useOverlayTransform'
 import type { RefLayer } from '../../lib/layers'
+import { GuideShapesSvg } from '../GuideShapesSvg'
 
 type LoupeOverlayProps = {
   visible: boolean
@@ -101,26 +102,34 @@ export function LoupeOverlay({
 
         {layers.map((layer, index) => {
           const isActive = layer.id === activeLayerId
+          const isGuide = layer.kind === 'guide'
           return (
             <div
               key={layer.id}
               className={
-                isActive && framedActive
+                isActive && framedActive && !isGuide
                   ? 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)] rounded-[4px] outline-2 outline-offset-[6px] outline-[rgba(224,154,106,0.95)]'
                   : 'absolute left-1/2 top-1/2 w-[min(88vw,520px)] origin-center [transform-style:preserve-3d] min-[960px]:w-[min(72vw,620px)]'
               }
               style={{
-                opacity: opacity * layer.opacity,
+                opacity: isGuide ? layer.opacity : opacity * layer.opacity,
                 transform: buildOverlayCssTransform(layer.transform, layer.flipped),
                 zIndex: index,
               }}
             >
-              <img
-                src={layer.url}
-                alt=""
-                draggable={false}
-                className="h-auto max-h-[75dvh] w-full object-contain"
-              />
+              {isGuide ? (
+                <GuideShapesSvg
+                  shapes={layer.shapes ?? []}
+                  className="aspect-square w-full"
+                />
+              ) : (
+                <img
+                  src={layer.url}
+                  alt=""
+                  draggable={false}
+                  className="h-auto max-h-[75dvh] w-full object-contain"
+                />
+              )}
             </div>
           )
         })}

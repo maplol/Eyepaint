@@ -25,7 +25,7 @@ test.describe('Welcome', () => {
     })
     await page.getByRole('toolbar', { name: 'Инструменты' }).getByRole('button', { name: 'Гиды' }).click()
     await expect(page.getByRole('button', { name: 'Лицо' })).toBeVisible()
-    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(page.getByText('Прозрачность гида')).toBeVisible()
   })
 
   test('онбординг можно пройти и пропустить', async ({ page }) => {

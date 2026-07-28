@@ -37,7 +37,7 @@ test.describe('Studio smoke', () => {
     await expect(page.getByText('Сила')).toBeVisible()
 
     await openStudioTool(page, 'Гиды')
-    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(page.getByText('Прозрачность гида')).toBeVisible()
     await page.getByRole('button', { name: 'Лицо' }).click()
 
     await openStudioTool(page, 'Лупа')
@@ -60,7 +60,7 @@ test.describe('Studio smoke', () => {
     const guidesBtn = rail.getByRole('button', { name: 'Гиды' })
 
     await openStudioTool(page, 'Гиды')
-    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(page.getByText('Прозрачность гида')).toBeVisible()
     await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
 
     await page.getByLabel('Настройки инструмента').getByRole('button', { name: 'Закрыть' }).click()
@@ -68,7 +68,7 @@ test.describe('Studio smoke', () => {
     await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
 
     await guidesBtn.click()
-    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
+    await expect(page.getByText('Прозрачность гида')).toBeVisible()
     await expect(guidesBtn).toHaveAttribute('aria-pressed', 'true')
 
     await guidesBtn.click()

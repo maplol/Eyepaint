@@ -5,6 +5,8 @@ export type FeatureFlags = {
   lessons: boolean
   lightTheme: boolean
   arPlaneLock: boolean
+  /** Guide as layer + shapes (vs screen overlay) */
+  guideLayers: boolean
 }
 
 const STORAGE_KEY = 'eyepaint-flags-v1'
@@ -16,6 +18,7 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   lessons: true,
   lightTheme: true,
   arPlaneLock: true,
+  guideLayers: true,
 }
 
 export function loadFlags(): FeatureFlags {
@@ -30,6 +33,7 @@ export function loadFlags(): FeatureFlags {
       lessons: parsed.lessons ?? DEFAULT_FLAGS.lessons,
       lightTheme: parsed.lightTheme ?? DEFAULT_FLAGS.lightTheme,
       arPlaneLock: parsed.arPlaneLock ?? DEFAULT_FLAGS.arPlaneLock,
+      guideLayers: parsed.guideLayers ?? DEFAULT_FLAGS.guideLayers,
     }
   } catch {
     return { ...DEFAULT_FLAGS }

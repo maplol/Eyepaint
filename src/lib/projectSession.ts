@@ -5,7 +5,8 @@ import type { FeatureFlags } from './flags'
 import { DEFAULT_FLAGS } from './flags'
 import type { HotkeyMap } from './hotkeys'
 import { DEFAULT_HOTKEYS } from './hotkeys'
-import type { RefLayer } from './layers'
+import type { RefLayer, RefLayerKind } from './layers'
+import { normalizeGuideShape, type GuideShape } from './guideShapes'
 import type { SavedPose } from './poses'
 import type {
   CalcModeSettings,
@@ -29,8 +30,10 @@ export type ProjectLayerSnapshot = {
   visible: boolean
   transform: OverlayTransform
   flipped: boolean
-  kind: 'primary' | 'aux'
+  kind: RefLayerKind
+  /** Empty for guide layers */
   imageDataUrl: string
+  shapes?: GuideShape[]
 }
 
 export type ProjectSnapshotV1 = {
@@ -149,6 +152,20 @@ export async function buildProjectSnapshot(
 ): Promise<ProjectSnapshotV1> {
   const layerSnaps: ProjectLayerSnapshot[] = []
   for (const layer of input.layers) {
+    if (layer.kind === 'guide') {
+      layerSnaps.push({
+        id: layer.id,
+        name: layer.name,
+        opacity: layer.opacity,
+        visible: layer.visible,
+        transform: { ...layer.transform },
+        flipped: layer.flipped,
+        kind: 'guide',
+        imageDataUrl: '',
+        shapes: (layer.shapes ?? []).map((shape) => ({ ...shape })),
+      })
+      continue
+    }
     const imageDataUrl = await urlToDataUrl(layer.url || input.primaryFallbackUrl)
     layerSnaps.push({
       id: layer.id,
@@ -163,8 +180,10 @@ export async function buildProjectSnapshot(
   }
 
   const primary =
-    layerSnaps.find((layer) => layer.kind === 'primary') ?? layerSnaps[0]
-  if (!primary) throw new Error('Нет слоёв для сохранения')
+    layerSnaps.find((layer) => layer.kind === 'primary') ??
+    layerSnaps.find((layer) => layer.kind !== 'guide') ??
+    layerSnaps[0]
+  if (!primary || primary.kind === 'guide') throw new Error('Нет слоёв для сохранения')
 
   return {
     version: PROJECT_FILE_VERSION,
@@ -208,9 +227,16 @@ export function parseProjectSnapshot(raw: unknown): ProjectSnapshotV1 {
 
   const layers: ProjectLayerSnapshot[] = data.layers.map((layer, index) => {
     if (!layer || typeof layer !== 'object') throw new Error(`Слой #${index + 1} битый`)
-    if (typeof layer.imageDataUrl !== 'string') {
+    const kind: RefLayerKind =
+      layer.kind === 'guide' ? 'guide' : layer.kind === 'aux' ? 'aux' : 'primary'
+    if (kind !== 'guide' && typeof layer.imageDataUrl !== 'string') {
       throw new Error(`У слоя #${index + 1} нет картинки`)
     }
+    const shapes = Array.isArray(layer.shapes)
+      ? layer.shapes
+          .map((item) => normalizeGuideShape(item))
+          .filter((item): item is GuideShape => Boolean(item))
+      : undefined
     return {
       id: typeof layer.id === 'string' ? layer.id : `layer-${index}`,
       name: typeof layer.name === 'string' ? layer.name : `Слой ${index + 1}`,
@@ -218,10 +244,15 @@ export function parseProjectSnapshot(raw: unknown): ProjectSnapshotV1 {
       visible: layer.visible !== false,
       transform: normalizeTransform(layer.transform),
       flipped: Boolean(layer.flipped),
-      kind: layer.kind === 'aux' ? 'aux' : 'primary',
-      imageDataUrl: layer.imageDataUrl,
+      kind,
+      imageDataUrl: typeof layer.imageDataUrl === 'string' ? layer.imageDataUrl : '',
+      shapes,
     }
   })
+
+  if (!layers.some((layer) => layer.kind === 'primary' || layer.kind === 'aux')) {
+    throw new Error('В файле нет слоёв с картинкой')
+  }
 
   return {
     version: PROJECT_FILE_VERSION,
@@ -240,7 +271,13 @@ export function parseProjectSnapshot(raw: unknown): ProjectSnapshotV1 {
           : DEFAULT_CALC_MODE.strength,
     },
     guides: {
-      kind: data.guides?.kind ?? DEFAULT_GUIDES.kind,
+      kind:
+        data.guides?.kind === 'thirds' ||
+        data.guides?.kind === 'face' ||
+        data.guides?.kind === 'figure' ||
+        data.guides?.kind === 'perspective'
+          ? data.guides.kind
+          : DEFAULT_GUIDES.kind,
       opacity:
         typeof data.guides?.opacity === 'number' ? data.guides.opacity : DEFAULT_GUIDES.opacity,
     },
@@ -289,17 +326,27 @@ export function hydrateProjectSnapshot(snapshot: ProjectSnapshotV1): HydratedPro
     transform: { ...layer.transform },
     flipped: layer.flipped,
     kind: layer.kind,
-    url: dataUrlToObjectUrl(layer.imageDataUrl),
+    url: layer.kind === 'guide' ? '' : dataUrlToObjectUrl(layer.imageDataUrl),
+    shapes: layer.kind === 'guide' ? [...(layer.shapes ?? [])] : undefined,
   }))
 
-  const primary = layers.find((layer) => layer.kind === 'primary') ?? layers[0]
+  const primary = layers.find((layer) => layer.kind === 'primary') ?? layers.find((l) => l.kind !== 'guide') ?? layers[0]
   return {
-    imageUrl: primary?.url ?? dataUrlToObjectUrl(snapshot.primaryImageDataUrl),
+    imageUrl: primary?.url || dataUrlToObjectUrl(snapshot.primaryImageDataUrl),
     layers,
     activeLayerId: snapshot.activeLayerId,
     opacity: snapshot.opacity,
     calcMode: snapshot.calcMode,
-    guides: snapshot.guides,
+    guides: {
+      ...snapshot.guides,
+      kind:
+        snapshot.guides.kind === 'perspective' ||
+        snapshot.guides.kind === 'thirds' ||
+        snapshot.guides.kind === 'face' ||
+        snapshot.guides.kind === 'figure'
+          ? snapshot.guides.kind
+          : 'none',
+    },
     loupe: snapshot.loupe,
     atmosphere: snapshot.atmosphere,
     locked: snapshot.locked,
