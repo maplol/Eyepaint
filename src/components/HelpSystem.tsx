@@ -86,16 +86,16 @@ export function HelpProvider({ children }: { children: ReactNode }) {
           onClick={closeTip}
         >
           <div
-            className="glass-panel animate-rise-in w-full max-w-md rounded-3xl p-5 text-paper"
+            className="eyepaint-glass eyepaint-coach-card animate-rise-in w-full max-w-md rounded-3xl p-5 text-[var(--fg)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-accent-soft">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[var(--chip-accent-fg)]">
               Справка
             </p>
-            <h2 className="mt-1.5 font-[family-name:var(--font-display)] text-xl font-bold">
+            <h2 className="mt-1.5 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--fg-strong)]">
               {tip.title}
             </h2>
-            <p className="mt-2 text-[0.95rem] leading-relaxed text-mist/85">{tip.body}</p>
+            <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--fg-muted)]">{tip.body}</p>
             <button
               type="button"
               className="mt-5 min-h-11 w-full rounded-full bg-accent font-bold text-accent-ink"
