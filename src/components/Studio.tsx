@@ -30,7 +30,6 @@ import {
   dockShellClass,
   glassIconButtonClass,
   layersColumnClass,
-  scrollAreaClass,
   sectionTitleClass,
   statusBaseClass,
   statusNoteClass,
@@ -1305,12 +1304,7 @@ export function Studio({
           Закрыть
         </button>
       </div>
-      <div
-        className={cn(
-          'min-h-0 flex-1 overflow-auto overscroll-contain px-3.5 py-3 [-webkit-overflow-scrolling:touch]',
-          scrollAreaClass,
-        )}
-      >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3.5 py-3">
         {toolPanelBody}
       </div>
     </>

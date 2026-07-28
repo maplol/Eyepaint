@@ -10,7 +10,6 @@ import {
   cn,
   fieldLabelClass,
   hiddenFileInputClass,
-  panelClass,
   poseSaveClass,
   poseStatClass,
   poseStatIconClass,
@@ -188,14 +187,11 @@ export function PosesPanel(props: PosesPanelProps) {
   )
 
   const listTab = (
-    <div className="grid gap-2 pb-14">
+    <div className="grid gap-2">
       {props.poses.length === 0 ? (
         <p className={tipClass}>Список пуст — сохрани несколько позиций</p>
       ) : (
         <>
-          <CornerAction label="Очистить всё" onClick={props.onClear}>
-            <TrashIcon />
-          </CornerAction>
           <p className={fieldLabelClass}>Сохранённые · {props.poses.length}</p>
           <ul className="grid list-none gap-2">
             {props.poses.map((pose) => {
@@ -250,11 +246,21 @@ export function PosesPanel(props: PosesPanelProps) {
   )
 
   return (
-    <div className={cn(panelClass, 'gap-0')}>
+    <div className="flex min-h-0 flex-1 flex-col">
       <PanelTabs
         tabs={[
           { id: 'now', label: 'Сейчас', content: currentTab },
-          { id: 'list', label: 'Список', content: listTab },
+          {
+            id: 'list',
+            label: 'Список',
+            content: listTab,
+            corner:
+              props.poses.length > 0 ? (
+                <CornerAction label="Очистить всё" onClick={props.onClear}>
+                  <TrashIcon />
+                </CornerAction>
+              ) : undefined,
+          },
         ]}
         storageKey="eyepaint-poses-tab"
       />

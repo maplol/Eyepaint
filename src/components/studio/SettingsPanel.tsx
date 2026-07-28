@@ -8,7 +8,7 @@ import {
 } from '../../lib/hotkeys'
 import type { StudioAtmosphere } from '../../lib/theme'
 import { getHelpTip } from '../../lib/helpTips'
-import { CornerAction, ResetIcon, TrashIcon } from './CornerAction'
+import { CornerAction, PanelFrame, ResetIcon, TrashIcon } from './CornerAction'
 import { HoverTooltip } from './HoverTooltip'
 import {
   chipAccentClass,
@@ -167,7 +167,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         aria-modal="true"
         aria-label="Настройки"
         translate="no"
-        className="eyepaint-glass relative grid max-h-[min(88dvh,640px)] w-full max-w-[560px] overflow-hidden rounded-3xl animate-[rise-in_0.28s_ease_both]"
+        className="eyepaint-glass relative flex max-h-[min(88dvh,640px)] w-full max-w-[560px] flex-col overflow-hidden rounded-3xl animate-[rise-in_0.28s_ease_both]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-4 py-3">
@@ -194,7 +194,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
         <div className="grid min-h-0 flex-1 grid-cols-[auto_1fr] overflow-hidden">
           <nav
-            className="flex w-[4.25rem] flex-col items-center gap-0 border-r border-[var(--glass-border-soft)] py-2 sm:w-[4.6rem]"
+            className="flex w-[4.25rem] flex-col items-center gap-0 self-stretch border-r border-[var(--glass-border-soft)] py-2 sm:w-[4.6rem]"
             aria-label="Разделы настроек"
           >
             {NAV.map((item, index) => (
@@ -222,8 +222,9 @@ export function SettingsPanel(props: SettingsPanelProps) {
             ))}
           </nav>
 
-          <div className="relative min-h-0 overflow-auto overscroll-contain px-4 py-3.5 eyepaint-scroll">
+          <div className="relative flex min-h-0 flex-col overflow-hidden px-4 py-3.5">
             {props.section === 'link' && (
+              <div className="min-h-0 flex-1 overflow-auto overscroll-contain eyepaint-scroll">
               <div className="grid gap-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[0.78rem] font-semibold text-[var(--fg-muted)]">Телефон как камера</p>
@@ -291,141 +292,156 @@ export function SettingsPanel(props: SettingsPanelProps) {
                     <p className={cn(tipClass, 'mt-2')}>
                       Код только на ПК. Качество стрима выбирается на телефоне.
                     </p>
-                  </div>
-                )}
+                    </div>
+                  )}
+              </div>
               </div>
             )}
 
             {props.section === 'keys' && (
-              <div className="grid gap-0 pb-14">
-                <CornerAction
-                  label="Сбросить хоткеи"
-                  onClick={() => {
-                    props.setHotkeys({ ...DEFAULT_HOTKEYS })
-                    props.onHotkeysResetToast()
-                  }}
-                >
-                  <ResetIcon />
-                </CornerAction>
-                <p className={tipClass}>Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.</p>
-                <div className={cn(sectionDividerClass, 'grid gap-2')}>
-                  {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
-                    <div
-                      key={action}
-                      className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5"
-                    >
-                      <span className="text-[0.82rem] text-[var(--fg)]">{HOTKEY_LABELS[action]}</span>
-                      <button
-                        type="button"
-                        className={cn(
-                          'inline-flex min-h-9 min-w-[5.5rem] items-center justify-center rounded-[10px] border border-accent/40 px-2.5 text-center text-[0.78rem] font-bold leading-tight',
-                          props.listeningFor === action
-                            ? 'bg-accent/35 text-accent-ink'
-                            : 'bg-accent/15 text-[var(--chip-accent-fg)]',
-                        )}
-                        onClick={() =>
-                          props.setListeningFor((prev) => (prev === action ? null : action))
-                        }
+              <PanelFrame
+                corner={
+                  <CornerAction
+                    label="Сбросить хоткеи"
+                    onClick={() => {
+                      props.setHotkeys({ ...DEFAULT_HOTKEYS })
+                      props.onHotkeysResetToast()
+                    }}
+                  >
+                    <ResetIcon />
+                  </CornerAction>
+                }
+              >
+                <div className="grid gap-0">
+                  <p className={tipClass}>Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.</p>
+                  <div className={cn(sectionDividerClass, 'grid gap-2')}>
+                    {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
+                      <div
+                        key={action}
+                        className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5"
                       >
-                        {props.listeningFor === action
-                          ? 'Нажми…'
-                          : props.formatHotkey(props.hotkeys[action])}
-                      </button>
-                    </div>
-                  ))}
+                        <span className="text-[0.82rem] text-[var(--fg)]">{HOTKEY_LABELS[action]}</span>
+                        <button
+                          type="button"
+                          className={cn(
+                            'inline-flex min-h-9 min-w-[5.5rem] items-center justify-center rounded-[10px] border border-accent/40 px-2.5 text-center text-[0.78rem] font-bold leading-tight',
+                            props.listeningFor === action
+                              ? 'bg-accent/35 text-accent-ink'
+                              : 'bg-accent/15 text-[var(--chip-accent-fg)]',
+                          )}
+                          onClick={() =>
+                            props.setListeningFor((prev) => (prev === action ? null : action))
+                          }
+                        >
+                          {props.listeningFor === action
+                            ? 'Нажми…'
+                            : props.formatHotkey(props.hotkeys[action])}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </PanelFrame>
             )}
 
             {props.section === 'theme' && (
-              <div className="grid gap-3">
-                <p className={tipClass}>Атмосфера студии — стекло, текст и акценты.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className={chipAccentClass(props.atmosphere === 'dark')}
-                    disabled={!props.flags.lightTheme && props.atmosphere === 'light'}
-                    onClick={() => props.onAtmosphere('dark')}
-                  >
-                    Тёмная
-                  </button>
-                  <button
-                    type="button"
-                    className={chipAccentClass(props.atmosphere === 'light')}
-                    disabled={!props.flags.lightTheme}
-                    onClick={() => props.onAtmosphere('light')}
-                  >
-                    Светлая
-                  </button>
+              <div className="min-h-0 flex-1 overflow-auto overscroll-contain eyepaint-scroll">
+                <div className="grid gap-3">
+                  <p className={tipClass}>Атмосфера студии — стекло, текст и акценты.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className={chipAccentClass(props.atmosphere === 'dark')}
+                      disabled={!props.flags.lightTheme && props.atmosphere === 'light'}
+                      onClick={() => props.onAtmosphere('dark')}
+                    >
+                      Тёмная
+                    </button>
+                    <button
+                      type="button"
+                      className={chipAccentClass(props.atmosphere === 'light')}
+                      disabled={!props.flags.lightTheme}
+                      onClick={() => props.onAtmosphere('light')}
+                    >
+                      Светлая
+                    </button>
+                  </div>
+                  {!props.flags.lightTheme && (
+                    <p className={tipClass}>
+                      Светлая тема выключена флагом — включи во вкладке «Флаги».
+                    </p>
+                  )}
                 </div>
-                {!props.flags.lightTheme && (
-                  <p className={tipClass}>
-                    Светлая тема выключена флагом — включи во вкладке «Флаги».
-                  </p>
-                )}
               </div>
             )}
 
             {props.section === 'flags' && (
-              <div className="grid gap-0">
-                <p className={tipClass}>Фичи хранятся в localStorage этого браузера.</p>
-                <div className={cn(sectionDividerClass, 'grid gap-2')}>
-                  {FLAG_LABELS.map(([key, label, hint]) => (
-                    <label
-                      key={key}
-                      className="grid gap-1 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5"
-                    >
-                      <span className="flex items-center justify-between gap-3 text-[0.84rem] text-[var(--fg-strong)]">
-                        <span>{label}</span>
-                        <input
-                          type="checkbox"
-                          checked={props.flags[key]}
-                          onChange={(event) => {
-                            const checked = event.target.checked
-                            props.onFlags((prev) => ({ ...prev, [key]: checked }))
-                            if (key === 'lightTheme' && !checked && props.atmosphere === 'light') {
-                              props.onAtmosphere('dark')
-                            }
-                          }}
-                        />
-                      </span>
-                      <span className="text-[0.72rem] text-[var(--fg-faint)]">{hint}</span>
-                    </label>
-                  ))}
+              <div className="min-h-0 flex-1 overflow-auto overscroll-contain eyepaint-scroll">
+                <div className="grid gap-0">
+                  <p className={tipClass}>Фичи хранятся в localStorage этого браузера.</p>
+                  <div className={cn(sectionDividerClass, 'grid gap-2')}>
+                    {FLAG_LABELS.map(([key, label, hint]) => (
+                      <label
+                        key={key}
+                        className="grid gap-1 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2.5"
+                      >
+                        <span className="flex items-center justify-between gap-3 text-[0.84rem] text-[var(--fg-strong)]">
+                          <span>{label}</span>
+                          <input
+                            type="checkbox"
+                            checked={props.flags[key]}
+                            onChange={(event) => {
+                              const checked = event.target.checked
+                              props.onFlags((prev) => ({ ...prev, [key]: checked }))
+                              if (key === 'lightTheme' && !checked && props.atmosphere === 'light') {
+                                props.onAtmosphere('dark')
+                              }
+                            }}
+                          />
+                        </span>
+                        <span className="text-[0.72rem] text-[var(--fg-faint)]">{hint}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
             {props.section === 'project' && (
-              <div className="grid gap-0 pb-14">
-                <CornerAction
-                  label="Очистить автосейв"
-                  disabled={!props.autosaveLabel}
-                  onClick={props.onClearAutosave}
-                >
-                  <TrashIcon />
-                </CornerAction>
-                <p className={tipClass}>
-                  Файл `.eyepaint.json` — слои и настройки. Автосейв переживает перезагрузку.
-                </p>
-                {props.autosaveLabel ? (
-                  <p className={cn(sectionDividerClass, 'text-[0.78rem] text-[var(--fg-muted)]')}>
-                    Автосейв: {props.autosaveLabel}
-                  </p>
-                ) : (
-                  <p className={cn(sectionDividerClass, tipClass)}>Автосейва пока нет</p>
-                )}
-                <div className={sectionDividerClass}>
-                  <button
-                    type="button"
-                    className={poseSaveClass}
-                    disabled={props.savingProject}
-                    onClick={props.onSaveProject}
+              <PanelFrame
+                corner={
+                  <CornerAction
+                    label="Очистить автосейв"
+                    disabled={!props.autosaveLabel}
+                    onClick={props.onClearAutosave}
                   >
-                    {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
-                  </button>
+                    <TrashIcon />
+                  </CornerAction>
+                }
+              >
+                <div className="grid gap-0">
+                  <p className={tipClass}>
+                    Файл `.eyepaint.json` — слои и настройки. Автосейв переживает перезагрузку.
+                  </p>
+                  {props.autosaveLabel ? (
+                    <p className={cn(sectionDividerClass, 'text-[0.78rem] text-[var(--fg-muted)]')}>
+                      Автосейв: {props.autosaveLabel}
+                    </p>
+                  ) : (
+                    <p className={cn(sectionDividerClass, tipClass)}>Автосейва пока нет</p>
+                  )}
+                  <div className={sectionDividerClass}>
+                    <button
+                      type="button"
+                      className={poseSaveClass}
+                      disabled={props.savingProject}
+                      onClick={props.onSaveProject}
+                    >
+                      {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </PanelFrame>
             )}
           </div>
         </div>

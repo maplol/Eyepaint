@@ -19,7 +19,6 @@ import {
   chipNeutralClass,
   cn,
   fieldLabelClass,
-  panelClass,
   rangeInputClass,
   scrollAreaClass,
   sectionDividerClass,
@@ -72,15 +71,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
   const pickCount = props.palette.filter((c) => c.source === 'pick').length
 
   const pickTab = (
-    <div className="grid gap-0 pb-14">
-      <CornerAction
-        label="Сбросить выбор"
-        disabled={props.paletteLoading || props.selectedColorIds.length === 0}
-        onClick={props.onResetSelection}
-      >
-        <TrashIcon />
-      </CornerAction>
-
+    <div className="grid gap-0">
       {!hasPalette ? (
         <p className={tipClass}>Не удалось вытащить палитру</p>
       ) : (
@@ -299,10 +290,7 @@ export function ColorsPanel(props: ColorsPanelProps) {
   )
 
   const brushTab = (
-    <div className="grid gap-2 pb-14">
-      <CornerAction label="Очистить маску" onClick={props.onClearBrush}>
-        <TrashIcon />
-      </CornerAction>
+    <div className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
         <p className={fieldLabelClass}>Кисть-маска</p>
         <button
@@ -429,15 +417,41 @@ export function ColorsPanel(props: ColorsPanelProps) {
   )
 
   const tabs = [
-    { id: 'pick', label: 'Палитра', content: pickTab },
-    ...(props.brushEnabled ? [{ id: 'brush', label: 'Кисть', content: brushTab }] : []),
+    {
+      id: 'pick',
+      label: 'Палитра',
+      content: pickTab,
+      corner: (
+        <CornerAction
+          label="Сбросить выбор"
+          disabled={props.paletteLoading || props.selectedColorIds.length === 0}
+          onClick={props.onResetSelection}
+        >
+          <TrashIcon />
+        </CornerAction>
+      ),
+    },
+    ...(props.brushEnabled
+      ? [
+          {
+            id: 'brush',
+            label: 'Кисть',
+            content: brushTab,
+            corner: (
+              <CornerAction label="Очистить маску" onClick={props.onClearBrush}>
+                <TrashIcon />
+              </CornerAction>
+            ),
+          },
+        ]
+      : []),
     { id: 'saved', label: 'Избранное', content: savedTab },
   ]
 
   return (
-    <div className={cn(panelClass, 'min-w-0 gap-2')}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2')}>
       {props.activeLayerName && (
-        <p className="rounded-xl border border-accent/30 bg-accent/12 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
+        <p className="shrink-0 rounded-xl border border-accent/30 bg-accent/12 px-3 py-2 text-center text-[0.78rem] text-[var(--chip-accent-fg)]">
           Цвета для слоя: <strong>{props.activeLayerName}</strong>
         </p>
       )}

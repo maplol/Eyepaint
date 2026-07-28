@@ -103,15 +103,17 @@ export function MainPanel(props: MainPanelProps) {
       {
         id: 'session',
         label: 'Сессия',
+        corner: props.galleryEnabled ? (
+          <CornerAction
+            label="Очистить галерею"
+            disabled={props.shots.length === 0}
+            onClick={props.onClearShots}
+          >
+            <TrashIcon />
+          </CornerAction>
+        ) : undefined,
         content: (
-          <div className="grid gap-2 pb-14">
-            <CornerAction
-              label="Очистить галерею"
-              disabled={props.shots.length === 0}
-              onClick={props.onClearShots}
-            >
-              <TrashIcon />
-            </CornerAction>
+          <div className="grid gap-2">
             <div className="flex min-h-7 items-center justify-between gap-2">
               <p className={fieldLabelClass}>Таймер</p>
               <span
@@ -205,7 +207,11 @@ export function MainPanel(props: MainPanelProps) {
         : []),
     ]
 
-    return <PanelTabs tabs={tabs} storageKey="eyepaint-hand-tab" />
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <PanelTabs tabs={tabs} storageKey="eyepaint-hand-tab" />
+      </div>
+    )
   }
 
   const show = (section: MainPanelFocus) => focus === 'all' || focus === section
@@ -225,7 +231,7 @@ export function MainPanel(props: MainPanelProps) {
   const loupeSec = mark(hasLoupe)
 
   return (
-    <div className={cn(panelClass, 'gap-0')}>
+    <div className={cn(panelClass, 'min-h-0 flex-1 gap-0 overflow-auto eyepaint-scroll')}>
       <Section show={calcSec.show} first={calcSec.first}>
         <div className={sliderLabelsClass}>
           <span>Сила</span>
