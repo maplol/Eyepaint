@@ -330,6 +330,7 @@ html[data-help-mode='1'] [data-help] {
   .eyepaint-coach-card {
     background-color: var(--panel-solid);
     background-image: var(--dock-bg);
+    max-width: calc(100vw - 1.5rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   }
 }
 
