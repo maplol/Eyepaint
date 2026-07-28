@@ -252,8 +252,8 @@ Specs: `welcome`, `studio`, `colors-layers`, `rooms` + helpers/fixtures.
 ## 17. Фазы и бэклог
 
 - **0–4** в коде (см. ROADMAP): split, QR/freeze, калька/лупа/гиды/слои/позы, цвета 2.0, онбординг/PWA/сессия/уроки.  
-- **5** spikes: AR листа, ML lineart, teacher→student, мультикомнаты.  
-- **Живые идеи следующего горизонта:** `docs/IDEAS.md` (guide-слои, линейка/калибровка, reconnect, поза сцены, …).
+- **5** spikes: markerless paper, ML lineart, teacher→student, мультикомнаты.  
+- **Живые идеи следующего горизонта:** `docs/IDEAS.md` — в т.ч. режим **Свободный | AR** (маркер → lock плоскости → plane-space жесты + Перекалибровать), guide-слои, линейка, reconnect.
 
 При реализации идеи из IDEAS — сначала сверь инварианты §16 и design skill; крупные модели данных (тип слоя `guide`) описывай в этом skill после мержа.
 
