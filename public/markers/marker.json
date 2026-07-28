@@ -1,13 +1,19 @@
 {
   "name": "EYEPAINT AR marker",
-  "dictionary": "DICT_4X4_50",
-  "opencvDictId": 0,
+  "dictionary": "ARUCO_4X4_1000",
+  "detector": "js-aruco2",
   "centerId": 0,
-  "cornerIds": [1, 2, 3, 4],
+  "cornerIds": [
+    1,
+    2,
+    3,
+    4
+  ],
   "centerSizeMm": 90,
   "cornerSizeMm": 28,
   "sheet": "eyepaint-ar-marker-a4.png",
   "card": "eyepaint-ar-marker-card.png",
   "solo": "eyepaint-aruco-id0.png",
-  "print": "A4, 100% scale, matte paper preferred"
+  "print": "A4, 100% scale, matte paper preferred",
+  "note": "Dictionary bit 1 = white module (js-aruco2 convention)"
 }

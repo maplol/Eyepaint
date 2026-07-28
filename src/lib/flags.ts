@@ -4,6 +4,7 @@ export type FeatureFlags = {
   sessionGallery: boolean
   lessons: boolean
   lightTheme: boolean
+  arPlaneLock: boolean
 }
 
 const STORAGE_KEY = 'eyepaint-flags-v1'
@@ -14,6 +15,7 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   sessionGallery: true,
   lessons: true,
   lightTheme: true,
+  arPlaneLock: true,
 }
 
 export function loadFlags(): FeatureFlags {
@@ -27,6 +29,7 @@ export function loadFlags(): FeatureFlags {
       sessionGallery: parsed.sessionGallery ?? DEFAULT_FLAGS.sessionGallery,
       lessons: parsed.lessons ?? DEFAULT_FLAGS.lessons,
       lightTheme: parsed.lightTheme ?? DEFAULT_FLAGS.lightTheme,
+      arPlaneLock: parsed.arPlaneLock ?? DEFAULT_FLAGS.arPlaneLock,
     }
   } catch {
     return { ...DEFAULT_FLAGS }

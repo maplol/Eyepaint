@@ -6,6 +6,7 @@ import {
   type SetStateAction,
 } from 'react'
 import type { HotkeyAction } from '../lib/hotkeys'
+import { applyPlanePan, screenDeltaToPlaneOffset, type PlaneLock } from '../lib/arPlane'
 
 export type OverlayTransform = {
   x: number
@@ -62,9 +63,12 @@ export function useOverlayTransform(
   dragMode: HotkeyAction = 'pan',
   transform: OverlayTransform,
   setTransform: Dispatch<SetStateAction<OverlayTransform>>,
+  /** When set, pan drags move along the locked paper plane (AR mode). */
+  planeLock: PlaneLock | null = null,
 ) {
   const transformRef = useRef(transform)
   const dragModeRef = useRef(dragMode)
+  const planeLockRef = useRef(planeLock)
   const pointersRef = useRef<Map<number, PointerSample>>(new Map())
   const gestureRef = useRef<{
     mode: 'drag' | 'pinch'
@@ -83,6 +87,10 @@ export function useOverlayTransform(
   useEffect(() => {
     dragModeRef.current = dragMode
   }, [dragMode])
+
+  useEffect(() => {
+    planeLockRef.current = planeLock
+  }, [planeLock])
 
   const reset = () => setTransform({ ...DEFAULT_TRANSFORM })
 
@@ -160,6 +168,25 @@ export function useOverlayTransform(
           ...start,
           rotateY: Math.min(60, Math.max(-60, start.rotateY + dx * 0.2)),
           rotateX: Math.min(60, Math.max(-60, start.rotateX - dy * 0.2)),
+        })
+        return
+      }
+
+      // Default pan — optionally remap into plane-space (AR)
+      const plane = planeLockRef.current
+      if (plane && gesture.tool === 'pan') {
+        const { du, dv } = screenDeltaToPlaneOffset(dx, dy, plane)
+        const next = applyPlanePan(
+          { x: start.x, y: start.y, rotateX: start.rotateX },
+          du,
+          dv,
+          plane,
+        )
+        setTransform({
+          ...start,
+          x: next.x,
+          y: next.y,
+          rotateX: next.rotateX,
         })
         return
       }

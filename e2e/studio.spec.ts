@@ -20,6 +20,18 @@ test.describe('Studio smoke', () => {
     }
   })
 
+  test('режим Свободный | AR в шапке', async ({ page }) => {
+    const arTab = page.getByRole('tab', { name: 'AR' })
+    const freeTab = page.getByRole('tab', { name: 'Свободный' })
+    await expect(freeTab).toBeVisible()
+    await expect(arTab).toBeVisible()
+    await arTab.click()
+    await expect(page.getByText(/Ищи маркер|Готовлю AR/)).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Маркер' })).toBeVisible()
+    await freeTab.click()
+    await expect(freeTab).toHaveAttribute('aria-selected', 'true')
+  })
+
   test('калька, гиды, лупа и атмосфера', async ({ page }) => {
     await openStudioTool(page, 'Калька')
     await expect(page.getByText('Сила')).toBeVisible()
