@@ -264,12 +264,11 @@ export function planeLockFromCorners(
   const markerSidePx = (top + bottom + left + right) / 4
 
   let axisU = normalize({ x: tr.x - tl.x + br.x - bl.x, y: tr.y - tl.y + br.y - bl.y })
-  let axisV = normalize({ x: tl.x - bl.x + tr.x - br.x, y: tl.y - bl.y + tr.y - br.y })
-  // V should point toward top of marker (usually up / -Y on screen)
-  if (axisV.y > 0) axisV = { x: -axisV.x, y: -axisV.y }
-  // Keep U roughly right-handed with V
+  // +V = toward bottom of marker (unit y→1), same direction as UV +v
+  let axisV = normalize({ x: bl.x - tl.x + br.x - tr.x, y: bl.y - tl.y + br.y - tr.y })
+  // Screen Y-down: U×V > 0 keeps right-handed (right × down)
   const cross = axisU.x * axisV.y - axisU.y * axisV.x
-  if (cross > 0) axisU = { x: -axisU.x, y: -axisU.y }
+  if (cross < 0) axisV = { x: -axisV.x, y: -axisV.y }
 
   void stage
 
