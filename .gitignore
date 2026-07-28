@@ -29,6 +29,8 @@ dist-ssr
 .cursor/skills/*
 !.cursor/skills/eyepaint-features/
 !.cursor/skills/eyepaint-features/**
+!.cursor/skills/eyepaint-design/
+!.cursor/skills/eyepaint-design/**
 
 # Playwright
 /test-results/

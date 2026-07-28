@@ -10,6 +10,8 @@ description: >-
 
 Веб-приложение «калька»: референс поверх камеры листа. Стек: Vite + React + TS, Tailwind v4, GitHub Pages (`base: /Eyepaint/`), P2P через Trystero MQTT.
 
+Дизайн-система (токены, панели, антипаттерны, mobile/ПК) — skill `eyepaint-design`.
+
 ## Экраны
 
 | Экран | Вход | Суть |
