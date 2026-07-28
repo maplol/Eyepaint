@@ -24,7 +24,8 @@ test.describe('Welcome', () => {
       timeout: 15_000,
     })
     await page.getByRole('toolbar', { name: 'Инструменты' }).getByRole('button', { name: 'Гиды' }).click()
-    await expect(page.getByText('Направляющие')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Лицо' })).toBeVisible()
+    await expect(page.getByText('Прозрачность сетки')).toBeVisible()
   })
 
   test('онбординг можно пройти и пропустить', async ({ page }) => {

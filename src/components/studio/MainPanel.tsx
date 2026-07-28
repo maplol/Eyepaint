@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type {
   CalcModeSettings,
   GuideKind,
@@ -17,12 +18,11 @@ import {
   chipAccentClass,
   chipNeutralClass,
   cn,
-  mutedTextClass,
-  panelCardClass,
+  fieldLabelClass,
   panelClass,
   rangeInputClass,
   rowClass,
-  sectionTitleClass,
+  sectionDividerClass,
   sliderLabelsClass,
 } from './studioUi'
 
@@ -61,6 +61,19 @@ type MainPanelProps = {
   onAtmosphere: (value: 'dark' | 'light') => void
 }
 
+function Section({
+  show,
+  first,
+  children,
+}: {
+  show: boolean
+  first: boolean
+  children: ReactNode
+}) {
+  if (!show) return null
+  return <div className={first ? undefined : sectionDividerClass}>{children}</div>
+}
+
 export function MainPanel(props: MainPanelProps) {
   const focus = props.focus ?? 'all'
   const show = (section: MainPanelFocus | 'session' | 'phone') => {
@@ -69,58 +82,72 @@ export function MainPanel(props: MainPanelProps) {
     return focus === section
   }
 
+  const hasOpacity = show('hand')
+  const hasCalc = show('calc')
+  const hasAtmosphere = show('hand') && props.atmosphereEnabled
+  const hasGuides = show('guides')
+  const hasLoupe = show('loupe')
+  const hasSession = show('session')
+  const hasPhone = show('phone') && props.usingPhoneCam
+
+  let sectionIndex = 0
+  const mark = (visible: boolean) => {
+    if (!visible) return { show: false, first: false }
+    const first = sectionIndex === 0
+    sectionIndex += 1
+    return { show: true, first }
+  }
+
+  const opacitySec = mark(hasOpacity)
+  const calcSec = mark(hasCalc)
+  const atmosphereSec = mark(hasAtmosphere)
+  const guidesSec = mark(hasGuides)
+  const loupeSec = mark(hasLoupe)
+  const sessionSec = mark(hasSession)
+  const phoneSec = mark(hasPhone)
+
   return (
-    <div className={panelClass}>
-      {show('hand') && (
-        <div>
-          <div className={sliderLabelsClass}>
-            <span>Прозрачность</span>
-            <span>{Math.round(props.opacity * 100)}%</span>
-          </div>
-          <input
-            className={rangeInputClass}
-            type="range"
-            min={0.05}
-            max={1}
-            step={0.01}
-            value={props.opacity}
-            onChange={(event) => props.onOpacity(Number(event.target.value))}
-            aria-label="Прозрачность референса"
-          />
+    <div className={cn(panelClass, 'gap-0')}>
+      <Section show={opacitySec.show} first={opacitySec.first}>
+        <div className={sliderLabelsClass}>
+          <span>Прозрачность</span>
+          <span>{Math.round(props.opacity * 100)}%</span>
         </div>
-      )}
+        <input
+          className={rangeInputClass}
+          type="range"
+          min={0.05}
+          max={1}
+          step={0.01}
+          value={props.opacity}
+          onChange={(event) => props.onOpacity(Number(event.target.value))}
+          aria-label="Прозрачность референса"
+        />
+      </Section>
 
-      {show('calc') && (
-        <div className={panelCardClass}>
-          <div>
-            <p className={sectionTitleClass}>Режим кальки</p>
-            <p className={`mt-0.5 ${mutedTextClass}`}>Подсвечивает лист через камеру</p>
-          </div>
-          <div>
-            <div className={sliderLabelsClass}>
-              <span>Сила</span>
-              <span>{Math.round(props.calcMode.strength * 100)}%</span>
-            </div>
-            <input
-              className={rangeInputClass}
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={props.calcMode.strength}
-              onChange={(event) =>
-                props.onCalcMode((prev) => ({
-                  ...prev,
-                  strength: Number(event.target.value),
-                }))
-              }
-              aria-label="Сила режима кальки"
-            />
-          </div>
+      <Section show={calcSec.show} first={calcSec.first}>
+        <div className={sliderLabelsClass}>
+          <span>Сила</span>
+          <span>{Math.round(props.calcMode.strength * 100)}%</span>
         </div>
-      )}
+        <input
+          className={rangeInputClass}
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={props.calcMode.strength}
+          onChange={(event) =>
+            props.onCalcMode((prev) => ({
+              ...prev,
+              strength: Number(event.target.value),
+            }))
+          }
+          aria-label="Сила режима кальки"
+        />
+      </Section>
 
-      {show('hand') && props.atmosphereEnabled && (
+      <Section show={atmosphereSec.show} first={atmosphereSec.first}>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -137,11 +164,10 @@ export function MainPanel(props: MainPanelProps) {
             Светлая
           </button>
         </div>
-      )}
+      </Section>
 
-      {show('guides') && (
-        <div className={panelCardClass}>
-          <p className={sectionTitleClass}>Направляющие</p>
+      <Section show={guidesSec.show} first={guidesSec.first}>
+        <div className="grid gap-2">
           <div className="grid grid-cols-4 gap-2">
             {GUIDE_KIND_OPTIONS.map((kind) => (
               <button
@@ -179,16 +205,10 @@ export function MainPanel(props: MainPanelProps) {
             </div>
           )}
         </div>
-      )}
+      </Section>
 
-      {show('loupe') && (
-        <div className={panelCardClass}>
-          <div>
-            <p className={sectionTitleClass}>Лупа</p>
-            <p className={`mt-0.5 ${mutedTextClass}`}>
-              Увеличивает камеру и референс под курсором
-            </p>
-          </div>
+      <Section show={loupeSec.show} first={loupeSec.first}>
+        <div className="grid gap-3">
           <div>
             <div className={sliderLabelsClass}>
               <span>Размер</span>
@@ -229,12 +249,12 @@ export function MainPanel(props: MainPanelProps) {
             </div>
           </div>
         </div>
-      )}
+      </Section>
 
-      {show('session') && (
-        <div className={panelCardClass}>
-          <div className="flex min-h-8 items-center justify-between gap-2">
-            <p className={sectionTitleClass}>Сессия</p>
+      <Section show={sessionSec.show} first={sessionSec.first}>
+        <div className="grid gap-2">
+          <div className="flex min-h-7 items-center justify-between gap-2">
+            <p className={fieldLabelClass}>Сессия</p>
             <span
               className={cn(
                 'inline-flex min-h-7 min-w-[3.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-center text-[0.78rem] font-bold leading-none [font-variant-numeric:tabular-nums]',
@@ -304,9 +324,9 @@ export function MainPanel(props: MainPanelProps) {
             </>
           )}
         </div>
-      )}
+      </Section>
 
-      {show('phone') && props.usingPhoneCam && (
+      <Section show={phoneSec.show} first={phoneSec.first}>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -325,7 +345,7 @@ export function MainPanel(props: MainPanelProps) {
             Фонарик
           </button>
         </div>
-      )}
+      </Section>
     </div>
   )
 }
