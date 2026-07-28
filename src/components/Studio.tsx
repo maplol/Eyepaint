@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
 } from 'react'
+import { ArRulerOverlay } from './ArRulerOverlay'
 import { GuideLayerCanvas } from './GuideLayerCanvas'
 import { GuideOverlay } from './GuideOverlay'
 import { HelpToggleButton } from './HelpSystem'
@@ -272,6 +273,8 @@ export function Studio({
   const [arMode, setArMode] = useState<ArViewMode>('free')
   const [arPhase, setArPhase] = useState<ArPhase>('idle')
   const [planeLock, setPlaneLock] = useState<PlaneLock | null>(null)
+  const [arRulerOn, setArRulerOn] = useState(false)
+  const [arLivePxPerCm, setArLivePxPerCm] = useState(0)
   const [atmosphere, setAtmosphere] = useState<StudioAtmosphere>(
     () => projectBoot?.atmosphere ?? loadAtmosphere(),
   )
@@ -485,24 +488,45 @@ export function Studio({
     ready: arDetectorReady,
     progress: arProgress,
     liveDistanceCm,
+    markerVisible: arMarkerVisible,
   } = useArucoTracker({
     enabled: arTrackingOn,
     phase: arPhase,
     videoRef,
     stageRef,
     onLock: handleArLock,
+    onMetric: (sample) => {
+      if (sample.pxPerCm > 0.5) setArLivePxPerCm(sample.pxPerCm)
+      else if (!sample.markerVisible) setArLivePxPerCm(0)
+      if (sample.distanceCm == null) return
+      setPlaneLock((prev) => {
+        if (!prev) return prev
+        const distChanged =
+          prev.distanceCm == null || Math.abs(prev.distanceCm - sample.distanceCm!) >= 0.5
+        const pxChanged =
+          sample.pxPerCm > 0.5 &&
+          (prev.pxPerCm < 0.5 || Math.abs(prev.pxPerCm - sample.pxPerCm) / prev.pxPerCm > 0.03)
+        if (!distChanged && !pxChanged) return prev
+        return {
+          ...prev,
+          distanceCm: sample.distanceCm,
+          pxPerCm: sample.pxPerCm > 0.5 ? sample.pxPerCm : prev.pxPerCm,
+        }
+      })
+    },
   })
 
   const arDistanceCm =
-    arMode === 'ar'
-      ? arPhase === 'locked'
-        ? (planeLock?.distanceCm ?? null)
-        : liveDistanceCm
-      : null
+    arMode === 'ar' ? (liveDistanceCm ?? planeLock?.distanceCm ?? null) : null
+  const arDistanceLive = Boolean(arMode === 'ar' && arMarkerVisible && liveDistanceCm != null)
+  const arRulerPxPerCm =
+    arLivePxPerCm > 0.5 ? arLivePxPerCm : (planeLock?.pxPerCm ?? 0)
+  const arRulerAvailable = arMode === 'ar' && arPhase === 'locked' && arRulerPxPerCm > 0.5
 
   const setArViewMode = (mode: ArViewMode) => {
     setArMode(mode)
     if (mode === 'free') {
+      setArRulerOn(false)
       setArPhase(planeLock ? 'locked' : 'idle')
       return
     }
@@ -512,6 +536,8 @@ export function Studio({
 
   const recalibrateAr = () => {
     setPlaneLock(null)
+    setArRulerOn(false)
+    setArLivePxPerCm(0)
     setArMode('ar')
     setArPhase('hunting')
     showToast('Ищи маркер…')
@@ -1085,7 +1111,7 @@ export function Studio({
   const showToolInspector = toolPanelOpen && activeTool !== null && activeTool !== 'layers'
 
   const loupeMode = activeTool === 'loupe' && loupe.enabled
-  const blockLayerGestures = loupeMode || pickMode || brush.editing
+  const blockLayerGestures = loupeMode || pickMode || brush.editing || arRulerOn
 
   /** Exclusive modes die when switching tools; sticky overlays stay until their rail toggle. */
   const deactivateExclusive = (tool: StudioToolId | null) => {
@@ -1688,6 +1714,10 @@ export function Studio({
 
         {!guideLayersOn && <GuideOverlay kind={guides.kind} opacity={guides.opacity} />}
 
+        {arRulerOn && arRulerAvailable && (
+          <ArRulerOverlay enabled pxPerCm={arRulerPxPerCm} stageRef={stageRef} />
+        )}
+
         {loupe.enabled && loupeVisible && (
           <LoupeOverlay
             visible
@@ -1758,6 +1788,10 @@ export function Studio({
                 progress={arProgress}
                 detectorReady={arDetectorReady}
                 distanceCm={arDistanceCm}
+                distanceLive={arDistanceLive}
+                rulerOn={arRulerOn}
+                rulerAvailable={arRulerAvailable}
+                onToggleRuler={() => setArRulerOn((value) => !value)}
                 onMode={setArViewMode}
                 onRecalibrate={recalibrateAr}
               />

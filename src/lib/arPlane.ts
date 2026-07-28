@@ -102,6 +102,14 @@ export function formatDistanceCm(cm: number | null | undefined) {
   return `≈${rounded} см`
 }
 
+/** On-plane ruler length (more digits under 20 cm). */
+export function formatMeasureCm(cm: number | null | undefined) {
+  if (cm == null || !Number.isFinite(cm) || cm < 0.05) return null
+  if (cm < 20) return `${cm.toFixed(1)} см`
+  if (cm < 100) return `${Math.round(cm)} см`
+  return `${Math.round(cm / 5) * 5} см`
+}
+
 export function dist(a: Point2, b: Point2) {
   return Math.hypot(b.x - a.x, b.y - a.y)
 }
