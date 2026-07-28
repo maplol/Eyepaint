@@ -18,18 +18,7 @@ export function ArModeBar({
   onMode,
   onRecalibrate,
 }: ArModeBarProps) {
-  const statusLong =
-    mode === 'free'
-      ? null
-      : phase === 'hunting'
-        ? detectorReady
-          ? 'Ищи маркер…'
-          : 'Готовлю AR…'
-        : phase === 'locked'
-          ? 'Плоскость зафиксирована · маркер можно убрать'
-          : null
-
-  const statusShort =
+  const status =
     mode === 'free'
       ? null
       : phase === 'hunting'
@@ -39,6 +28,9 @@ export function ArModeBar({
         : phase === 'locked'
           ? 'Зафиксировано'
           : null
+
+  const statusTitle =
+    phase === 'locked' ? 'Плоскость зафиксирована · маркер можно убрать' : undefined
 
   return (
     <div className="flex min-w-0 max-w-full flex-col items-center gap-1 justify-self-center">
@@ -79,10 +71,12 @@ export function ArModeBar({
 
       {mode === 'ar' && (
         <div className="flex max-w-full flex-wrap items-center justify-center gap-1 px-0.5">
-          {statusShort && (
-            <p className="max-w-full truncate text-center text-[0.65rem] text-[var(--fg-muted)] sm:text-[0.68rem]">
-              <span className="sm:hidden">{statusShort}</span>
-              <span className="hidden sm:inline">{statusLong ?? statusShort}</span>
+          {status && (
+            <p
+              className="max-w-full truncate text-center text-[0.65rem] text-[var(--fg-muted)] sm:text-[0.68rem]"
+              title={statusTitle}
+            >
+              {status}
             </p>
           )}
           {phase === 'hunting' && (
