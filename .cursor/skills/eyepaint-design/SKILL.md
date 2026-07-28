@@ -10,8 +10,8 @@ description: >-
 # EYEPAINT — дизайн всего приложения
 
 Источник правды: код (`src/index.css`, `components/studio/studioUi.ts`, панели),
-не выдуманный Figma. Продуктовая карта фич — соседний skill `eyepaint-features`.
-Общий craft-floor — `impeccable` (после этого skill, не вместо).
+не выдуманный Figma. Система целиком — `eyepaint-app`; карта фич — `eyepaint-features`;
+бэклог — `docs/IDEAS.md`. Общий craft-floor — `impeccable` (после этого skill, не вместо).
 
 **Режимы поверхностей**
 
