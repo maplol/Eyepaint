@@ -103,21 +103,21 @@ export const STUDIO_TOOL_LABELS: Record<StudioToolId, string> = {
 
 /** Outer shell — mobile bottom stack; overflow visible — тени glass не режутся */
 export const dockShellClass =
-  'absolute bottom-[calc(var(--safe-bottom)+0.35rem)] left-[3.85rem] right-2.5 z-20 flex max-h-[min(58dvh,520px)] min-h-0 flex-col gap-2 overflow-x-visible overflow-y-auto overscroll-contain py-1 animate-[rise-in_0.45s_ease_0.04s_both] eyepaint-scroll min-[960px]:hidden sm:left-[4.2rem]'
+  'absolute bottom-[calc(var(--safe-bottom)+0.35rem)] left-[3.85rem] right-2.5 z-20 flex max-h-[min(52dvh,calc(100dvh-var(--safe-top)-var(--safe-bottom)-7.5rem))] min-h-0 flex-col gap-2 overflow-x-visible overflow-y-auto overscroll-contain py-1 animate-[rise-in_0.45s_ease_0.04s_both] eyepaint-scroll min-[960px]:hidden sm:left-[4.2rem]'
 
 export const dockClass = cn(
   'flex h-[min(42dvh,380px)] min-h-0 flex-1 flex-col overflow-hidden rounded-3xl',
   glassSurfaceClass,
 )
 
-/** Compact vertical tool rail — без скролла; ширина ≥ кнопка + padding */
+/** Compact vertical tool rail — на мобилке между шапкой и низом, не обрезается */
 export const toolRailClass = cn(
-  'absolute left-3 top-1/2 z-40 flex w-12 -translate-y-1/2 flex-col items-center gap-1 overflow-hidden overscroll-none rounded-2xl p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-[rise-in_0.35s_ease_both] sm:left-3.5 min-[960px]:w-[3.25rem] eyepaint-glass-edge',
+  'absolute left-3 top-[calc(var(--safe-top)+4.8rem)] bottom-[calc(var(--safe-bottom)+0.75rem)] z-40 flex w-12 flex-col items-center justify-center gap-0.5 overflow-y-auto overflow-x-hidden overscroll-contain rounded-2xl p-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden animate-[rise-in_0.35s_ease_both] sm:left-3.5 sm:gap-1 min-[960px]:top-1/2 min-[960px]:bottom-auto min-[960px]:max-h-[min(92vh,calc(100dvh-var(--safe-top)-var(--safe-bottom)-3rem))] min-[960px]:w-[3.25rem] min-[960px]:-translate-y-1/2 eyepaint-glass-edge',
   glassSurfaceClass,
 )
 
 export const toolRailBtnClass =
-  'grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-transparent text-[var(--fg-muted)] transition-colors hover:border-[var(--glass-border-soft)] hover:bg-[var(--glass-fill)] hover:text-[var(--fg-strong)] min-[960px]:h-10 min-[960px]:w-10'
+  'grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-transparent text-[var(--fg-muted)] transition-colors hover:border-[var(--glass-border-soft)] hover:bg-[var(--glass-fill)] hover:text-[var(--fg-strong)] sm:h-9 sm:w-9 min-[960px]:h-10 min-[960px]:w-10'
 
 export const toolRailBtnActiveClass =
   'border-accent/45 bg-accent/18 text-[var(--chip-accent-fg)] hover:border-accent/55 hover:bg-accent/22 hover:text-[var(--chip-accent-fg)]'

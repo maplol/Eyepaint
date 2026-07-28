@@ -159,7 +159,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-ink-deep/55 p-3 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-[70] grid place-items-center bg-ink-deep/55 p-3 pb-[max(0.75rem,var(--safe-bottom))] pt-[max(0.75rem,var(--safe-top))] backdrop-blur-sm sm:p-5"
       role="presentation"
       onClick={props.onClose}
     >

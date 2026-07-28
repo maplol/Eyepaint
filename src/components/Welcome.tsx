@@ -31,7 +31,7 @@ export function Welcome({
   const lessonsEnabled = loadFlags().lessons
 
   return (
-    <section className="relative isolate grid min-h-dvh overflow-hidden px-4 py-[calc(var(--safe-top)+1.5rem)] pb-[calc(var(--safe-bottom)+1.5rem)] text-paper md:pl-[clamp(2rem,8vw,7rem)]">
+    <section className="relative isolate grid min-h-dvh overflow-x-hidden overflow-y-auto px-4 py-[calc(var(--safe-top)+1.5rem)] pb-[calc(var(--safe-bottom)+1.5rem)] text-paper md:pl-[clamp(2rem,8vw,7rem)]">
       <div
         className="absolute inset-0 -z-10 overflow-hidden bg-[linear-gradient(160deg,#243038_0%,#1c2428_42%,#151b1f_100%)]"
         aria-hidden="true"

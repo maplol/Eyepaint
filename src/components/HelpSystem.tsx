@@ -80,14 +80,14 @@ export function HelpProvider({ children }: { children: ReactNode }) {
       {children}
       {tip && (
         <div
-          className="fixed inset-0 z-[90] grid place-items-end bg-ink-deep/55 p-4 backdrop-blur-sm sm:place-items-center"
+          className="fixed inset-0 z-[90] grid place-items-end bg-ink-deep/55 p-4 pb-[calc(var(--safe-bottom)+1rem)] pt-[calc(var(--safe-top)+1rem)] backdrop-blur-sm sm:place-items-center"
           role="dialog"
           aria-modal="true"
           aria-label={tip.title}
           onClick={closeTip}
         >
           <div
-            className="eyepaint-glass eyepaint-coach-card animate-rise-in w-full max-w-md rounded-3xl p-5 text-[var(--fg)]"
+            className="eyepaint-glass eyepaint-coach-card animate-rise-in max-h-[min(78dvh,560px)] w-full max-w-md overflow-y-auto rounded-3xl p-5 text-[var(--fg)]"
             onClick={(event) => event.stopPropagation()}
           >
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[var(--chip-accent-fg)]">

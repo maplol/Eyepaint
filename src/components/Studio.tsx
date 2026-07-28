@@ -48,7 +48,12 @@ import {
 } from '../hooks/useOverlayTransform'
 import { useRoomPeer } from '../hooks/useRoomPeer'
 import { useStudioHotkeys } from '../hooks/useStudioHotkeys'
-import type { ArPhase, ArViewMode, PlaneLock } from '../lib/arPlane'
+import {
+  buildArPlaneCssTransform,
+  type ArPhase,
+  type ArViewMode,
+  type PlaneLock,
+} from '../lib/arPlane'
 import { DEFAULT_BRUSH_MASK, type BrushMaskSettings } from '../lib/brushMask'
 import { captureCompositeFrame, saveImageToDevice } from '../lib/captureComposite'
 import {
@@ -370,12 +375,15 @@ export function Studio({
     setLayers((prev) => patchLayerTransform(prev, activeLayerId, update))
   }
 
+  const arPlaneActive = arMode === 'ar' && arPhase === 'locked' && planeLock
+
   const { reset, handlers, onWheel } = useOverlayTransform(
     locked || brush.editing,
     dragMode,
     transform,
     setTransform,
-    arMode === 'ar' && arPhase === 'locked' ? planeLock : null,
+    arPlaneActive ? planeLock : null,
+    arPlaneActive ? setPlaneLock : null,
   )
   const onWheelRef = useRef(onWheel)
   onWheelRef.current = onWheel
@@ -385,17 +393,13 @@ export function Studio({
   const showToast = (message: string) => setToast(message)
 
   const handleArLock = (plane: PlaneLock) => {
-    setPlaneLock(plane)
+    const img = overlayImageRef.current
+    const aspect =
+      img && img.naturalWidth > 0 && img.naturalHeight > 0
+        ? img.naturalWidth / img.naturalHeight
+        : 1
+    setPlaneLock({ ...plane, aspect, u: 0, v: 0 })
     setArPhase('locked')
-    setTransform((prev) => ({
-      ...prev,
-      x: plane.origin.x,
-      y: plane.origin.y,
-      rotateX: plane.rotateX,
-      rotateY: plane.rotateY,
-      rotation: plane.rotation,
-      scale: Math.min(3, Math.max(0.35, plane.scale)),
-    }))
     showToast('Плоскость зафиксирована — маркер можно убрать')
   }
 
@@ -1442,6 +1446,28 @@ export function Studio({
           const isActive = activeLayerId === layer.id
           const isPrimary = layer.kind === 'primary'
           const layerUrl = isPrimary ? imageUrl : layer.url
+          const useArCss = Boolean(isActive && arPlaneActive && planeLock && stageRef.current)
+          const stageBox = stageRef.current?.getBoundingClientRect()
+          const layerElSize = {
+            width: stageBox ? Math.min(stageBox.width * 0.88, 520) : 400,
+            height: stageBox ? Math.min(stageBox.height * 0.75, 520) : 400,
+          }
+          // Prefer measured image box when available (object-contain)
+          const measured = overlayImageRef.current
+          if (useArCss && isActive && measured && measured.clientWidth > 0) {
+            layerElSize.width = measured.clientWidth
+            layerElSize.height = measured.clientHeight
+          }
+          const arTransform =
+            useArCss && planeLock && stageBox
+              ? buildArPlaneCssTransform(
+                  planeLock,
+                  { width: stageBox.width, height: stageBox.height },
+                  layerElSize,
+                  layer.flipped,
+                )
+              : null
+
           return (
             <div
               key={layer.id}
@@ -1456,7 +1482,8 @@ export function Studio({
               )}
               style={{
                 opacity: opacity * layer.opacity,
-                transform: buildOverlayCssTransform(layer.transform, layer.flipped),
+                transform:
+                  arTransform ?? buildOverlayCssTransform(layer.transform, layer.flipped),
                 zIndex: 2 + index,
                 pointerEvents:
                   loupeMode
@@ -1540,7 +1567,7 @@ export function Studio({
 
       {!uiHidden && (
         <header
-          className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 pb-3 pt-[calc(var(--safe-top)+0.65rem)] animate-[rise-in_0.35s_ease_both] sm:px-4"
+          className="absolute inset-x-0 top-0 z-30 grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1.5 px-2.5 pb-2.5 pt-[calc(var(--safe-top)+0.55rem)] animate-[rise-in_0.35s_ease_both] sm:items-center sm:gap-2 sm:px-4 sm:pb-3 sm:pt-[calc(var(--safe-top)+0.65rem)]"
           style={{ background: 'var(--header-fade)' }}
         >
           <button
@@ -1731,9 +1758,9 @@ export function Studio({
         />
       )}
 
-      {!uiHidden && desktopLayout && !showToolInspector && (
+      {!uiHidden && desktopLayout && !showToolInspector && !settingsOpen && (
         <div
-          className="pointer-events-none absolute left-[4.85rem] right-[min(320px,28vw)] top-[calc(var(--safe-top)+3.6rem)] z-[2] hidden text-center text-[0.72rem] text-[var(--fg-faint)] min-[960px]:block"
+          className="pointer-events-none absolute bottom-[calc(var(--safe-bottom)+1rem)] left-[4.85rem] z-[2] hidden max-w-[min(28rem,calc(100vw-22rem))] text-left text-[0.72rem] leading-snug text-[var(--fg-faint)] min-[960px]:block"
           aria-hidden="true"
         >
           {formatHotkey(hotkeys.pan)} двигать · {formatHotkey(hotkeys.rotate)} поворот ·{' '}

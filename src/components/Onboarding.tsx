@@ -18,6 +18,34 @@ type OnboardingProps = {
 
 type Rect = { top: number; left: number; width: number; height: number; cx: number; cy: number }
 type Side = 'top' | 'bottom' | 'left' | 'right'
+type ViewportBox = {
+  left: number
+  top: number
+  width: number
+  height: number
+  padX: number
+  padY: number
+}
+
+function readSafeInset(side: 'top' | 'right' | 'bottom' | 'left') {
+  if (typeof window === 'undefined') return 0
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--safe-${side}`)
+    .trim()
+  const n = Number.parseFloat(raw)
+  return Number.isFinite(n) ? n : 0
+}
+
+function readViewport(): ViewportBox {
+  const vv = window.visualViewport
+  const width = vv?.width ?? window.innerWidth
+  const height = vv?.height ?? window.innerHeight
+  const left = vv?.offsetLeft ?? 0
+  const top = vv?.offsetTop ?? 0
+  const padX = Math.max(12, readSafeInset('left') + 8, readSafeInset('right') + 8)
+  const padY = Math.max(12, readSafeInset('top') + 8, readSafeInset('bottom') + 8)
+  return { left, top, width, height, padX, padY }
+}
 
 function readRect(selector: string | null): Rect | null {
   if (!selector) return null
@@ -35,27 +63,61 @@ function readRect(selector: string | null): Rect | null {
   }
 }
 
+function sideFits(side: Side, space: Record<Side, number>, cardW: number, cardH: number) {
+  const gap = 20
+  const need = side === 'top' || side === 'bottom' ? cardH + gap + 24 : cardW + gap + 24
+  return space[side] >= need
+}
+
 function pickPlacement(
   step: CoachStep,
   rect: Rect | null,
   cardW: number,
   cardH: number,
+  viewport: ViewportBox,
+  narrow: boolean,
 ): Side {
-  if (step.placement && step.placement !== 'auto') return step.placement
   if (!rect) return 'bottom'
-  const gap = 20
-  const space = {
-    top: rect.top,
-    bottom: window.innerHeight - rect.top - rect.height,
-    left: rect.left,
-    right: window.innerWidth - rect.left - rect.width,
+  const space: Record<Side, number> = {
+    top: rect.top - viewport.top,
+    bottom: viewport.top + viewport.height - (rect.top + rect.height),
+    left: rect.left - viewport.left,
+    right: viewport.left + viewport.width - (rect.left + rect.width),
   }
-  const order: Side[] = ['bottom', 'top', 'right', 'left']
+
+  const preferred =
+    step.placement && step.placement !== 'auto' ? (step.placement as Side) : null
+
+  // На узком экране боковые карточки часто вылезают — предпочитаем верх/низ.
+  const order: Side[] = narrow
+    ? ['bottom', 'top', 'right', 'left']
+    : ['bottom', 'top', 'right', 'left']
+
+  if (preferred && (!narrow || preferred === 'top' || preferred === 'bottom')) {
+    if (sideFits(preferred, space, cardW, cardH)) return preferred
+  }
+
   for (const side of order) {
-    const need = side === 'top' || side === 'bottom' ? cardH + gap + 36 : cardW + gap + 36
-    if (space[side] >= need) return side
+    if (sideFits(side, space, cardW, cardH)) return side
   }
   return space.bottom >= space.top ? 'bottom' : 'top'
+}
+
+function clampCard(
+  left: number,
+  top: number,
+  cardW: number,
+  cardH: number,
+  viewport: ViewportBox,
+) {
+  const minL = viewport.left + viewport.padX
+  const maxL = viewport.left + viewport.width - cardW - viewport.padX
+  const minT = viewport.top + viewport.padY
+  const maxT = viewport.top + viewport.height - cardH - viewport.padY
+  return {
+    left: Math.min(Math.max(left, minL), Math.max(minL, maxL)),
+    top: Math.min(Math.max(top, minT), Math.max(minT, maxT)),
+  }
 }
 
 /** Мягкий «стебель»: широкий у карточки, сужается к цели */
@@ -97,14 +159,12 @@ function buildStemPath(
   const b2x = ax + nx * baseHalf
   const b2y = ay + ny * baseHalf
 
-  // контрольные точки: вытекание из карточки, потом к цели
   const pull = side === 'left' || side === 'right' ? 0.45 : 0.42
   const c1x = ax + (tip.x - ax) * 0.22
   const c1y = ay + (tip.y - ay) * 0.22
   const c2x = ax + (tip.x - ax) * pull
   const c2y = ay + (tip.y - ay) * pull
 
-  // лёгкий изгиб перпендикулярно направлению
   const dx = tip.x - ax
   const dy = tip.y - ay
   const len = Math.hypot(dx, dy) || 1
@@ -116,7 +176,6 @@ function buildStemPath(
   const m2x = c2x + px
   const m2y = c2y + py
 
-  // узкий «носик» у цели
   const tipHalf = 2.2
   const tdx = tip.x - m2x
   const tdy = tip.y - m2y
@@ -141,13 +200,19 @@ function buildStemPath(
 export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingProps) {
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<Rect | null>(null)
-  const [cardBox, setCardBox] = useState({ width: 320, height: 200 })
+  const [cardBox, setCardBox] = useState({ width: 320, height: 220 })
+  const [viewport, setViewport] = useState<ViewportBox>(() =>
+    typeof window !== 'undefined'
+      ? readViewport()
+      : { left: 0, top: 0, width: 390, height: 844, padX: 12, padY: 12 },
+  )
   const cardRef = useRef<HTMLDivElement | null>(null)
   const current = steps[step]
   const total = steps.length
 
   const measure = useCallback(() => {
     if (!current) return
+    setViewport(readViewport())
     if (!current.target) {
       setRect(null)
       return
@@ -174,7 +239,7 @@ export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingPr
 
   useLayoutEffect(() => {
     measureCard()
-  }, [measureCard, step, rect])
+  }, [measureCard, step, rect, viewport])
 
   useEffect(() => {
     const onWin = () => {
@@ -183,11 +248,15 @@ export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingPr
     }
     window.addEventListener('resize', onWin)
     window.addEventListener('scroll', onWin, true)
+    window.visualViewport?.addEventListener('resize', onWin)
+    window.visualViewport?.addEventListener('scroll', onWin)
     const t1 = window.setTimeout(onWin, 80)
     const t2 = window.setTimeout(onWin, 280)
     return () => {
       window.removeEventListener('resize', onWin)
       window.removeEventListener('scroll', onWin, true)
+      window.visualViewport?.removeEventListener('resize', onWin)
+      window.visualViewport?.removeEventListener('scroll', onWin)
       window.clearTimeout(t1)
       window.clearTimeout(t2)
     }
@@ -206,53 +275,61 @@ export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingPr
   if (!current) return null
 
   const isLast = step >= total - 1
-  const cardW = Math.min(340, typeof window !== 'undefined' ? window.innerWidth - 24 : 340)
-  const placement = pickPlacement(current, rect, cardW, cardBox.height || 200)
+  const narrow = viewport.width < 640
+  const cardW = Math.min(340, Math.max(240, viewport.width - viewport.padX * 2))
+  const maxCardH = Math.max(160, viewport.height - viewport.padY * 2)
+  const cardH = Math.min(cardBox.height || 220, maxCardH)
+  const placement = pickPlacement(current, rect, cardW, cardH, viewport, narrow)
   const pad = 10
 
   let cardStyle: CSSProperties = {
     position: 'fixed',
     width: cardW,
+    maxWidth: `calc(100vw - ${viewport.padX * 2}px)`,
+    maxHeight: maxCardH,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
     zIndex: 82,
+    boxSizing: 'border-box',
   }
 
   let tipPoint: { x: number; y: number } | null = null
   let cardGeom: { left: number; top: number; width: number; height: number } | null = null
 
   if (!rect) {
-    cardStyle = {
-      ...cardStyle,
-      left: '50%',
-      top: '50%',
-      transform: 'translate(-50%, -50%)',
-    }
+    const left = viewport.left + (viewport.width - cardW) / 2
+    const top = viewport.top + (viewport.height - cardH) / 2
+    const clamped = clampCard(left, top, cardW, cardH, viewport)
+    cardStyle.left = clamped.left
+    cardStyle.top = clamped.top
+    cardGeom = { left: clamped.left, top: clamped.top, width: cardW, height: cardH }
   } else {
-    const gap = 22
-    const h = cardBox.height || 200
-    let left = 12
-    let top = 12
+    const gap = 18
+    let left = viewport.left + viewport.padX
+    let top = viewport.top + viewport.padY
 
     if (placement === 'bottom') {
-      left = Math.min(Math.max(12, rect.cx - cardW / 2), window.innerWidth - cardW - 12)
-      top = Math.min(rect.top + rect.height + gap, window.innerHeight - h - 12)
+      left = rect.cx - cardW / 2
+      top = rect.top + rect.height + gap
       tipPoint = { x: rect.cx, y: rect.top + rect.height + 1 }
     } else if (placement === 'top') {
-      left = Math.min(Math.max(12, rect.cx - cardW / 2), window.innerWidth - cardW - 12)
-      top = Math.max(12, rect.top - gap - h)
+      left = rect.cx - cardW / 2
+      top = rect.top - gap - cardH
       tipPoint = { x: rect.cx, y: rect.top - 1 }
     } else if (placement === 'right') {
-      left = Math.min(rect.left + rect.width + gap, window.innerWidth - cardW - 12)
-      top = Math.min(Math.max(12, rect.cy - h / 2), window.innerHeight - h - 12)
+      left = rect.left + rect.width + gap
+      top = rect.cy - cardH / 2
       tipPoint = { x: rect.left + rect.width + 1, y: rect.cy }
     } else {
-      left = Math.max(12, rect.left - gap - cardW)
-      top = Math.min(Math.max(12, rect.cy - h / 2), window.innerHeight - h - 12)
+      left = rect.left - gap - cardW
+      top = rect.cy - cardH / 2
       tipPoint = { x: rect.left - 1, y: rect.cy }
     }
 
-    cardStyle.left = left
-    cardStyle.top = top
-    cardGeom = { left, top, width: cardW, height: h }
+    const clamped = clampCard(left, top, cardW, cardH, viewport)
+    cardStyle.left = clamped.left
+    cardStyle.top = clamped.top
+    cardGeom = { left: clamped.left, top: clamped.top, width: cardW, height: cardH }
   }
 
   const stemPath =
@@ -287,7 +364,7 @@ export function Onboarding({ steps, onDone, label = 'Старт' }: OnboardingPr
 
       {stemPath && (
         <svg
-          className="pointer-events-none fixed inset-0 z-[81] h-full w-full overflow-visible"
+          className="pointer-events-none fixed inset-0 z-[81] h-full w-full overflow-hidden"
           aria-hidden="true"
         >
           <defs>
