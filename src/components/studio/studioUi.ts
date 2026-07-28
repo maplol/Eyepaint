@@ -14,8 +14,9 @@ export const rowClass = 'grid grid-cols-3 gap-2'
 
 export const tipClass = 'text-center text-[0.78rem] text-[var(--fg-faint)]'
 
+/** Chip / grid button — padding по тексту, leading-tight чтобы длинные подписи не вылезали */
 export const chipBaseClass =
-  'min-h-[2.5rem] rounded-[14px] px-[0.35rem] py-[0.4rem] text-[0.82rem] font-semibold disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex min-h-10 items-center justify-center rounded-[14px] px-2.5 py-1.5 text-center text-[0.78rem] font-semibold leading-tight disabled:cursor-not-allowed disabled:opacity-40'
 
 export const chipNeutralClass = cn(
   chipBaseClass,
@@ -32,13 +33,20 @@ export const chipAccentClass = (active = false) =>
 
 export const chipFileClass = cn(
   chipNeutralClass,
-  'relative inline-flex cursor-pointer items-center justify-center',
+  'relative cursor-pointer',
 )
 
 export const hiddenFileInputClass = 'absolute h-px w-px opacity-0 pointer-events-none'
 
 export const poseSaveClass =
-  'min-h-[2.7rem] rounded-[14px] border border-[var(--chip-accent-border)] bg-[var(--chip-accent-bg)] font-bold text-[var(--chip-accent-fg)]'
+  'inline-flex min-h-11 w-full items-center justify-center rounded-[14px] border border-[var(--chip-accent-border)] bg-[var(--chip-accent-bg)] px-3 py-2 text-center text-[0.86rem] font-bold leading-tight text-[var(--chip-accent-fg)]'
+
+/** Primary / secondary CTA (онбординг, справка) */
+export const ctaPrimaryClass =
+  'inline-flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-4 py-2 text-center font-bold leading-tight text-accent-ink'
+
+export const ctaSecondaryClass =
+  'inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-4 py-2 text-center font-semibold leading-tight text-[var(--fg-strong)]'
 
 export const poseStatsClass = 'grid grid-cols-4 gap-[0.4rem]'
 
@@ -51,11 +59,15 @@ export const poseStatValueClass =
   'text-[0.86rem] font-bold text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
 
 export const glassButtonClass =
-  'eyepaint-glass-chip inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3.5 text-sm font-semibold text-[var(--fg-strong)]'
+  'eyepaint-glass-chip inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3.5 py-2 text-sm font-semibold leading-tight text-[var(--fg-strong)]'
 
-/** Round icon control (header: back / hide) */
+/** Round icon control (header: back / hide / help) */
 export const glassIconButtonClass =
   'eyepaint-glass-chip grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--fg-strong)]'
+
+/** Compact header status / action pill */
+export const chromePillClass =
+  'inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-center text-[0.72rem] font-semibold leading-none text-[var(--fg-strong)]'
 
 /** Shared frosted panel — CSS class, работает без blur поверх video */
 export const glassSurfaceClass = 'eyepaint-glass'
@@ -135,7 +147,7 @@ export const layerRowClass =
 export const scrollAreaClass = 'eyepaint-scroll'
 
 export const tabBaseClass =
-  'min-h-9 rounded-xl px-1 py-1.5 text-[0.75rem] font-semibold text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-strong)] min-[960px]:text-[0.8rem]'
+  'inline-flex min-h-9 items-center justify-center rounded-xl px-2 py-1.5 text-center text-[0.75rem] font-semibold leading-tight text-[var(--fg-muted)] transition-colors hover:text-[var(--fg-strong)] min-[960px]:text-[0.8rem]'
 
 export const tabActiveClass = 'bg-[var(--glass-fill-strong)] text-[var(--fg-strong)]'
 

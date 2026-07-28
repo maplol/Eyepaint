@@ -356,7 +356,7 @@ export function LayersPanel(props: LayersPanelProps) {
         {variant === 'sheet' && compact && (
           <button
             type="button"
-            className="rounded-full border border-accent/45 bg-accent/18 px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--chip-accent-fg)]"
+            className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-accent/45 bg-accent/18 px-3 py-1.5 text-[0.78rem] font-semibold leading-none text-[var(--chip-accent-fg)]"
             onClick={() => props.onRequestExpand?.()}
           >
             Развернуть
@@ -365,7 +365,7 @@ export function LayersPanel(props: LayersPanelProps) {
         {variant === 'sheet' && !compact && (
           <button
             type="button"
-            className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold text-[var(--fg-strong)]"
+            className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold leading-none text-[var(--fg-strong)]"
             aria-expanded={true}
             onClick={() => {
               setOpen(false)

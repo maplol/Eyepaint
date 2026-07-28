@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { getHelpTip } from '../lib/helpTips'
+import { ctaPrimaryClass } from './studio/studioUi'
 
 type HelpContextValue = {
   helpMode: boolean
@@ -96,11 +97,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
               {tip.title}
             </h2>
             <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--fg-muted)]">{tip.body}</p>
-            <button
-              type="button"
-              className="mt-5 min-h-11 w-full rounded-full bg-accent font-bold text-accent-ink"
-              onClick={closeTip}
-            >
+            <button type="button" className={`mt-5 ${ctaPrimaryClass}`} onClick={closeTip}>
               Понятно
             </button>
           </div>
@@ -124,10 +121,10 @@ export function HelpToggleButton({ className = '' }: { className?: string }) {
       type="button"
       data-help="help-toggle"
       className={[
-        'grid h-10 w-10 shrink-0 place-items-center rounded-full border text-[0.95rem] font-bold transition-colors',
+        'eyepaint-glass-chip grid h-10 w-10 shrink-0 place-items-center rounded-full text-[0.95rem] font-bold transition-colors',
         helpMode
           ? 'border-accent/55 bg-accent/25 text-[var(--chip-accent-fg)]'
-          : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
+          : 'text-[var(--fg-strong)]',
         className,
       ]
         .filter(Boolean)

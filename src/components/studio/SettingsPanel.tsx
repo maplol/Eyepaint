@@ -175,7 +175,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
                 <button
                   type="button"
                   className={cn(
-                    'min-h-9 min-w-[5.5rem] rounded-[10px] border border-accent/40 px-2.5 text-[0.78rem] font-bold',
+                    'inline-flex min-h-9 min-w-[5.5rem] items-center justify-center rounded-[10px] border border-accent/40 px-2.5 text-center text-[0.78rem] font-bold leading-tight',
                     props.listeningFor === action
                       ? 'bg-accent/35 text-accent-ink'
                       : 'bg-accent/15 text-[var(--chip-accent-fg)]',
