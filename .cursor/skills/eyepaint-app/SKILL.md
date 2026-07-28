@@ -115,10 +115,11 @@ Sticky: лупа/калька/гиды могут оставаться on пос
 `{ x, y, scale, rotation, rotateX, rotateY }` — per active layer (через `useOverlayTransform`).
 
 ### Слой (`RefLayer` в `lib/layers.ts`)
-`{ id, url, name, opacity, visible, transform, flipped, kind: 'primary' | 'aux' }`  
+`{ id, url, name, opacity, visible, transform, flipped, kind: 'primary' | 'aux' | 'guide', shapes? }`  
 - Порядок: index 0 сзади, last спереди; в UI сверху = ближе.  
 - `MAX_LAYERS = 48`. Primary из props Studio; aux — локальные blob/dataURL.  
-- Активный слой владеет transform / flip / цветами.
+- **`guide`**: без картинки, `shapes: GuideShape[]` в coords 0..100; один общий слой (флаг `guideLayers`). Пресеты/рисование в инструменте Гиды; жесты Руки двигают весь слой.  
+- Активный слой владеет transform / flip / цветами (цвета — только photo-слои).
 
 ### Поза (`SavedPose`)
 transform + flip + opacity (+ thumbnail, selectedColorIds) — сейчас **активного** слоя.
