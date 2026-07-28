@@ -1,4 +1,9 @@
-import { markerAssetUrl, type ArPhase, type ArViewMode } from '../../lib/arPlane'
+import {
+  formatDistanceCm,
+  markerAssetUrl,
+  type ArPhase,
+  type ArViewMode,
+} from '../../lib/arPlane'
 import { cn } from './studioUi'
 
 type ArModeBarProps = {
@@ -6,6 +11,12 @@ type ArModeBarProps = {
   phase: ArPhase
   progress: number
   detectorReady: boolean
+  /** Camera→marker distance (live when marker visible) */
+  distanceCm?: number | null
+  distanceLive?: boolean
+  rulerOn?: boolean
+  rulerAvailable?: boolean
+  onToggleRuler?: () => void
   onMode: (mode: ArViewMode) => void
   onRecalibrate: () => void
 }
@@ -15,9 +26,16 @@ export function ArModeBar({
   phase,
   progress,
   detectorReady,
+  distanceCm = null,
+  distanceLive = false,
+  rulerOn = false,
+  rulerAvailable = false,
+  onToggleRuler,
   onMode,
   onRecalibrate,
 }: ArModeBarProps) {
+  const distanceLabel = formatDistanceCm(distanceCm)
+
   const status =
     mode === 'free'
       ? null
@@ -26,11 +44,21 @@ export function ArModeBar({
           ? 'Ищи маркер…'
           : 'Готовлю AR…'
         : phase === 'locked'
-          ? 'Зафиксировано'
+          ? distanceLive
+            ? 'Live'
+            : 'Зафиксировано'
           : null
 
   const statusTitle =
-    phase === 'locked' ? 'Плоскость зафиксирована · маркер можно убрать' : undefined
+    phase === 'locked'
+      ? distanceLabel
+        ? distanceLive
+          ? `Маркер в кадре · ${distanceLabel} (live, ±20%)`
+          : `Плоскость lock · ${distanceLabel} (последняя). Верни маркер для live.`
+        : 'Плоскость зафиксирована · маркер можно убрать'
+      : distanceLabel
+        ? `Дистанция ${distanceLabel} по маркеру 90 мм`
+        : undefined
 
   return (
     <div className="flex min-w-0 max-w-full flex-col items-center gap-1 justify-self-center">
@@ -79,6 +107,26 @@ export function ArModeBar({
               {status}
             </p>
           )}
+          {distanceLabel && (
+            <span
+              className={cn(
+                'inline-flex min-h-7 items-center gap-1 rounded-full border px-2 text-[0.65rem] font-semibold tabular-nums sm:text-[0.68rem]',
+                distanceLive
+                  ? 'border-accent/45 bg-accent/18 text-[var(--chip-accent-fg)]'
+                  : 'border-[var(--glass-border-soft)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
+              )}
+              title={statusTitle}
+              aria-label={`Дистанция ${distanceLabel}${distanceLive ? ', live' : ''}`}
+            >
+              {distanceLive && (
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-accent animate-pulse"
+                  aria-hidden="true"
+                />
+              )}
+              {distanceLabel}
+            </span>
+          )}
           {phase === 'hunting' && (
             <div
               className="h-1 w-16 overflow-hidden rounded-full bg-[var(--glass-fill-strong)] sm:w-24"
@@ -89,6 +137,22 @@ export function ArModeBar({
                 style={{ width: `${Math.round(progress * 100)}%` }}
               />
             </div>
+          )}
+          {rulerAvailable && onToggleRuler && (
+            <button
+              type="button"
+              className={cn(
+                'inline-flex min-h-7 items-center rounded-full border px-2 text-[0.65rem] font-semibold sm:px-2.5 sm:text-[0.68rem]',
+                rulerOn
+                  ? 'border-accent/45 bg-accent/18 text-[var(--chip-accent-fg)]'
+                  : 'border-[var(--glass-border)] bg-[var(--glass-fill-mid)] text-[var(--fg-strong)]',
+              )}
+              aria-pressed={rulerOn}
+              title="Линейка: замер отрезка в см по масштабу маркера"
+              onClick={onToggleRuler}
+            >
+              Линейка
+            </button>
           )}
           {phase === 'locked' && (
             <button

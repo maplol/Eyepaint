@@ -29,6 +29,12 @@ export type PlaneLock = {
   quality: number
   lockedAt: number
   markerId: number
+  /** Physical marker side used for metric (mm) */
+  markerSizeMm: number
+  /** Stage px per cm on the paper plane at lock */
+  pxPerCm: number
+  /** Estimated camera→marker distance at lock (cm), null if unreliable */
+  distanceCm: number | null
 }
 
 export const AR_MARKER = {
@@ -39,10 +45,78 @@ export const AR_MARKER = {
   minQuality: 0.55,
   /** Photo covers this many marker sides on the paper */
   defaultCoverFactor: 3.2,
+  /** Printed center marker (ID 0) side length on A4 at 100% */
+  centerSizeMm: 90,
+  /** Printed corner markers (ID 1–4) side length */
+  cornerSizeMm: 28,
+  /**
+   * Assumed horizontal FOV for phone/webcam when EXIF/intrinsics unavailable.
+   * Distance is approximate (±15–25%).
+   */
+  assumedHfovDeg: 65,
+}
+
+export function markerSizeMmForId(markerId: number) {
+  if ((AR_MARKER.cornerIds as readonly number[]).includes(markerId)) {
+    return AR_MARKER.cornerSizeMm
+  }
+  return AR_MARKER.centerSizeMm
+}
+
+/** Focal length in px from assumed HFOV (pinhole). */
+export function estimateFocalPx(imageWidthPx: number, hfovDeg = AR_MARKER.assumedHfovDeg) {
+  const half = (Math.max(10, hfovDeg) * Math.PI) / 180 / 2
+  return imageWidthPx / 2 / Math.tan(half)
+}
+
+/**
+ * Camera→marker distance from known printed size (pinhole).
+ * `markerSidePx` and `imageWidthPx` must share the same pixel space (detect or video).
+ */
+export function estimateDistanceCm(opts: {
+  markerSidePx: number
+  imageWidthPx: number
+  markerSizeMm: number
+  hfovDeg?: number
+}): number | null {
+  const side = opts.markerSidePx
+  const width = opts.imageWidthPx
+  const sizeMm = opts.markerSizeMm
+  if (!(side > 2) || !(width > 2) || !(sizeMm > 1)) return null
+  const f = estimateFocalPx(width, opts.hfovDeg ?? AR_MARKER.assumedHfovDeg)
+  const zMm = (f * sizeMm) / side
+  const cm = zMm / 10
+  if (!Number.isFinite(cm) || cm < 8 || cm > 220) return null
+  return cm
+}
+
+export function pxPerCmOnPlane(markerSidePx: number, markerSizeMm: number) {
+  const cm = markerSizeMm / 10
+  if (!(markerSidePx > 0) || !(cm > 0)) return 0
+  return markerSidePx / cm
+}
+
+export function formatDistanceCm(cm: number | null | undefined) {
+  if (cm == null || !Number.isFinite(cm)) return null
+  const rounded = cm >= 100 ? Math.round(cm / 5) * 5 : Math.round(cm)
+  return `≈${rounded} см`
+}
+
+/** On-plane ruler length (more digits under 20 cm). */
+export function formatMeasureCm(cm: number | null | undefined) {
+  if (cm == null || !Number.isFinite(cm) || cm < 0.05) return null
+  if (cm < 20) return `${cm.toFixed(1)} см`
+  if (cm < 100) return `${Math.round(cm)} см`
+  return `${Math.round(cm / 5) * 5} см`
 }
 
 export function dist(a: Point2, b: Point2) {
   return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+export function averageMarkerSidePx(corners: [Point2, Point2, Point2, Point2]) {
+  const [tl, tr, br, bl] = corners
+  return (dist(tl, tr) + dist(bl, br) + dist(tl, bl) + dist(tr, br)) / 4
 }
 
 export function mid(a: Point2, b: Point2): Point2 {
@@ -245,6 +319,11 @@ export function planeLockFromCorners(
   markerId: number,
   quality: number,
   aspect = 1,
+  metric?: {
+    /** Marker side in detect/video px (same space as imageWidthPx) */
+    detectSidePx: number
+    imageWidthPx: number
+  },
 ): PlaneLock {
   const ordered = orderCornersTLTRBRBL(corners)
   const [tl, tr, br, bl] = ordered
@@ -262,6 +341,18 @@ export function planeLockFromCorners(
   const left = dist(tl, bl)
   const right = dist(tr, br)
   const markerSidePx = (top + bottom + left + right) / 4
+  const markerSizeMm = markerSizeMmForId(markerId)
+  const distanceCm = metric
+    ? estimateDistanceCm({
+        markerSidePx: metric.detectSidePx,
+        imageWidthPx: metric.imageWidthPx,
+        markerSizeMm,
+      })
+    : estimateDistanceCm({
+        markerSidePx,
+        imageWidthPx: stage.width,
+        markerSizeMm,
+      })
 
   let axisU = normalize({ x: tr.x - tl.x + br.x - bl.x, y: tr.y - tl.y + br.y - bl.y })
   // +V = toward bottom of marker (unit y→1), same direction as UV +v
@@ -269,8 +360,6 @@ export function planeLockFromCorners(
   // Screen Y-down: U×V > 0 keeps right-handed (right × down)
   const cross = axisU.x * axisV.y - axisU.y * axisV.x
   if (cross < 0) axisV = { x: -axisV.x, y: -axisV.y }
-
-  void stage
 
   return {
     corners: ordered,
@@ -285,6 +374,9 @@ export function planeLockFromCorners(
     quality,
     lockedAt: Date.now(),
     markerId,
+    markerSizeMm,
+    pxPerCm: pxPerCmOnPlane(markerSidePx, markerSizeMm),
+    distanceCm,
   }
 }
 
