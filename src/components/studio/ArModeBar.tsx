@@ -35,7 +35,7 @@ export function ArModeBar({
       : phase === 'hunting'
         ? detectorReady
           ? 'Ищи маркер…'
-          : 'Готовлю…'
+          : 'Готовлю AR…'
         : phase === 'locked'
           ? 'Зафиксировано'
           : null
@@ -80,16 +80,10 @@ export function ArModeBar({
       {mode === 'ar' && (
         <div className="flex max-w-full flex-wrap items-center justify-center gap-1 px-0.5">
           {statusShort && (
-            <>
-              <p className="truncate text-center text-[0.65rem] text-[var(--fg-muted)] sm:hidden">
-                {statusShort}
-              </p>
-              {statusLong && (
-                <p className="hidden truncate text-center text-[0.68rem] text-[var(--fg-muted)] sm:block">
-                  {statusLong}
-                </p>
-              )}
-            </>
+            <p className="max-w-full truncate text-center text-[0.65rem] text-[var(--fg-muted)] sm:text-[0.68rem]">
+              <span className="sm:hidden">{statusShort}</span>
+              <span className="hidden sm:inline">{statusLong ?? statusShort}</span>
+            </p>
           )}
           {phase === 'hunting' && (
             <div
