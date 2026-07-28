@@ -63,8 +63,9 @@ export function useOverlayTransform(
   dragMode: HotkeyAction = 'pan',
   transform: OverlayTransform,
   setTransform: Dispatch<SetStateAction<OverlayTransform>>,
-  /** When set, pan drags move along the locked paper plane (AR mode). */
+  /** When set with setPlaneLock, pan/scale move the photo on the paper plane. */
   planeLock: PlaneLock | null = null,
+  setPlaneLock: Dispatch<SetStateAction<PlaneLock | null>> | null = null,
 ) {
   const transformRef = useRef(transform)
   const dragModeRef = useRef(dragMode)
@@ -74,6 +75,7 @@ export function useOverlayTransform(
     mode: 'drag' | 'pinch'
     tool: HotkeyAction
     startTransform: OverlayTransform
+    startPlane: PlaneLock | null
     startPointer?: PointerSample
     startDistance?: number
     startAngle?: number
@@ -111,6 +113,7 @@ export function useOverlayTransform(
         mode: 'drag',
         tool: dragModeRef.current,
         startTransform: { ...transformRef.current },
+        startPlane: planeLockRef.current ? { ...planeLockRef.current } : null,
         startPointer: sample,
       }
     } else if (pointers.length >= 2) {
@@ -119,6 +122,7 @@ export function useOverlayTransform(
         mode: 'pinch',
         tool: 'pan',
         startTransform: { ...transformRef.current },
+        startPlane: planeLockRef.current ? { ...planeLockRef.current } : null,
         startDistance: distance(a, b),
         startAngle: angle(a, b),
         startMid: midpoint(a, b),
@@ -145,6 +149,25 @@ export function useOverlayTransform(
       const dx = p.x - gesture.startPointer.x
       const dy = p.y - gesture.startPointer.y
       const start = gesture.startTransform
+      const startPlane = gesture.startPlane
+
+      // AR plane: pan slides UV; scale tool changes coverFactor; rotate/tilt ignored (plane owns pose)
+      if (startPlane && setPlaneLock) {
+        if (gesture.tool === 'scale') {
+          const next = startPlane.coverFactor * (1 - dy * 0.004)
+          setPlaneLock({
+            ...startPlane,
+            coverFactor: Math.min(8, Math.max(1.2, next)),
+          })
+          return
+        }
+        if (gesture.tool === 'pan' || gesture.tool === 'rotate' || gesture.tool === 'tilt') {
+          // rotate/tilt on AR → still slide on plane (pose is locked to paper)
+          const { du, dv } = screenDeltaToPlaneOffset(dx, dy, startPlane)
+          setPlaneLock(applyPlanePan(startPlane, du, dv))
+          return
+        }
+      }
 
       if (gesture.tool === 'rotate') {
         setTransform({
@@ -172,25 +195,6 @@ export function useOverlayTransform(
         return
       }
 
-      // Default pan — optionally remap into plane-space (AR)
-      const plane = planeLockRef.current
-      if (plane && gesture.tool === 'pan') {
-        const { du, dv } = screenDeltaToPlaneOffset(dx, dy, plane)
-        const next = applyPlanePan(
-          { x: start.x, y: start.y, rotateX: start.rotateX },
-          du,
-          dv,
-          plane,
-        )
-        setTransform({
-          ...start,
-          x: next.x,
-          y: next.y,
-          rotateX: next.rotateX,
-        })
-        return
-      }
-
       setTransform({
         ...start,
         x: start.x + dx,
@@ -208,6 +212,17 @@ export function useOverlayTransform(
         gesture.startDistance && gesture.startDistance > 0
           ? nextDistance / gesture.startDistance
           : 1
+
+      if (gesture.startPlane && setPlaneLock) {
+        const midDx = nextMid.x - (gesture.startMid?.x ?? nextMid.x)
+        const midDy = nextMid.y - (gesture.startMid?.y ?? nextMid.y)
+        const { du, dv } = screenDeltaToPlaneOffset(midDx, midDy, gesture.startPlane)
+        setPlaneLock({
+          ...applyPlanePan(gesture.startPlane, du, dv),
+          coverFactor: Math.min(8, Math.max(1.2, gesture.startPlane.coverFactor * scaleFactor)),
+        })
+        return
+      }
 
       setTransform({
         ...gesture.startTransform,
@@ -241,6 +256,7 @@ export function useOverlayTransform(
         mode: 'drag',
         tool: dragModeRef.current,
         startTransform: { ...transformRef.current },
+        startPlane: planeLockRef.current ? { ...planeLockRef.current } : null,
         startPointer: pointers[0],
       }
     }
@@ -250,6 +266,17 @@ export function useOverlayTransform(
     if (locked) return
     event.preventDefault()
     const delta = event.deltaY > 0 ? 0.92 : 1.08
+    if (planeLockRef.current && setPlaneLock) {
+      setPlaneLock((prev) =>
+        prev
+          ? {
+              ...prev,
+              coverFactor: Math.min(8, Math.max(1.2, prev.coverFactor * delta)),
+            }
+          : prev,
+      )
+      return
+    }
     setTransform((prev) => ({
       ...prev,
       scale: Math.min(6, Math.max(0.2, prev.scale * delta)),
