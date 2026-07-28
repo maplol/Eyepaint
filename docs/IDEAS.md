@@ -184,7 +184,7 @@ E. Markerless / ML / teacher — later/spike
 - Телефон: OpenCV.js / WASM Worker → ArUco (или 4 маркера на PDF-коврике) → pose + качество трека.
 - Data-channel → ПК: matrix плоскости + `trackingQuality`.
 - Studio хранит `PlaneLock { matrix, lockedAt, quality }`; transform слоя = plane ∘ localOffset.
-- Флаг `arPlaneLock`. PDF маркера — в `public/` + ссылка из UI «Скачать маркер».
+- Флаг `arPlaneLock`. PDF/PNG маркера — `public/markers/` (`eyepaint-ar-marker-a4.png`, `eyepaint-ar-marker-card.png`, `marker.json`: DICT_4X4_50, center ID 0, corners 1–4). UI: «Скачать маркер». Перегенерация: `python3 scripts/generate-ar-marker.py`.
 
 **Даст.** Ощущение настоящего AR под кальку: один раз поймал лист → рисуешь спокойно → перекалибровал, если штатив сдвинули.
 
