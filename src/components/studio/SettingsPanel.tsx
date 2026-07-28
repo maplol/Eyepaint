@@ -13,7 +13,7 @@ import {
   panelClass,
   poseSaveClass,
   rowClass,
-  sectionTitleClass,
+  sectionDividerClass,
   tipClass,
 } from './studioUi'
 
@@ -93,9 +93,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
       </div>
 
       {props.section === 'link' && (
-        <div className={panelClass}>
-          <p className={sectionTitleClass}>Телефон как камера</p>
-          <div className="grid gap-1.5 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--panel-inset-bg)] px-3 py-3 text-[0.82rem] leading-snug text-[var(--fg-muted)]">
+        <div className={cn(panelClass, 'gap-0')}>
+          <div className="grid gap-1.5 text-[0.82rem] leading-snug text-[var(--fg-muted)]">
             <p>
               <strong className="text-[var(--chip-accent-fg)]">1.</strong> Создай комнату — появится код
             </p>
@@ -111,14 +110,14 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
           {props.roomEnabled ? (
             <>
-              <div className="grid gap-1 rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-inset-bg)] px-4 py-3.5 text-center">
+              <div className={cn(sectionDividerClass, 'grid gap-1 text-center')}>
                 <span className="text-[0.75rem] text-[var(--fg-muted)]">Код комнаты</span>
                 <strong className="font-[family-name:var(--font-display)] text-[clamp(1.4rem,4vw,1.8rem)] font-extrabold tracking-[0.18em] text-[var(--fg-strong)]">
                   {props.roomCode}
                 </strong>
               </div>
               {props.qrDataUrl && props.roomJoinUrl && (
-                <div className="grid gap-2 rounded-2xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-3 text-center">
+                <div className={cn(sectionDividerClass, 'grid gap-2 text-center')}>
                   <img
                     src={props.qrDataUrl}
                     alt="QR комнаты"
@@ -129,7 +128,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
                   </p>
                 </div>
               )}
-              <div className={rowClass}>
+              <div className={cn(sectionDividerClass, rowClass)}>
                 <button type="button" className={chipNeutralClass} onClick={props.onCopyCode}>
                   Копировать
                 </button>
@@ -144,28 +143,27 @@ export function SettingsPanel(props: SettingsPanelProps) {
                   Отключить
                 </button>
               </div>
-              <p className={cn(tipClass, 'min-h-[2.4rem]')}>
+              <p className={cn(tipClass, 'mt-3 min-h-[2.4rem]')}>
                 {props.roomStatus === 'connected'
                   ? `Телефон подключён${props.trackInfo ? ` · ${props.trackInfo}` : ''}`
                   : props.roomError || `Жду телефон… код ${props.roomCode}`}
               </p>
             </>
           ) : (
-            <>
+            <div className={sectionDividerClass}>
               <button type="button" className={poseSaveClass} onClick={props.onEnableRoom}>
                 Создать комнату
               </button>
-              <p className={tipClass}>Код только на ПК. Качество стрима выбирается на телефоне.</p>
-            </>
+              <p className={cn(tipClass, 'mt-2')}>Код только на ПК. Качество стрима выбирается на телефоне.</p>
+            </div>
           )}
         </div>
       )}
 
       {props.section === 'keys' && (
-        <div className={panelClass}>
-          <p className={sectionTitleClass}>Горячие клавиши</p>
+        <div className={cn(panelClass, 'gap-0')}>
           <p className={tipClass}>Зажми клавишу и тяни мышью. Клик по кнопке → назначь новую.</p>
-          <div className="grid gap-2">
+          <div className={cn(sectionDividerClass, 'grid gap-2')}>
             {(Object.keys(HOTKEY_LABELS) as HotkeyAction[]).map((action) => (
               <div
                 key={action}
@@ -191,24 +189,25 @@ export function SettingsPanel(props: SettingsPanelProps) {
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            className={chipNeutralClass}
-            onClick={() => {
-              props.setHotkeys({ ...DEFAULT_HOTKEYS })
-              props.onHotkeysResetToast()
-            }}
-          >
-            Сбросить по умолчанию
-          </button>
+          <div className={sectionDividerClass}>
+            <button
+              type="button"
+              className={chipNeutralClass}
+              onClick={() => {
+                props.setHotkeys({ ...DEFAULT_HOTKEYS })
+                props.onHotkeysResetToast()
+              }}
+            >
+              Сбросить по умолчанию
+            </button>
+          </div>
         </div>
       )}
 
       {props.section === 'flags' && (
-        <div className={panelClass}>
-          <p className={sectionTitleClass}>Фичефлаги</p>
+        <div className={cn(panelClass, 'gap-0')}>
           <p className={tipClass}>Выключи, если фича мешает — хранится в localStorage.</p>
-          <div className="grid gap-2">
+          <div className={cn(sectionDividerClass, 'grid gap-2')}>
             {FLAG_LABELS.map(([key, label]) => (
               <label
                 key={key}
@@ -232,28 +231,29 @@ export function SettingsPanel(props: SettingsPanelProps) {
       )}
 
       {props.section === 'project' && (
-        <div className={panelClass}>
-          <p className={sectionTitleClass}>Проект и сессия</p>
+        <div className={cn(panelClass, 'gap-0')}>
           <p className={tipClass}>
             Сохрани файл `.eyepaint.json` со слоями и настройками. Автосейв в браузере
             переживает перезагрузку.
           </p>
           {props.autosaveLabel && (
-            <p className="rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-3 py-2 text-[0.78rem] text-[var(--fg-muted)]">
+            <p className={cn(sectionDividerClass, 'text-[0.78rem] text-[var(--fg-muted)]')}>
               Автосейв: {props.autosaveLabel}
             </p>
           )}
-          <button
-            type="button"
-            className={poseSaveClass}
-            disabled={props.savingProject}
-            onClick={props.onSaveProject}
-          >
-            {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
-          </button>
-          <button type="button" className={chipNeutralClass} onClick={props.onClearAutosave}>
-            Очистить автосейв
-          </button>
+          <div className={cn(sectionDividerClass, 'grid gap-2')}>
+            <button
+              type="button"
+              className={poseSaveClass}
+              disabled={props.savingProject}
+              onClick={props.onSaveProject}
+            >
+              {props.savingProject ? 'Сохраняю…' : 'Сохранить проект в файл'}
+            </button>
+            <button type="button" className={chipNeutralClass} onClick={props.onClearAutosave}>
+              Очистить автосейв
+            </button>
+          </div>
         </div>
       )}
     </div>

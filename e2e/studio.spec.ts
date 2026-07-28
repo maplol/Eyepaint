@@ -29,7 +29,7 @@ test.describe('Studio smoke', () => {
     await page.getByRole('button', { name: 'Лицо' }).click()
 
     await openStudioTool(page, 'Лупа')
-    await expect(page.getByText('Размер')).toBeVisible()
+    await expect(page.getByText('Размер', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: '2×', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '2.5×', exact: true }).click()
 

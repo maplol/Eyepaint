@@ -3,7 +3,13 @@ export const cn = (...classes: Array<string | false | null | undefined>) =>
 
 export const panelClass = 'grid gap-3'
 
+/** Горизонтальный разделитель групп настроек (вместо вложенных карточек) */
+export const sectionDividerClass = 'mt-3 border-t border-[var(--glass-border-soft)] pt-3'
+
 export const sectionTitleClass = 'text-sm font-bold text-[var(--fg-strong)]'
+
+/** Мелкий ярлык группы без коробки */
+export const fieldLabelClass = 'text-[0.78rem] font-semibold text-[var(--fg-muted)]'
 
 export const sliderLabelsClass =
   'mb-[0.4rem] flex justify-between text-[0.84rem] text-[var(--fg-slider)]'
@@ -48,15 +54,17 @@ export const ctaPrimaryClass =
 export const ctaSecondaryClass =
   'inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-4 py-2 text-center font-semibold leading-tight text-[var(--fg-strong)]'
 
-export const poseStatsClass = 'grid grid-cols-4 gap-[0.4rem]'
+export const poseStatsClass = 'grid grid-cols-4 gap-1.5'
 
 export const poseStatClass =
-  'grid gap-[0.12rem] rounded-[12px] border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-2 py-[0.45rem]'
+  'grid place-items-center gap-0.5 rounded-xl border border-[var(--glass-border-soft)] bg-[var(--glass-fill)] px-1 py-1.5'
 
 export const poseStatLabelClass = 'text-[0.68rem] text-[var(--fg-faint)]'
 
 export const poseStatValueClass =
-  'text-[0.86rem] font-bold text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
+  'text-[0.78rem] font-bold leading-none text-[var(--fg-strong)] [font-variant-numeric:tabular-nums]'
+
+export const poseStatIconClass = 'text-[var(--fg-muted)]'
 
 export const glassButtonClass =
   'eyepaint-glass-chip inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3.5 py-2 text-sm font-semibold leading-tight text-[var(--fg-strong)]'

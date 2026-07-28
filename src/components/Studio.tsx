@@ -17,6 +17,7 @@ import { LayersPanel } from './studio/LayersPanel'
 import { LoupeOverlay } from './studio/LoupeOverlay'
 import { MainPanel } from './studio/MainPanel'
 import { MaskPainter } from './studio/MaskPainter'
+import { PanelHint } from './studio/PanelHint'
 import { PosesPanel } from './studio/PosesPanel'
 import { ProjectPanel } from './studio/ProjectPanel'
 import { SettingsPanel } from './studio/SettingsPanel'
@@ -1316,13 +1317,24 @@ export function Studio({
   const toolPanelChrome = (
     <>
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--glass-border-soft)] px-3.5 py-2.5">
-        <p className={sectionTitleClass}>
-          {settingsOpen
-            ? 'Настройки'
-            : activeTool && activeTool !== 'layers'
-              ? STUDIO_TOOL_LABELS[activeTool]
-              : 'Инструмент'}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className={sectionTitleClass}>
+            {settingsOpen
+              ? 'Настройки'
+              : activeTool && activeTool !== 'layers'
+                ? STUDIO_TOOL_LABELS[activeTool]
+                : 'Инструмент'}
+          </p>
+          {(settingsOpen || (activeTool && activeTool !== 'layers')) && (
+            <PanelHint
+              tipId={
+                settingsOpen
+                  ? 'studio-settings'
+                  : (activeTool as string)
+              }
+            />
+          )}
+        </div>
         <button
           type="button"
           className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--glass-fill-mid)] px-3 py-1.5 text-[0.78rem] font-semibold leading-none text-[var(--fg-strong)]"

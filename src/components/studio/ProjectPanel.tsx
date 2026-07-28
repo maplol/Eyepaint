@@ -2,11 +2,11 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { OverlayTransform } from '../../hooks/useOverlayTransform'
 import {
   chipNeutralClass,
+  cn,
   panelClass,
   rangeInputClass,
-  sectionTitleClass,
+  sectionDividerClass,
   sliderLabelsClass,
-  tipClass,
 } from './studioUi'
 
 type ProjectPanelProps = {
@@ -16,8 +16,7 @@ type ProjectPanelProps = {
 
 export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
   return (
-    <div className={panelClass}>
-      <p className={sectionTitleClass}>Подстройка под угол листа</p>
+    <div className={cn(panelClass, 'gap-0')}>
       <div>
         <div className={sliderLabelsClass}>
           <span>Наклон X</span>
@@ -36,7 +35,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           }
         />
       </div>
-      <div>
+      <div className={sectionDividerClass}>
         <div className={sliderLabelsClass}>
           <span>Наклон Y</span>
           <span>{Math.round(transform.rotateY)}°</span>
@@ -54,7 +53,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           }
         />
       </div>
-      <div>
+      <div className={sectionDividerClass}>
         <div className={sliderLabelsClass}>
           <span>Поворот</span>
           <span>{Math.round(transform.rotation)}°</span>
@@ -72,7 +71,7 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           }
         />
       </div>
-      <div>
+      <div className={sectionDividerClass}>
         <div className={sliderLabelsClass}>
           <span>Масштаб</span>
           <span>{Math.round(transform.scale * 100)}%</span>
@@ -90,23 +89,22 @@ export function ProjectPanel({ transform, setTransform }: ProjectPanelProps) {
           }
         />
       </div>
-      <button
-        type="button"
-        className={chipNeutralClass}
-        onClick={() =>
-          setTransform((prev) => ({
-            ...prev,
-            rotateX: 0,
-            rotateY: 0,
-            rotation: 0,
-          }))
-        }
-      >
-        Сбросить углы
-      </button>
-      <p className={tipClass}>
-        Если телефон стоит под углом — крути наклоны, пока референс ляжет на лист.
-      </p>
+      <div className={sectionDividerClass}>
+        <button
+          type="button"
+          className={chipNeutralClass}
+          onClick={() =>
+            setTransform((prev) => ({
+              ...prev,
+              rotateX: 0,
+              rotateY: 0,
+              rotation: 0,
+            }))
+          }
+        >
+          Сбросить углы
+        </button>
+      </div>
     </div>
   )
 }
